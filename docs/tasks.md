@@ -259,7 +259,7 @@
 - **acceptance:** Two users using the same idempotency key each get their own event row — covered by T-009's cross-user test.
 
 ### T-010 · Due items API
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-009
 - **files:** `backend/src/routes/due.ts`, `backend/src/routes/due.test.ts`
@@ -272,6 +272,15 @@
   - Two due cards → two items, ordered by due.
   - Item shown in last 3 reviews is not chosen when alternatives exist.
   - Payload has no `answer`/`accept`/`answerIndex`/`rubric` keys.
+- **notes:** (2026-09-04) Built and verified against real Postgres. All 6 listed cases pass plus 11 extra (17 total; 99 across the suite).
+  - **`toPublicItem` is its own module** (`backend/src/lib/publicItem.ts`), beyond the task's file list, because it's the single point where an item crosses from server to client and T-016 and T-038 will both need it. Worth one auditable, directly-tested function rather than an inline mapper per route.
+  - **It builds the client shape field by field instead of deleting keys.** Deleting is fail-open: add an answer-bearing field to `ItemPayload` later and it leaks until someone remembers to strip it. Constructing explicitly is fail-closed — a new field is excluded by default. `options` is the only answer-adjacent field that crosses, because you can't render a multiple-choice question without it; `answerIndex` stays behind.
+  - It throws on a payload that doesn't match `ItemPayloadSchema` rather than serving a half-built question — a malformed row should fail loudly.
+  - The leak test asserts **both** ways: by key inspection (the stated acceptance) *and* by searching the serialised body for the actual secret values, which would catch a leak through a path key inspection wouldn't. Unit tests cover all four item types, including `application`, which the route tests don't otherwise exercise.
+  - **All four filters are load-bearing and each has its own test**: `due <= now`, `taughtAt IS NOT NULL` (never ask about something untaught), `concept.heldOut = false` (the control group must stay untouched — plan.md §6), and `topic.status = 'active'` (which is what silences the extension during the Day 31-45 holdout, T-039).
+  - Item choice avoids anything seen in the concept's last 3 reviews, falling back to any item when they've all come up. Three queries total rather than N+1; the "last 3" slice is done in JS rather than with a window function, which is fine at pilot scale (bounded by `limit` concepts) and noted in the code as the thing to revisit if history grows.
+  - `limit` is capped at 50 via the shared `DueQuerySchema` so one caller can't drain the queue.
+  - curl: `curl 'localhost:3001/due?limit=5' -H 'x-user-id: <uuid>'` → `{"items":[{"itemId":"…","conceptId":"…","type":"recall","prompt":"…"}]}`
 
 ### T-011 · Grading — server-side answer checking
 - **status:** todo
