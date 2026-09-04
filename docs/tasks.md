@@ -228,7 +228,7 @@
 - **acceptance:** `POST /topics` with a `why` persists it and `GET /topics/:id` returns it — covered by T-008's "accepts a valid topic" test.
 
 ### T-009 · Reviews API — record an answer
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-002, T-003, T-004
 - **files:** `backend/src/routes/reviews.ts`, `backend/src/routes/reviews.test.ts`, `backend/src/lib/recordReview.ts`
@@ -240,6 +240,23 @@
   - `correct=null, dismissed=true` → event row written, card unchanged.
   - Same `idempotencyKey` twice → one event row, second call returns 200 with same body.
   - Snoozed answer → `snoozed=true`, card unchanged.
+- **notes:** (2026-09-04) Built and verified against real Postgres. All 5 listed cases pass plus 6 extra (11 total; 82 across the suite).
+  - **`predictedRecall` is computed before scheduling**, as plan.md §6 requires — it's what T-040's scheduler-calibration metric compares against what actually happened. Reading it after `scheduleReview` would make calibration trivially perfect and meaningless.
+  - **`gap_days_since_last` is measured from the last *answered* review, not the last event.** A snooze or dismissal involves no retrieval, so counting from one would understate the real gap and drop genuine data points out of T-040's "did it stick" (`correct` with `gap >= 1`) bucket. Floored to whole days rather than rounded, for the same reason — rounding would promote a 13-hour gap into `gap >= 1`.
+  - **Non-scheduling surfaces are derived, not flagged.** T-015 asks for a `noSchedule` flag, but `surface` already carries the information: `diagnostic` and `test` record the answer and never touch the card, since scheduling on either would contaminate the very measurement it exists to take. One less parameter for T-015/T-038 to remember to pass.
+  - `correct: null` (snooze, dismiss, or an unanswered auto-close) writes the event and leaves the card alone. `cardId` is only set on events that actually scheduled, so T-040 can tell the two apart.
+  - `correct` still comes from the client — **T-011 replaces that with server-side grading** so a client can't mark its own answer correct. Noted in the route.
+  - **Found a real spec/schema conflict while testing** (see T-FIX-003): the task says the idempotency key is "unique per user", but the schema had a *global* unique, so a key collision between two users would reject the second user's answer with a 500 instead of recording it. My cross-user test caught it. The idempotency *lookup* is scoped by user too — reading back by key alone would have returned another user's event.
+  - curl: `curl -XPOST localhost:3001/reviews -H 'content-type: application/json' -H 'x-user-id: <uuid>' -d '{"itemId":"<uuid>","correct":true,"confidence":"sure","surface":"web"}'` → `200 {"eventId":"…","predictedRecall":0,"gapDaysSinceLast":null,"scheduled":true,"reps":1}`
+
+### T-FIX-003 · Schema — idempotency key unique per user, not globally (schema task)
+- **status:** done
+- **sprint:** 1
+- **severity:** medium — one user's key could reject another user's answer
+- **depends_on:** T-049
+- **files:** `backend/src/db/schema.ts`
+- **description:** Found while building T-009, whose description specifies the key is "unique per user". `review_events.idempotency_key` carried a plain global `.unique()`, so if two users ever submitted the same key the second insert would violate the constraint and 500 rather than record the answer. Replaced with a composite `uniqueIndex` on `(user_id, idempotency_key)`. Postgres treats NULLs as distinct, so events without a key are unaffected. Kept to this one change and declared as a schema task per loop.md.
+- **acceptance:** Two users using the same idempotency key each get their own event row — covered by T-009's cross-user test.
 
 ### T-010 · Due items API
 - **status:** todo
