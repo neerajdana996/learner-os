@@ -21,7 +21,7 @@
 - No `any`. No `// @ts-ignore`. If you must, write why in the same line.
 - Every API route validates input with the `validate()` middleware (`backend/src/lib/validate.ts`) and a schema from `src/shared`. WebSocket messages are validated the same way.
 - Every write to `review_events` must set `predicted_recall` and `gap_days_since_last` (see plan §6).
-- Never call the Anthropic API from the web app or extension. Only `backend/src/generator`, only from a BullMQ worker.
+- Never call the model API from the web app or extension. Only `backend/src/generator`, only from a BullMQ worker.
 - UI: plain React, inline styles or a single `styles.css` — no UI library for the pilot.
 - Frontend data: **all** API calls go through RTK Query (`frontend/src/store/api.ts`); all client state lives in Redux Toolkit slices. No `fetch`/`axios` in components.
 
@@ -29,7 +29,7 @@
 - Test runner: **vitest**, installed per project. Tests live next to the code: `foo.test.ts`.
 - Implement **every** test case listed in the task. Add more if you find edge cases; never remove one.
 - API tests hit a real Postgres (`docker compose up -d`), using a `learnos_test` database. Truncate tables in `beforeEach`.
-- Generator tests: mock `anthropic.messages.create`; never hit the network in tests. Include one fixture of real-looking JSON output per prompt in `backend/fixtures/`.
+- Generator tests: mock at the SDK boundary (`openai.chat.completions.create`); never hit the network in tests. Include one fixture of real-looking JSON output per prompt in `backend/fixtures/`.
 - Scheduler tests: pure functions, no mocks.
 - Run `pnpm test` inside every project you touched. All green before you move on.
 

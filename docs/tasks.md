@@ -320,157 +320,346 @@
 
 ## Sprint 2 — Diagnostic, session, map
 
+> **Build order.** `T-054` (schema) first — everything else in this sprint reads or writes
+> columns it adds. Then the backend spine `T-013 → T-014 → T-053 → T-015 → T-023 → T-016 → T-017`,
+> then the web tier `T-018 → T-019 → T-020 → T-021 → T-022`, then tooling `T-024`/`T-025`,
+> and `T-026` closes the sprint. `T-FIX-005` (application grading) should land before
+> `T-026` so the integration test measures real grading.
+>
+> **Sprint 2 exit demo** (sprint.md): fresh browser → onboarding → diagnostic (~15 questions
+> with confidence taps) → map shows green/yellow/grey → "Today's session" teaches 2 concepts
+> (one try-first, one example-first) → map updates → score visible.
+
+### T-054 · Schema — Sprint 2 table set (schema task)
+- **status:** todo
+- **sprint:** 2
+- **severity:** high — blocks every other Sprint 2 task
+- **depends_on:** T-049
+- **files:** `backend/src/db/schema.ts`, `backend/src/db/__tests__/schema.test.ts`
+- **description:** One schema task for the whole sprint, following T-049's precedent — loop.md forbids touching `schema.ts` outside a schema task, and five micro-tasks would be worse than one reviewed change. Add:
+  1. **`auth_tokens`** (T-013): `id` uuid pk, `user_id` fk, `token` text unique, `expires_at` timestamptz, `consumed_at` timestamptz nullable (single-use is enforced by setting this, not by deleting the row — a reused link must be distinguishable from an unknown one for the 401 path and for debugging), `created_at`.
+  2. **`sessions`** (T-013): `id` uuid pk, `user_id` fk, `token` text unique, `kind` pgEnum `web|extension`, `expires_at` timestamptz, `revoked_at` timestamptz nullable, `created_at`. One table serves both the web cookie and the extension bearer token; `kind` is what T-034's "connected" state and T-046's delete flow key on.
+  3. **`users`** additions (T-014): `timezone` text (IANA, nullable until onboarding), `active_windows` jsonb default `[]` (array of `{start:"HH:MM", end:"HH:MM"}`), `profile` jsonb default `{}` (holds `calibrationGap` from T-015 and the extension daily cap T-028 reads via `/me`).
+  4. **`topics.diagnostic_state`** jsonb nullable (T-015): the adaptive walk's `{estimates, asked}` between requests.
+  5. **`session_days`** (T-023): `user_id` + `topic_id` + `day` (date, in the user's timezone), unique on all three, `completed_at`. Drives `completedToday` and makes "completing twice is idempotent" a DB guarantee rather than route logic.
+  6. **Teaching-content columns on `concepts`** (T-053): `try_first_prompt` text nullable, `explanation_short` text nullable, `explanation_long` text nullable, `corrections` jsonb default `[]`. Nullable because held-out concepts never get them.
+- **acceptance:** `pnpm db:push` and `pnpm db:test:push` apply cleanly with no prompts; `truncateAll()` still empties every table (it enumerates `information_schema`, so new tables are picked up automatically — assert it).
+- **tests:** (extend `schema.test.ts`, real test DB)
+  - `information_schema.tables` contains `auth_tokens`, `sessions`, `session_days`.
+  - Two `sessions` rows with the same `token` → throws (unique).
+  - Two `session_days` rows for the same `(user_id, topic_id, day)` → throws.
+  - `auth_tokens` insert with a non-existent `user_id` → throws (FK).
+  - `truncateAll()` leaves all new tables at 0 rows.
+  - Existing T-049 constraint tests still pass (regression).
+- **notes:** Follow T-049's lesson: seed a real user/topic/concept before testing a constraint. Its original tests "passed" only because a hardcoded FK violation fired first, so they never exercised the constraint they claimed to.
+
 ### T-013 · Magic-link auth
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-002
-- **files:** `backend/src/routes/auth.ts`, `backend/src/middleware/auth.ts`, `backend/src/lib/mail.ts`, tests
-- **description:** `POST /auth/magic {email}` creates user if absent, stores a 15-min single-use token (new table `auth_tokens`), sends email (console transport in dev). `GET /auth/verify?token=` sets an httpOnly cookie session (new table `sessions`, 30 days). `requireUser` middleware reads cookie; in `NODE_ENV=production` it rejects `x-user-id`. Extension auth: `POST /auth/extension-token` returns a bearer token for the extension (same session table, `kind='extension'`).
-- **acceptance:** All existing routes now use `requireUser`; tests updated to log in via helper.
+- **depends_on:** T-054
+- **files:** `backend/src/modules/auth/auth.{routes,controller,service,repository}.ts`, `backend/src/modules/auth/auth.test.ts`, `backend/src/middleware/auth.ts`, `backend/src/lib/mail.ts`, `backend/src/lib/token.ts`, `backend/src/shared/schemas.ts`, `backend/src/app.ts`, `backend/src/test/db.ts`
+- **description:** Replace the interim `x-user-id` shortcut with real sessions. Follow the T-051 module layout (`routes → controller → service → repository`), not `src/routes/`.
+  - `POST /auth/magic {email}` — creates the user if absent, mints a 15-min single-use token into `auth_tokens`, sends the link. **Always returns 200 with the same body** whether or not the email existed: a different response would turn this into an account-existence oracle.
+  - `GET /auth/verify?token=` — validates (exists, not expired, `consumed_at IS NULL`), sets `consumed_at`, creates a 30-day `sessions` row, sets an httpOnly + `SameSite=Lax` + `Secure`-in-prod cookie, redirects to the web app.
+  - `POST /auth/extension-token` — authenticated by the web cookie, returns a bearer token as a `sessions` row with `kind='extension'` (T-027/T-034 paste it into the options page).
+  - `requireUser` reads the cookie, falls back to `Authorization: Bearer` for the extension, looks the session up, and rejects expired/revoked ones. **In `NODE_ENV=production` it rejects `x-user-id`** — this is the TODO(T-013) that T-008 deliberately deferred, and sprint.md's Sprint 2 exit criteria call for it explicitly.
+  - `lib/token.ts`: `crypto.randomBytes(32).toString('base64url')`. Store a SHA-256 **hash** of the token, not the token itself — a leaked DB dump otherwise hands over live sessions. Compare with `crypto.timingSafeEqual`.
+  - `lib/mail.ts`: a `MailTransport` interface with a console implementation for dev. T-043 swaps in Resend behind the same interface; do not build that here.
+  - Schemas (`MagicLinkSchema`, `VerifyQuerySchema`) go in `src/shared/schemas.ts` per loop.md §2 — then run `scripts/sync-shared.sh`.
+  - Add a `loginAs(user)` helper to `src/test/db.ts` returning a ready session cookie, and migrate the existing topics/due/reviews suites onto it.
+- **acceptance:** Every existing route authenticates via `requireUser` with a real session; no suite sets `x-user-id`; `x-user-id` returns 401 under `NODE_ENV=production`; tokens are stored hashed (assert the raw token does not appear in the DB).
 - **tests:**
-  - Magic → token row; verify → cookie set, session row; token reused → 401.
+  - Magic → `auth_tokens` row; verify → `Set-Cookie` present and a `sessions` row exists; same token replayed → 401.
   - Expired token (inject clock) → 401.
-  - `x-user-id` in production → 401.
-  - Bearer extension token authenticates `/due`.
+  - `x-user-id` under `NODE_ENV=production` → 401; under development → still works.
+  - Bearer extension token authenticates `GET /due`.
+  - `POST /auth/magic` for an unknown email returns the same status and body as for a known one (no account-existence oracle).
+  - Revoked session → 401.
+  - The stored `auth_tokens.token` / `sessions.token` never equals the value handed to the client (hashing).
+  - Regression: topics/due/reviews suites pass on cookie auth.
+- **notes:** Also update `docs/api.md` (it currently documents `x-user-id` as the dev path) and `frontend/src/store/api.ts`'s `prepareHeaders` TODO(T-013). `credentials: 'include'` is already set there, and CORS already runs with `credentials: true`, so the cookie path should work without further wiring — verify rather than assume.
 
 ### T-014 · Users API + onboarding profile
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-013
-- **files:** `backend/src/routes/users.ts`, tests
-- **description:** `PATCH /me {name, timezone, activeWindows}`. Validate windows (`HH:MM`, start<end, max 3, no overlap). `GET /me` returns user + profile.
+- **depends_on:** T-013, T-054
+- **files:** `backend/src/modules/users/users.{routes,controller,service,repository}.ts`, `backend/src/modules/users/users.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/app.ts`
+- **description:** `PATCH /me {name?, timezone?, activeWindows?}` and `GET /me`. `GET /me` is the endpoint the **extension** polls hourly (T-028) for timezone, active windows and daily cap, so its response shape is a contract for Sprint 3 — define it as `MeResponseSchema` in shared and include `{id, email, name, timezone, activeWindows, profile: {dailyCap, calibrationGap}, hasExtensionToken}`. `dailyCap` defaults to 12 (T-028's default) and lives in `users.profile`.
+  - **Active-window validation** goes in `src/shared/schemas.ts` as a reusable `ActiveWindowsSchema` (the extension validates the same shape client-side): each entry `{start, end}` matching `^([01]\d|2[0-3]):[0-5]\d$`, `start < end` lexicographically (safe for zero-padded `HH:MM`), **max 3**, and no two windows overlapping after sorting by `start`. Windows are wall-clock local times in the user's timezone; they never cross midnight (a learner wanting 22:00–02:00 enters two windows) — say so in the schema comment so T-028 doesn't invent wraparound logic.
+  - **Timezone validation** uses `Intl.supportedValuesOf('timeZone')` or a `try/catch` around `new Intl.DateTimeFormat(undefined, {timeZone})` — no new dependency (CLAUDE.md). This is the same check T-023 needs, so put it in `backend/src/lib/today.ts` if T-023 lands first, otherwise leave a `TODO(T-023)` to converge them.
+  - `PATCH /me` is a partial update: omitted fields are left untouched, explicitly-null ones are cleared.
+- **acceptance:** `GET /me` returns everything T-028's `shouldShow()` needs in one call; no field the extension needs requires a second request.
 - **tests:**
-  - Overlapping windows → 400. Four windows → 400. Valid two windows → 200 persisted.
-  - Invalid IANA timezone → 400.
+  - Overlapping windows → 400. Four windows → 400. Valid two windows → 200 and persisted.
+  - Invalid IANA timezone (`"Mars/Olympus"`) → 400; valid (`"Asia/Kolkata"`) → 200.
+  - Malformed time (`"9:00"`, `"24:00"`, `"12:60"`) → 400.
+  - `start >= end` in one window → 400.
+  - Windows touching but not overlapping (`09:00–12:00`, `12:00–15:00`) → 200 (adjacent is legal).
+  - `PATCH` with only `name` leaves `timezone` and `activeWindows` untouched.
+  - `GET /me` for another user's session never returns this user's data.
+  - `GET /me` includes `profile.dailyCap` defaulted to 12 when never set.
+
+### T-053 · Teaching content generator — try-first prompts, explanations, corrections
+> Moved into the Sprint 2 build order (originally logged under "Fix / discovered tasks").
+> Full entry is below in that section — it is the missing input to T-016 and T-021, and
+> must land before either. `depends_on` updated to include T-054.
 
 ### T-015 · Diagnostic engine (adaptive, server-side)
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-007, T-009
-- **files:** `backend/src/lib/diagnostic.ts`, `backend/src/routes/diagnostic.ts`, tests
-- **description:** Simple adaptive walk over the prereq DAG, no IRT library. State per (user, topic): `estimates: Map<conceptId, number>` in 0..1 starting at 0.5, `asked: Set`. `next()`: pick the unasked, non-held-out concept whose estimate is closest to 0.5 (max uncertainty), prefer concepts whose prereqs are all estimated > 0.7 or all asked. On correct: estimate → 0.9 and propagate +0.15 to prerequisites (capped 1). On wrong: estimate → 0.1 and propagate −0.15 to dependents. Stop at 15 asked or when every concept's estimate is outside (0.35, 0.65). Store state in a new `diagnostic_state` jsonb column on `topics`. Each answer is also recorded via `recordReview` with `surface='diagnostic'` and **does not** schedule a card (pass `correct` but flag `noSchedule`). On finish: create cards for all non-held-out concepts; set `mastery = estimate`, `taughtAt = now` for concepts with estimate ≥ 0.8 (they're "known" — skip teaching), and write `tests` row `kind='day0'` with per-concept scores. Also write day-0 confidence gap into `users.profile.calibrationGap`.
-- **acceptance:** Diagnostic never asks a held-out concept. Ends in ≤ 15 questions. Known concepts (≥0.8) are skipped by the session planner.
-- **tests:**
+- **depends_on:** T-009, T-054
+- **files:** `backend/src/lib/diagnostic.ts`, `backend/src/lib/__tests__/diagnostic.test.ts`, `backend/src/modules/diagnostic/diagnostic.{routes,controller,service,repository}.ts`, `backend/src/modules/diagnostic/diagnostic.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/app.ts`
+- **description:** A deterministic adaptive walk over the prereq DAG. **No IRT library** (plan.md §5 rules out heavyweight deps; this is 10 people, not a psychometrics product).
+  - **Keep `lib/diagnostic.ts` pure.** `next(state, concepts, prereqs)` and `apply(state, conceptId, correct)` are pure functions over a plain state object — no DB, no clock. That is what makes the six cases below testable without a database, and it mirrors `lib/heldOut.ts` (T-007) and `lib/planner.ts` (T-016). The module layer owns persistence.
+  - **State** per (user, topic), persisted to `topics.diagnostic_state` (T-054): `{estimates: Record<conceptId, number>, asked: conceptId[]}`, estimates in 0..1 starting at 0.5.
+  - **`next()`**: among unasked, non-held-out concepts, prefer those whose prereqs are all estimated > 0.7 or all already asked (ask about something the learner is ready for); within that set pick the estimate closest to 0.5 (maximum uncertainty). Ties break on `concepts.order` so the walk is deterministic and the tests can't flake.
+  - **`apply()`**: correct → estimate 0.9, propagate **+0.15 to prerequisites** (transitively, capped at 1.0) — getting a hard thing right implies its foundations. Wrong → estimate 0.1, propagate **−0.15 to dependents** (transitively, floored at 0.0) — missing a foundation implies what builds on it. Guard the transitive walk against re-visiting nodes; the DAG is acyclic (the generator enforces it) but a diamond would otherwise apply the delta twice.
+  - **Stop** at 15 asked, or when every concept's estimate is outside (0.35, 0.65).
+  - **Routes:** `POST /diagnostic/:topicId/start`, `GET /diagnostic/:topicId/next` (→ `{done: false, item, askedCount, total}` or `{done: true, summary}`), `POST /diagnostic/:topicId/answer`. Use the existing `DiagnosticStartSchema`/`DiagnosticAnswerSchema`/`DiagnosticNextResponseSchema` from T-003 — **T-003's notes flag these as first-draft shapes never exercised by a route; adjust them here if they don't fit and record what changed.**
+  - **Recording:** each answer goes through `recordReview` with `surface='diagnostic'`. **Do not add a `noSchedule` flag** — this task's original wording asked for one, but T-009 already derives non-scheduling from `surface`, so the flag would be a second source of truth for the same fact. Grading is server-side via `recordReview` (T-011); the client never sends `correct`.
+  - **On finish:** create cards for all non-held-out concepts. For concepts estimated ≥ 0.8, mark them "known" by setting `taughtAt = now` so the session planner skips teaching them. Write a `tests` row `kind='day0'` with per-concept scores, and the day-0 confidence gap into `users.profile.calibrationGap`.
+- **⚠ open design decision — `mastery` has nowhere to land.** The original wording says "set `mastery = estimate`", but there is no `mastery` column on `concepts` or `cards`, and T-017 defines mastery as `predictedRecall(card, now)`. Do **not** add a column: instead seed the new card's FSRS state (via `newCard()` then a synthetic `scheduleReview`, or by setting `stability`/`difficulty` directly) so `predictedRecall` lands near the diagnostic estimate. That keeps one definition of mastery across T-015, T-017 and T-040. Whichever way this is resolved, write the reasoning into this task's notes — T-017 and T-040 both depend on it.
+- **acceptance:** Never asks a held-out concept. Ends in ≤ 15 questions. Concepts estimated ≥ 0.8 are skipped by T-016's planner. Diagnostic answers produce `review_events` with `surface='diagnostic'` and **no card scheduling side-effect** (assert `cards.reps` unchanged).
+- **tests:** (pure-function cases need no DB; route cases use the real test DB)
   - Seeded 12-concept DAG, all correct → stops early, all estimates ≥ 0.8, cards created with `taughtAt` set.
   - All wrong → estimates ≤ 0.2, no `taughtAt`.
   - Mixed: wrong on a leaf lowers its dependents' estimates.
+  - Correct on a deep concept raises its transitive prerequisites' estimates.
   - Never returns a held-out concept.
   - Hard cap: 40-concept DAG with alternating answers → exactly 15 asked.
-  - `tests` row `kind=day0` exists with `scores.overall` in [0,1] and `scores.calibrationGap`.
+  - `tests` row `kind='day0'` exists with `scores.overall` in [0,1] and `scores.calibrationGap`.
+  - Diamond-shaped DAG (A→B, A→C, B→D, C→D): a wrong answer propagates to D exactly once, not twice.
+  - `next()` is deterministic — same state and same map returns the same concept across 50 runs.
+  - Answering a concept twice does not double-count `asked` or exceed the cap.
+  - A diagnostic answer writes a `review_events` row with `surface='diagnostic'` and leaves the card's `reps`/`due` untouched.
+  - Another user's topic → 404 (scoped by owner in the query, like T-008).
 
 ### T-016 · Session planner
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-015
-- **files:** `backend/src/lib/planner.ts`, `backend/src/routes/session.ts`, tests
-- **description:** `GET /session` returns today's plan: `newConcepts` (untaught, non-held-out, prereqs taught or known, in `order`) limited to `ceil(remainingUntaught / remainingDays)` and capped at 3, plus `dueReviews` (reuse T-010 logic, limit by budget: assume 45 s per review, 3 min per new concept). Include `teach_mode`, `tryFirstPrompt`, `explanationShort/Long`, `corrections`, and one item per new concept for the immediate retrieval check. `POST /session/complete {conceptIds}` sets `taughtAt` and creates cards (via `newCard`) for those concepts.
+- **depends_on:** T-015, T-023, T-053
+- **files:** `backend/src/lib/planner.ts`, `backend/src/lib/__tests__/planner.test.ts`, `backend/src/modules/session/session.{routes,controller,service,repository}.ts`, `backend/src/modules/session/session.test.ts`, `backend/src/app.ts`
+- **description:** `GET /session` returns today's plan; `POST /session/complete {conceptIds}` closes it out.
+  - **`lib/planner.ts` is pure**, like `heldOut.ts` and `diagnostic.ts`: `planSession({untaught, dueCount, remainingDays, budgetMin})` returns `{newConceptCount, reviewCount}` with no DB access. All six sizing cases below are then unit tests with no fixtures.
+  - **New-concept selection:** untaught (`cards.taughtAt IS NULL`), non-held-out, topic `active`, and every prereq either taught or known (estimate ≥ 0.8 from T-015). Ordered by `concepts.order`. Count = `ceil(remainingUntaught / remainingDays)`, **capped at 3** (plan.md §6, cognitive-load management).
+  - **Budget:** assume **45 s per review** and **3 min per new concept**, against `topics.dailyBudgetMin`. New concepts are allocated first, then reviews fill the remainder — teaching is the thing with a deadline; reviews reschedule themselves. Always offer **at least one** item if anything is available, so a 5-minute budget never returns an empty session.
+  - **`dueReviews` reuses T-010's logic** — import from `modules/due`, do not reimplement the four filters (`due <= now`, `taughtAt IS NOT NULL`, not held out, topic active). If the shape doesn't fit, extract a shared service rather than copying the query.
+  - **Response** is `SessionResponseSchema` (T-003). Each `newConcepts[]` entry carries `teachMode`, `tryFirstPrompt`, `explanationShort`, `explanationLong`, `corrections` — **all from T-053's columns**, which is why this task depends on it — plus one item for the immediate retrieval check, built with `toPublicItem` (T-010) so no answer key leaks.
+  - **`POST /session/complete {conceptIds}`** sets `taughtAt = now` and creates cards via `newCard()` for those concepts, and writes the `session_days` row (T-023). Card `due` should be ≈ now so the extension can ask about it later the same day. **Validate that every submitted `conceptId` belongs to a topic this user owns and was actually offered** — otherwise a client could mark the entire map taught and skip the course.
+  - `completedToday` comes from T-023's `session_days`, in the user's timezone.
+- **acceptance:** Held-out concepts never appear. A concept is never offered before its prereqs are taught or known. The session fits the daily budget. Completing is idempotent (T-023's unique index).
 - **tests:**
-  - 20 untaught, 10 days left → 2 new concepts per session.
+  - 20 untaught, 10 days left → 2 new concepts.
   - 20 untaught, 2 days left → 3 (cap).
   - Concept whose prereq is untaught and unknown → not offered.
-  - Budget 5 min → at most 1 new concept and reviews fill the rest.
-  - `complete` sets `taughtAt` and card `due` ≈ now (so the extension can ask it later today).
+  - Budget 5 min → at most 1 new concept, reviews fill the rest.
+  - `complete` sets `taughtAt` and card `due` ≈ now.
   - Held-out concept never in `newConcepts`.
+  - Every `newConcepts` entry has non-null `explanationShort`/`explanationLong` (fails loudly if T-053 didn't run for that topic).
+  - `newConcepts` items carry no `answer`/`accept`/`answerIndex`/`rubric` keys.
+  - `complete` with a concept the user doesn't own → 404, nothing written.
+  - `complete` with a concept that wasn't offered today → 400, nothing written.
+  - `complete` twice on the same day → one `session_days` row, second call succeeds (idempotent).
+  - Zero untaught and zero due → `{newConcepts: [], dueReviews: [], completedToday}` rather than an error.
+  - `remainingDays` of 0 or negative (past `endsAt`) → does not divide by zero; falls back to the cap.
+
+### T-023 · Timezone-correct "today" and daily completion
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-014, T-054
+- **files:** `backend/src/lib/today.ts`, `backend/src/lib/__tests__/today.test.ts`, `backend/src/modules/session/session.repository.ts`
+- **description:** Every "today" in the product is the **learner's** today, not the server's. `localDay(now, timezone)` returns a `YYYY-MM-DD` string using `Intl.DateTimeFormat` with `timeZone` (no new dependency — CLAUDE.md). Completion is tracked in `session_days` (T-054), unique on `(user_id, topic_id, day)`, so "completing twice is idempotent" is enforced by the database rather than by route logic. `GET /session` returns `completedToday`.
+  - This module is also what T-028 (extension active windows), T-030 (backoff until end of local day), T-032 (one mood tap per local day) and T-039 (06:00 user-local lifecycle job) build on — so it is worth getting exactly right here rather than four times later. Note that in each of those tasks.
+  - **Build it before T-016**, which returns `completedToday`. Listed after T-016 in the original file purely by numbering; the dependency runs the other way.
+- **acceptance:** Two events either side of local midnight land on different `day` values; two events within the same local day land on the same one, regardless of server timezone.
+- **tests:** (pure, no DB for the first four)
+  - User in `Asia/Kolkata`: 23:30 IST and 00:10 IST the next day → two different days.
+  - Same user, 00:10 and 23:30 on the same local date → one day.
+  - `America/Los_Angeles` across a DST boundary → still 24 distinct local dates over 24 days (no doubled or skipped day).
+  - A server running in `UTC` and one in `Asia/Tokyo` compute the same `localDay` for the same instant and timezone.
+  - Completing twice on the same local day is idempotent (one `session_days` row).
+  - Completing on two different local days writes two rows.
 
 ### T-017 · Knowledge score + map API
 - **status:** todo
 - **sprint:** 2
 - **depends_on:** T-016
-- **files:** `backend/src/routes/map.ts`, `backend/src/lib/score.ts`, tests
-- **description:** `GET /topics/:id/map` returns concepts with `state: known|taught|untaught|heldout`, `mastery` (= `predictedRecall(card, now)` for cards, else 0), `atRisk` (`mastery < 0.6 && taught`), prereq edges, and `score` = mean mastery over taught+known concepts × 100, rounded. Held-out concepts are returned with `state='heldout'` but **no title** (render as "?" so users don't study them).
+- **files:** `backend/src/lib/score.ts`, `backend/src/lib/__tests__/score.test.ts`, `backend/src/modules/map/map.{routes,controller,service,repository}.ts`, `backend/src/modules/map/map.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/app.ts`
+- **description:** `GET /topics/:id/map` returns the concept graph with per-concept state and a topic score.
+  - **`state`**: `known` (taught via diagnostic estimate ≥ 0.8), `taught` (`cards.taughtAt` set through a session), `untaught`, `heldout`.
+  - **`mastery`** = `predictedRecall(card, now)` from the T-004 scheduler for concepts with a card, else 0. **One definition of mastery across the product** — do not recompute it differently here than T-015 seeds it or T-040 reads it.
+  - **`atRisk`** = `mastery < 0.6 && state is taught` — drives T-020's "at risk this week" strip.
+  - **`score`** = mean mastery over taught + known concepts × 100, rounded. Untaught concepts are excluded from the mean (otherwise the score would start near zero and barely move, and plan.md §4 says it "rises only on correct recall after ≥1 day gap"). Zero taught concepts → score 0, not `NaN`.
+  - **Held-out concepts return `title: null`** and no `summary` — a learner who sees the title would study it, which destroys the control group the whole pilot rests on (plan.md §6). Build the response **field by field**, the same fail-closed construction as `toPublicItem` (T-010), so a field added to `concepts` later is excluded by default rather than leaking until someone remembers to strip it. Consider reusing that module's approach in `lib/score.ts` and unit-testing the mapper directly.
+  - **`edges`**: prereq pairs for T-020's layered rendering. Held-out concepts keep their edges (the graph shape isn't secret, only the title).
+  - Scope by owner **inside the query** and 404 for a non-owner, matching T-008 — a 403 would confirm the topic exists.
+- **acceptance:** No held-out concept's title or summary appears anywhere in the response (assert by searching the serialised body for the seeded title string, not just by key inspection — the leak test in T-010 does both, follow it).
 - **tests:**
-  - No cards → score 0, all untaught.
-  - Two taught, one at mastery 1.0 and one at 0.5 (inject cards) → score 75.
+  - No cards → score 0, all `untaught`.
+  - Two taught, mastery 1.0 and 0.5 (inject cards) → score 75.
   - Held-out concept has `title === null`.
-  - `atRisk` true only for taught with mastery < 0.6.
+  - `atRisk` true only for taught concepts with mastery < 0.6.
+  - The serialised response body does not contain a held-out concept's seeded title string anywhere.
+  - Untaught concepts are excluded from the score mean (10 untaught + 1 taught at 1.0 → score 100, not 9).
+  - Zero taught and zero known → score 0, not `NaN`.
+  - A concept known from the diagnostic (estimate ≥ 0.8) reports `state='known'` and contributes to the score.
+  - `edges` includes prereq pairs for held-out concepts.
+  - Another user's topic → 404.
 
 ### T-018 · Web — auth + onboarding screens 1 & 2
 - **status:** todo
 - **sprint:** 2
 - **depends_on:** T-013, T-014, T-008
-- **files:** `frontend/src/pages/Login.tsx`, `Onboarding.tsx`, `frontend/src/lib/api.ts`, `frontend/src/lib/auth.ts`, component tests
-- **description:** Login page (email → "check your inbox"). Onboarding step 1: name, timezone (auto-detect), 2–3 active windows picker. Step 2: topic, why, days slider (min 7, default 30), budget. Submit → POST /topics → poll `GET /topics/:id` until `active` (show "building your map…", show error on `failed`).
-- **tests:** (vitest + @testing-library/react, mock fetch)
+- **files:** `frontend/src/pages/LoginPage.tsx` (exists — extend), `frontend/src/pages/Onboarding.tsx`, `frontend/src/features/auth/authApi.ts`, `frontend/src/features/users/usersApi.ts`, `frontend/src/features/topics/topicsApi.ts`, `frontend/src/store/sessionSlice.ts` (exists), `frontend/src/App.tsx`, component tests
+- **description:** Login page (email → "check your inbox") and the two onboarding steps.
+  - **All API calls go through RTK Query** (loop.md §2). The scaffold in `frontend/src/store/api.ts` already declares `tagTypes` and expects feature files to call `api.injectEndpoints(...)` — follow that; do **not** add endpoints directly to `store/api.ts`, and never use `fetch`/`axios` in a component. Remove the `VITE_DEV_USER_ID` / `x-user-id` shortcut from `prepareHeaders` once T-013's cookie is live (it carries a `TODO(T-013)`).
+  - **Onboarding step 1:** name, timezone (auto-detected via `Intl.DateTimeFormat().resolvedOptions().timeZone`, editable), 2–3 active windows picker. Validate with the shared `ActiveWindowsSchema` (T-014) from `frontend/src/shared` — never hand-roll a second validation, and never edit the synced copy.
+  - **Onboarding step 2:** topic title, why, days slider (min 7, default 30), daily budget. Note that `TopicCreateSchema` makes dates optional (T-003's note) but this flow **must send both `startsAt` and `endsAt`** — T-003 explicitly flags that the 7-day minimum only fires when both are supplied.
+  - **Submit → `POST /topics` → poll `GET /topics/:id` until `active`.** Use RTK Query's `pollingInterval` rather than a `setInterval`, and stop polling once terminal. Show "building your map…" while `generating` and the `topics.error` text plus a retry on `failed`.
+  - Register `/onboarding` in `App.tsx` (loop.md §4 requires every page in the route table).
+- **acceptance:** No component calls `fetch` directly; every request is an RTK Query hook. A refresh mid-onboarding does not lose the created topic (the poll resumes from `/topics/:id`).
+- **tests:** (vitest + @testing-library/react, mocked fetch — note the project uses **happy-dom**, not jsdom, per T-001's note about RTK Query + undici)
   - Days slider cannot go below 7.
   - Submit disabled until title present.
   - Polling stops on `active` and navigates to `/diagnostic/:topicId`.
-  - `failed` status shows the error and a retry button.
+  - `failed` status shows the error text and a retry button.
+  - Timezone is pre-filled from the browser and can be overridden.
+  - Four active windows → submit blocked with a validation message.
+  - Overlapping windows → submit blocked.
+  - Both `startsAt` and `endsAt` are present in the `POST /topics` body.
+  - Login submits the email and renders "check your inbox" without revealing whether the account existed.
 
 ### T-019 · Web — diagnostic screen
 - **status:** todo
 - **sprint:** 2
 - **depends_on:** T-015, T-018
-- **files:** `frontend/src/pages/Diagnostic.tsx`, `frontend/src/components/QuestionCard.tsx`, `ConfidenceTap.tsx`, tests
-- **description:** Renders one question at a time from `/diagnostic/:topicId/next`. Each answer requires a confidence tap (guess/think/sure) before submit. Shows a live progress "N of ≤15" and a mini-map filling in (grey → green/yellow). On finish, shows calibration message ("You were sure 8 times and right 5") and a "See your map" button.
+- **files:** `frontend/src/pages/Diagnostic.tsx`, `frontend/src/components/QuestionCard.tsx`, `frontend/src/components/ConfidenceTap.tsx`, `frontend/src/features/diagnostic/diagnosticApi.ts`, `frontend/src/App.tsx`, tests
+- **description:** Renders one question at a time from `GET /diagnostic/:topicId/next`.
+  - Each answer **requires a confidence tap** (guess / think / sure) before submit — this is the calibration measurement (plan.md §3.6: self-report is collected to measure calibration, never to trust). Do not default it; an untapped confidence would silently become data.
+  - **`latencyMs` is measured from question render to submit**, not from mount, and sent with the answer. T-040's `extensionStats` and the calibration metrics depend on it being consistent across surfaces.
+  - Live progress "N of ≤15" and a mini-map filling in (grey → green/yellow).
+  - On `done: true`, render the calibration summary ("You were sure 8 times and right 5") and a "See your map" button.
+  - **`QuestionCard` is shared with T-021's session** (and mirrors what T-029 builds for the extension) — build it to render any `PublicItem` type (recall / recognition / application / explain) from its `type` field, not one-off per screen.
+  - The client **never grades** — it renders the item, sends the response, and displays whatever the server returns (T-011).
+- **acceptance:** No answer can be submitted without a confidence value. The client never has access to an answer key (the `/diagnostic/next` payload is a `PublicItem`).
 - **tests:**
-  - Submit disabled until both answer and confidence chosen.
+  - Submit disabled until both an answer and a confidence are chosen.
   - Latency is measured from question render to submit and sent as `latencyMs`.
-  - On `done: true` response, renders the summary.
+  - On `done: true`, renders the summary.
+  - All four item types render (recall input, 4-option recognition, application input, explain textarea).
+  - Progress shows the asked count and the ≤15 cap.
+  - A slow/failed answer request surfaces an error and does not advance to the next question or lose the typed answer.
 
 ### T-020 · Web — map page + knowledge score
 - **status:** todo
 - **sprint:** 2
 - **depends_on:** T-017
-- **files:** `frontend/src/pages/Map.tsx`, `frontend/src/components/ConceptGraph.tsx`, `ScoreBadge.tsx`, tests
-- **description:** Render the DAG as a layered list (group by `order`, not a force graph — keep it simple). Colours: known green, taught by mastery gradient, untaught grey, heldout "?" grey. "At risk this week" strip on top. Score badge in the header, present on every page after onboarding.
+- **files:** `frontend/src/pages/Map.tsx`, `frontend/src/components/ConceptGraph.tsx`, `frontend/src/components/ScoreBadge.tsx`, `frontend/src/features/map/mapApi.ts`, `frontend/src/App.tsx`, tests
+- **description:** Render the DAG as a **layered list grouped by `order`** — explicitly not a force-directed graph. plan.md §8 keeps scope tight and a layered list is readable on a phone; if it later needs to be a real graph, that is its own task.
+  - Colours: `known` green, `taught` a mastery gradient, `untaught` grey, `heldout` grey "?".
+  - **Held-out concepts render as "?" with no title** — the API already returns `title: null` (T-017), so the UI must handle null rather than falling back to any other field. A component that renders `concept.title ?? concept.summary` would defeat the server-side protection.
+  - "At risk this week" strip on top, listing only `atRisk` concepts.
+  - `ScoreBadge` sits in the header on **every page after onboarding**, so build it as a layout component reading from the map query cache, not a per-page fetch. RTK Query's cache with the `Map` tag makes this one request shared across pages.
+- **acceptance:** No held-out concept's title is rendered even if the API were to start returning one (assert the component renders "?" when given a title, i.e. it keys off `state === 'heldout'`, not off `title === null`).
 - **tests:**
   - Held-out renders "?" and no title.
-  - At-risk strip lists only `atRisk` concepts.
-  - Score badge shows `score` from API.
+  - Held-out with a (hypothetically) non-null title still renders "?" — the component keys off `state`, fail-closed.
+  - At-risk strip lists only `atRisk` concepts, and is hidden entirely when none are.
+  - Score badge shows `score` from the API.
+  - Concepts are grouped by `order` in ascending layers.
+  - Empty map (topic still generating) renders a loading state, not a crash.
 
 ### T-021 · Web — today's session
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-016, T-011, T-020
-- **files:** `frontend/src/pages/Session.tsx`, `frontend/src/components/TryFirst.tsx`, `Explanation.tsx`, tests
-- **description:** For each new concept: if `teach_mode=try_first` → TryFirst prompt (free text) → submit → show matching `correction` if any, else generic "here's how to think about it" → Explanation (short by default, "read more" for long) → one retrieval item → record via `/reviews` with `surface='web'`. If `example_first` → Explanation first, then the same retrieval item. Then due reviews. On finish → `POST /session/complete` → summary ("3 locked in, 2 at risk tomorrow") → back to map.
+- **depends_on:** T-016, T-011, T-020, T-053
+- **files:** `frontend/src/pages/Session.tsx`, `frontend/src/components/TryFirst.tsx`, `frontend/src/components/Explanation.tsx`, `frontend/src/features/session/sessionApi.ts`, `frontend/src/App.tsx`, tests
+- **description:** The teaching screen — **this is where plan.md §3.4's expertise-reversal A/B actually happens**, so the two arms must genuinely differ or T-040's `teachModeComparison` measures nothing.
+  - **`teach_mode = 'try_first'`** (productive failure, plan.md §3.5, g≈0.36): render `tryFirstPrompt` as free text → learner submits an attempt → show the matching `corrections[].why` if their response matches a `corrections[].wrong`, else a generic "here's how to think about it" → then `Explanation` → then one retrieval item.
+  - **`teach_mode = 'example_first'`**: `Explanation` first (worked example), then the same retrieval item. No try-first prompt.
+  - `Explanation` shows `explanationShort` by default with a "read more" revealing `explanationLong`.
+  - The try-first attempt is **not** graded and **not** scheduled — it is a teaching device, not a measurement. Only the retrieval item afterwards goes to `/reviews`.
+  - Every `/reviews` call carries `surface: 'web'` and `latencyMs`. The client sends `response`, never `correct` (T-011 ignores it).
+  - Then due reviews, then `POST /session/complete` with the taught concept ids → summary ("3 locked in, 2 at risk tomorrow") → back to the map.
+  - **Correction matching** is a UI convenience over a short list; normalise loosely (trim + lowercase) and fall through to the generic message when nothing matches. Do not reimplement `lib/grade.ts`'s logic here — it is not grading.
+- **acceptance:** The two `teach_mode` arms differ in what the learner sees and in what order. A session cannot be completed without the retrieval item for each new concept being answered or explicitly skipped.
 - **tests:**
-  - `try_first` concept renders the prompt before the explanation; `example_first` the reverse.
-  - Try-first response matching a `corrections.wrong` shows that correction's `why`.
+  - `try_first` renders the prompt before the explanation; `example_first` the reverse.
+  - `example_first` renders no try-first prompt at all.
+  - A try-first response matching a `corrections.wrong` shows that correction's `why`.
+  - A non-matching try-first response shows the generic message, not a blank.
+  - The try-first attempt produces **no** `/reviews` call.
   - Completing calls `/session/complete` with all new concept ids.
-  - Every `/reviews` call includes `surface:'web'` and `latencyMs`.
+  - Every `/reviews` call includes `surface: 'web'` and `latencyMs`, and no `correct` field.
+  - Due reviews render after the new concepts, not interleaved.
+  - `completedToday: true` from `GET /session` renders the "done for today" state instead of the session.
 
 ### T-022 · Web — dashboard/home
 - **status:** todo
 - **sprint:** 2
 - **depends_on:** T-020, T-021
-- **files:** `frontend/src/pages/Dashboard.tsx`
-- **description:** Single screen: score, "Start today's session" (disabled with "done for today" once complete), days remaining, map preview link, extension install prompt if no extension token issued yet.
-- **tests:** Button disabled state after completion; extension prompt hidden when token exists.
-
-### T-023 · Timezone-correct "today" and daily completion
-- **status:** todo
-- **sprint:** 2
-- **depends_on:** T-016
-- **files:** `backend/src/lib/today.ts`, `backend/src/routes/session.ts`, tests
-- **description:** All "today" logic uses the user's timezone. Track session completion in a new `session_days (user_id, topic_id, day)` table. `GET /session` returns `completedToday`.
+- **files:** `frontend/src/pages/Dashboard.tsx`, `frontend/src/App.tsx`, tests
+- **description:** One screen: score, "Start today's session" (disabled with "done for today" once complete, driven by `completedToday` from T-023), days remaining until `endsAt`, a map preview link, and an extension install prompt when no extension token has been issued yet (`hasExtensionToken` from `GET /me`, T-014).
+  - Make this the post-login landing route so a returning learner lands somewhere useful rather than back on onboarding.
+  - T-034 adds the full "connect extension" page; this task only shows the prompt and links to it.
 - **tests:**
-  - User in `Asia/Kolkata` at 23:30 IST and a completion at 00:10 IST next day → two different days.
-  - Completing twice on the same day is idempotent.
+  - "Start today's session" is disabled and labelled "done for today" after completion.
+  - Extension prompt is hidden when `hasExtensionToken` is true, shown when false.
+  - Days remaining is computed from `endsAt` and reads 0 (not negative) once past.
+  - Score badge renders the current score.
 
 ### T-024 · Content QA tool
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-007
-- **files:** `backend/src/scripts/qa.ts`, `docs/qa-checklist.md`
-- **description:** CLI `pnpm qa <topicId>` prints every concept + items in a readable Markdown file to `qa/<topic>.md` with checkboxes, so the founder can review accuracy in ~1 hour per topic. `pnpm qa:apply <file>` reads edits back (title/explanation/answer changes) and updates rows. Also `pnpm qa:retire <itemId>`.
-- **tests:** Round-trip: export → edit an explanation in the file → apply → DB updated.
+- **depends_on:** T-007, T-053
+- **files:** `backend/src/scripts/qa.ts` (stub exists — replace), `backend/src/scripts/__tests__/qa.test.ts`, `backend/package.json`, `docs/qa-checklist.md`
+- **description:** `pnpm qa <topicId>` exports every concept — title, summary, teaching content from T-053, and all its items **including answer keys** — to `qa/<topic>.md` with checkboxes, so the founder can review factual accuracy in ~1 hour per topic. `pnpm qa:apply <file>` reads edits back (title / explanation / answer changes) and updates rows; `pnpm qa:retire <itemId>` marks an item unusable.
+  - **This is the only place answer keys are deliberately written to disk.** Add `qa/` to `.gitignore` — an exported file contains every answer for a live topic, and committing one would put the pilot's measurement at risk.
+  - The round trip needs a stable machine-readable anchor per row (the uuid in an HTML comment or a fenced key line), not fuzzy heading matching — an edited title must still map back to the right concept.
+  - `qa:apply` must be **idempotent and non-destructive**: applying an unedited export changes nothing, and an unparseable file aborts without writing anything.
+  - `qa:retire` sets `items.flagged_bad` high enough to exclude the item (the backlog notes an auto-retire at `flagged_bad >= 3`), or add an explicit `retired_at` — if a column is needed, that is a schema task, not this one.
+  - `docs/qa-checklist.md`: what the founder is actually checking — factual errors, ambiguous prompts, wrong answer keys, distractors that are accidentally correct, explanations that contradict items, transfer items that aren't really transfer.
+- **acceptance:** A full export → edit → apply round trip preserves every unedited field and applies every edited one. T-045 uses this to QA both pilot topics and records the time taken and error rate found.
+- **tests:**
+  - Round trip: export → edit an explanation → apply → DB updated, and nothing else changed.
+  - Applying an unedited export is a no-op (byte-identical DB state).
+  - A malformed file aborts with a non-zero exit and writes nothing.
+  - An edited concept **title** still maps to the right row (anchor is the id, not the heading text).
+  - Export includes teaching content (T-053) and answer keys; held-out concepts export with their items but are clearly marked as held-out.
+  - `qa:retire` excludes the item from `GET /due`.
 
 ### T-025 · Seed script for local dev
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-015
-- **files:** `backend/src/scripts/seed.ts`
-- **description:** `pnpm seed` creates a dev user, a topic from the concept-map fixture (no LLM call), items from the items fixture, runs a scripted diagnostic, marks 5 concepts taught with staggered `due` dates (some overdue) so `/due` and the extension have data immediately.
-- **tests:** After seed: `/due` returns ≥ 2 items for the dev user.
+- **depends_on:** T-015, T-053
+- **files:** `backend/src/scripts/seed.ts` (stub exists — replace), `backend/src/scripts/__tests__/seed.test.ts`
+- **description:** `pnpm seed` builds a realistic dev dataset with **no model calls** — it reads `backend/fixtures/conceptMap.react-hooks.json` and `fixtures/items.usestate.json` (plus T-053's teaching fixture) directly. Creates a dev user with a known email and a real session, a topic, the concept map, items, teaching content, runs a scripted diagnostic, and marks 5 concepts taught with **staggered `due` dates (some overdue)** so `/due`, the session screen and the extension all have data the moment you start the app.
+  - Must be **idempotent** — running it twice should not create a second dev user or duplicate topics. Developers will run it repeatedly.
+  - Print the dev user id, email and a ready-to-paste extension token at the end; this is the script's real interface.
+  - Guard against running against a non-local `DATABASE_URL` (refuse unless the host is localhost or `SEED_FORCE=1`), so nobody seeds a deployed database.
+- **acceptance:** A fresh `docker compose up postgres redis` + `pnpm db:push` + `pnpm seed` gives a working app with due items, without an API key set.
+- **tests:**
+  - After seed, `GET /due` returns ≥ 2 items for the dev user.
+  - Seed is idempotent — running twice leaves one dev user and one topic.
+  - Seeded topic has status `active` and non-zero concept and item counts.
+  - At least one seeded card is overdue and at least one is due later.
+  - Refuses to run against a non-localhost `DATABASE_URL` without `SEED_FORCE=1`.
 
 ### T-026 · Sprint 2 integration test
 - **status:** todo
 - **sprint:** 2
-- **depends_on:** T-019, T-021, T-023
+- **depends_on:** T-016, T-017, T-021, T-023, T-FIX-005
 - **files:** `backend/src/integration/sprint2.test.ts`
-- **description:** API-level flow: login → onboard → topic (mocked gen) → full diagnostic → session → complete → map shows taught concepts and score > 0 → `/due` has items after time travel of +1 day.
-- **tests:** the flow; plus assert `review_events` from diagnostic have `surface='diagnostic'` and no card scheduling side-effect.
+- **description:** API-level walk of the whole sprint, following `sprint1.test.ts`'s shape (mocked generation, real Postgres + Redis): magic-link login → onboard (`PATCH /me`) → create topic → run generation inline → full diagnostic to completion → `GET /session` → answer the retrieval items → `POST /session/complete` → `GET /topics/:id/map` shows taught concepts and `score > 0` → time-travel +1 day → `/due` has items.
+  - Use the real auth path end to end (T-013's `loginAs` helper), not `x-user-id` — this test is the proof that sprint.md's "magic-link auth works; `x-user-id` no longer accepted in production" exit criterion actually holds.
+  - Assert the **whole** sprint contract, not just the happy path shape: the diagnostic's non-scheduling guarantee and the held-out control group are the two things that, if broken, invalidate the pilot's results.
+  - Keep it under ~10 s like Sprint 1's.
+- **tests:** the flow above, plus:
+  - `review_events` from the diagnostic have `surface='diagnostic'` and produced **no** card scheduling side-effect.
+  - Held-out concepts appear in the map with `title: null`, never in `newConcepts`, and never in `/due`.
+  - The session respected `teach_mode` — both arms are present in the returned `newConcepts` across the topic.
+  - `completedToday` is true immediately after completing and the second `complete` is idempotent.
+  - Score is 0 before any teaching and > 0 after.
 
 ---
 
@@ -754,4 +943,75 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** Each API flow enters through a module route, delegates HTTP handling to a controller, domain orchestration to a service, and persistence queries to a repository. Existing due, reviews, and topics behavior remains green.
 - **tests:** Existing route suites are colocated under their respective module folders and pass unchanged in behavior.
 - **notes:** (2026-09-04) Implemented the requested Stage 3 restructure. Due has dedicated query repository plus item-selection service; reviews has controller/service/repository delegation around the existing grading and scheduling primitive; topics has repository queries, topic orchestration/queueing service, and controllers. Moved `due.test.ts`, `reviews.test.ts`, and `topics.test.ts` into `src/modules/{due,reviews,topics}/`. Deliberately left `recordReview` as the existing tested domain primitive rather than duplicating its transaction logic during this structural pass. `pnpm lint` and the three moved suites pass; full backend suite run follows.
+  - (2026-09-04, audit) The `reviews` service and repository are currently pass-throughs (`submitReview` → `persistReview` → `recordReview`), and `topics.service.ts` re-exports `findTopic`/`listTopics` unchanged. The `due` module is the one where the split carries real logic. Not unwound — the layering is the agreed shape for routes to grow into (T-015/T-016 add real service logic) — but noted so nobody reads the reviews repository as the persistence layer: all its DB work lives in `lib/recordReview.ts`.
+
+### T-052 · LLM provider — NVIDIA OpenAI-compatible endpoint (supersedes T-050's Anthropic pin)
+- **status:** done
+- **sprint:** 1
+- **depends_on:** T-050
+- **files:** `backend/src/llm/client.ts`, `backend/src/lib/env.ts`, `backend/.env.example`, `backend/package.json`, `docs/plan.md`, `docs/loop.md`
+- **description:** Founder decision (Neeraj, 2026-09-04): generation runs against **NVIDIA's OpenAI-compatible endpoint** (`https://integrate.api.nvidia.com/v1`) using the official `openai` SDK with a custom `baseURL`, model `deepseek-ai/deepseek-v4-pro-0813`. Replaces T-050's `@anthropic-ai/sdk` + `claude-sonnet-5`. `ANTHROPIC_API_KEY` → `NVIDIA_API_KEY`, plus `NVIDIA_BASE_URL` so a different OpenAI-compatible provider is a config change, not a code change. Dependency swap reason: one SDK that speaks to any OpenAI-compatible endpoint keeps model choice a config decision. LangChain remains ruled out (plan.md §5) — `ChatNVIDIA` only wraps this same HTTP API.
+- **acceptance:** `plan.md` §5 and `loop.md` §2/§3 describe the actual provider; no doc or code comment claims Anthropic; generator tests mock `openai.chat.completions.create`.
+- **tests:** Existing generator + llm suites, which already mock at the `openai` SDK boundary, stay green (122 backend tests).
+- **notes:** (2026-09-04) The code change was made by Neeraj directly; this task records the decision and closes the doc drift the audit found. Updated `plan.md` §5 (architecture tree + the LLM bullet), `loop.md` §2 ("never call the model API from the web app or extension") and §3 (mock boundary), and the stale Anthropic comment in `generator.worker.ts`. T-050's own notes are left as the historical record of why the module is shaped the way it is — its `DEFAULT_MODEL`/SDK specifics are superseded here.
+  - Compose already plumbs the key correctly via `env_file: ./backend/.env` (verified) — `environment:` only overrides the container-specific `DATABASE_URL`/`REDIS_URL`/`PORT`, so `NVIDIA_API_KEY` flows through untouched.
+  - Left alone deliberately: `client.ts`'s `SEED = 42` comment claims the same prompt reproduces the same map. With `temperature: 1` and `seed` being best-effort on OpenAI-compatible endpoints, that's optimistic — flagged in T-FIX-006 rather than silently reworded.
+
+### T-FIX-004 · Shared-sync broke on the `__tests__/` layout
+- **status:** done
+- **sprint:** 1
+- **severity:** high — `scripts/verify.sh` was red; loop.md §4's "copies are identical" could not be satisfied
+- **depends_on:** T-001
+- **files:** `scripts/sync-shared.sh`, `scripts/sync-shared.test.sh`
+- **description:** Backend tests moved into `__tests__/` directories (Neeraj's chosen layout). `sync-shared.sh` excluded `*.test.ts` **files** but not the `__tests__` **directory**, so `backend/src/shared/__tests__/` registered as drift against frontend/extension. `--check` exited 1. Running the sync "fixed" it by creating an empty `__tests__/` directory in both consumers.
+- **acceptance:** `sync-shared.sh --check` exits 0 on a clean tree; a real hand-edit to a synced copy still exits 1; no `__tests__` directory is created in frontend/extension.
+- **tests:** `sync-shared.test.sh` — its own post-sync `diff` assertions needed the same `-x '__tests__'` exclusion; added two assertions that `__tests__/` never leaks into either synced copy.
+- **notes:** (2026-09-04) Added `--exclude='__tests__/'` to the rsync, `! -path './__tests__/*'` to the no-rsync `find` fallback, `--exclude-dir='__tests__'` to the Node-only-import grep guard, and `-x '__tests__'` to both `diff` calls in `verify()`. Verified: `--check` exits 0, a full sync leaves the working tree untouched, and `sync-shared.test.sh` passes. Both test layouts (`foo.test.ts` beside the code, and `__tests__/foo.test.ts`) are now handled, so this doesn't re-break if a folder converts back.
+
+### T-053 · Teaching content generator — try-first prompts, explanations, corrections
+- **status:** todo
+- **sprint:** 2
+- **severity:** high — T-016 and T-021 cannot be built without it
+- **depends_on:** T-007, T-052, T-054
+- **files:** `backend/src/generator/teaching.ts`, `backend/src/generator/__tests__/teaching.test.ts`, `backend/src/llm/prompts/teaching/{system,user,example}.md`, `backend/fixtures/teaching.usestate.json`, `backend/src/workers/generator.worker.ts`, `backend/src/workers/__tests__/generator.worker.test.ts`
+- **description:** Found by audit (2026-09-04). `NewConceptSchema` in `src/shared/schemas.ts` (committed in T-003) already requires `tryFirstPrompt`, `explanationShort`, `explanationLong` and `corrections[]` per concept, and T-016/T-021 render exactly those. **Nothing generates them and the `concepts` table has no columns for them** — it holds only `slug/title/summary/order/heldOut/teachMode`. Sprint 1 was scoped to "concept map + items land in Postgres" (sprint.md), so this is not Sprint 1 debt; it is the missing input to Sprint 2's demo ("teaches 2 concepts, one try-first, one example-first"). Add a third generator + prompt folder producing, per non-held-out concept: a `tryFirstPrompt` (the productive-failure question, plan.md §3.5), `explanationShort` (~2 sentences) and `explanationLong` (~1 paragraph, the "read more"), and 2–4 `corrections` of `{wrong, why}` covering the misconceptions a learner most often brings. The columns are added by **T-054** (Sprint 2's schema task), so `schema.ts` is untouched here — loop.md forbids editing it outside a schema task. The generator must respect `teach_mode`: `example_first` concepts need a worked example inside `explanationShort/Long`, `try_first` concepts lead with the prompt. Held-out concepts are skipped, same as items.
+- **acceptance:** After a generation job, every non-held-out concept has non-null `explanation_short`/`explanation_long` and a `corrections` array; `GET /session` (T-016) can be built without inventing content; held-out concepts have none. Without this, plan.md §3.4's expertise-reversal A/B is unmeasurable — both `teach_mode` arms would show identical material and T-040's `teachModeComparison` would report noise as a finding.
+- **tests:** (mock the model, per loop.md §3)
+  - Fixture parses; every concept has both explanations and ≥2 corrections.
+  - `explanationShort` shorter than `explanationLong`; both non-empty.
+  - A concept with `teach_mode='try_first'` gets a non-null `tryFirstPrompt`.
+  - Malformed `corrections` entry (missing `why`) → `GenerationError`.
+  - Held-out concepts get no teaching content persisted.
+  - Worker persists the columns inside the existing transaction (extend T-007's happy-path test).
+
+### T-FIX-005 · `application` items are graded by exact string match
+- **status:** todo
+- **sprint:** 2
+- **severity:** high — systematically depresses the retention numbers the pilot exists to measure
+- **depends_on:** T-011
+- **files:** `backend/src/lib/grade.ts`, `backend/src/llm/prompts/items/system.md`, tests
+- **description:** Found by audit (2026-09-04). `items/system.md` defines `application` as "a question that requires using the concept to solve a small concrete problem, not just stating a definition", but `grade.ts` routes `application` through `matchesText` — normalised exact match against `answer` + `accept`. A learner solving a concrete problem writes a sentence; matching it verbatim against a short accept-list will almost always fail, so correct answers record as `correct = false`. That contaminates retention gain, transfer accuracy and scheduler calibration (plan.md §7) — the metrics the pilot is for. Pick one: (a) route `application` through the existing `gradeExplanation` LLM path with `answer` as the rubric, or (b) change the items prompt to require short canonical-form answers for `application` and keep string matching. (a) preserves the item type's purpose; (b) is cheaper per review. Recommend (a), since `explain` already proves the path works and the cost is one extra call per application answer.
+- **acceptance:** A plausible correctly-reasoned application answer that doesn't match the accept-list verbatim grades as correct.
+- **tests:**
+  - Application item, model answer "use a ref so the value survives re-renders", learner answer "store it in a ref — that way it persists across renders" → correct.
+  - Application item, clearly wrong answer → incorrect.
+  - Grader failure on an application item propagates as a 500 (matching the `explain` contract in T-011, so T-031's queue retries rather than recording a free pass).
+  - Existing recall/recognition grading is unchanged (regression).
+
+### T-FIX-006 · Generator context and prompt-level test coverage
+- **status:** todo
+- **sprint:** 2
+- **severity:** medium — content quality; inflates the founder's QA time in T-024/T-045
+- **depends_on:** T-005, T-006
+- **files:** `backend/src/workers/generator.worker.ts`, `backend/src/generator/items.ts`, `backend/src/llm/prompts/items/user.md`, `backend/src/llm/client.ts`, tests
+- **description:** Found by audit (2026-09-04). Three related gaps:
+  1. **Item generation receives only the concept title.** `generator.worker.ts` calls `generateItems(concept.title)` — no parent topic, no `summary`, no prereqs. A concept titled "Dependency Array" or "Closures" reaches the model with no indication it belongs to "React Hooks", so ambiguous titles produce off-topic or generic questions. Pass topic title + concept summary (and consider prereq titles) and widen `items/user.md` to use them. Note the template variable is currently named `{{topic}}` but carries the *concept* title — rename while here.
+  2. **No test asserts what is actually sent to the model.** Every generator test mocks the SDK boundary and asserts on the parsed response, so a broken `{{var}}`, a missing context field, or the empty-prompt-folder bug T-005 already hit once would all pass green. Add assertions on the rendered `system`/`user` strings.
+  3. **`conceptMap/user.md` asks for 20–40 concepts but `MIN_CONCEPTS = 10`.** A 12-concept map passes silently and yields a thin 30-day course. Either raise the floor toward the asked range or document why the gap is deliberate.
+  Also reword `client.ts`'s `SEED = 42` comment: with `temperature: 1` and `seed` best-effort on OpenAI-compatible endpoints, "the same prompt gives the same map twice" over-promises.
+- **acceptance:** Items for an ambiguously-titled concept are generated with topic context present in the rendered prompt, asserted by a test.
+- **tests:**
+  - Rendered user message for `generateItems` contains the topic title and the concept summary.
+  - Rendered user message for `generateConceptMap` contains the topic title.
+  - A concept-map response below the enforced floor → `GenerationError`, with the floor and the prompt's asked range agreeing.
 

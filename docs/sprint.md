@@ -26,12 +26,16 @@
 
 **Demo:** Fresh browser → onboarding → diagnostic (~15 questions with confidence taps) → map shows green/yellow/grey → "Today's session" teaches 2 concepts (one try-first, one example-first) → map updates → score visible.
 
-**Tasks:** T-013 → T-026
+**Tasks:** T-054 (schema, first) → T-013 → T-014 → T-053 → T-015 → T-023 → T-016 → T-017 → T-018 → T-019 → T-020 → T-021 → T-022 → T-024 → T-025 → T-FIX-005 → T-026
+
 **Exit criteria:**
 - Diagnostic picks items adaptively (harder after correct, prerequisite after wrong) and stops at 15 or when the map is resolved.
-- Session respects `teach_mode` and daily budget.
+- Session respects `teach_mode` and daily budget — and the two arms genuinely differ in what the learner sees, or plan.md §3.4's expertise-reversal comparison measures nothing.
+- Teaching content (try-first prompts, short/long explanations, corrections) is generated and persisted — T-053. Without it `GET /session` cannot satisfy the `NewConceptSchema` contract T-003 already committed.
 - `cards.taughtAt` is set after a session; `review_events` rows have `predicted_recall` and `gap_days_since_last`.
 - Magic-link auth works; `x-user-id` header no longer accepted in production mode.
+- Held-out concepts never leak a title through the map API and never appear in a session — the control group is what the pilot's result rests on.
+- `application` items are graded so that a correct answer in the learner's own words counts (T-FIX-005), otherwise Day-30 retention is measured through a broken instrument.
 
 ---
 

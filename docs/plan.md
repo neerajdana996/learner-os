@@ -49,7 +49,7 @@ learnos/
 │   ├── src/db/           schema.ts (SOURCE OF TRUTH), client.ts
 │   ├── src/shared/       Zod schemas + TS types (SOURCE OF TRUTH for all three projects)
 │   ├── src/scheduler/    ts-fsrs wrapper: scheduleReview, newCard, predictedRecall
-│   ├── src/llm/          one Anthropic client + file-based prompts (prompts/<name>/*.md) + typed registry (runPrompt → JSON → Zod). All model calls go through here. (T-050)
+│   ├── src/llm/          one model client + file-based prompts (prompts/<name>/*.md) + typed registry (runPrompt → JSON → Zod). All model calls go through here. (T-050)
 │   ├── src/generator/    thin callers of src/llm: generateConceptMap, generateItems (strict JSON via Zod)
 │   ├── src/routes/  src/workers/  src/lib/  src/scripts/
 │   └── fixtures/         real-looking LLM outputs for tests
@@ -65,7 +65,7 @@ learnos/
 - **No Qdrant, no LangChain/LangGraph.** Generation is prompt → JSON → Zod → DB.
 - **Postgres tables:** users, topics, concepts, concept_prereqs, items, cards (FSRS state per user×concept), review_events (every answer), tests, daily_pulse. Schema lives at `backend/src/db/schema.ts`.
 - **Auth for pilot:** magic link (email). `x-user-id` header is a dev shortcut only.
-- **LLM model:** `claude-sonnet-5` for generation (updated 2026-09-04 from `claude-sonnet-4-6` — current-gen, better quality at ~same price; decided with the founder in T-050). Set as `DEFAULT_MODEL` in `backend/src/llm/client.ts`; per-prompt overrides via `PromptDef.model`. All Anthropic calls go through the `backend/src/llm` module (file-based prompts + typed registry, T-050). Every generated artifact is Zod-validated; failures retry once then fail the job loudly.
+- **LLM provider:** **NVIDIA's OpenAI-compatible endpoint** (`https://integrate.api.nvidia.com/v1`), reached with the official `openai` SDK — a different `baseURL`, not a different client library. Model `deepseek-ai/deepseek-v4-pro-0813`, set as `DEFAULT_MODEL` in `backend/src/llm/client.ts`; per-prompt overrides via `PromptDef.model`. Auth via `NVIDIA_API_KEY`. (Founder decision 2026-09-04, replacing the Anthropic/`claude-sonnet-5` pin from T-050 — an OpenAI-compatible endpoint keeps the door open to swapping models by config alone. LangChain is still ruled out: `ChatNVIDIA` only wraps this same HTTP API.) All model calls go through the `backend/src/llm` module (file-based prompts + typed registry, T-050). Every generated artifact is Zod-validated; failures retry once then fail the job loudly.
 - **Run everything:** `docker compose up --build`. Run one project for dev: `cd backend && pnpm dev` (needs `docker compose up postgres redis`).
 
 ## 6. Key design rules
