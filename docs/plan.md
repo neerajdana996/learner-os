@@ -49,7 +49,8 @@ learnos/
 │   ├── src/db/           schema.ts (SOURCE OF TRUTH), client.ts
 │   ├── src/shared/       Zod schemas + TS types (SOURCE OF TRUTH for all three projects)
 │   ├── src/scheduler/    ts-fsrs wrapper: scheduleReview, newCard, predictedRecall
-│   ├── src/generator/    Anthropic SDK: generateConceptMap, generateItems (strict JSON via Zod)
+│   ├── src/llm/          one Anthropic client + file-based prompts (prompts/<name>/*.md) + typed registry (runPrompt → JSON → Zod). All model calls go through here. (T-050)
+│   ├── src/generator/    thin callers of src/llm: generateConceptMap, generateItems (strict JSON via Zod)
 │   ├── src/routes/  src/workers/  src/lib/  src/scripts/
 │   └── fixtures/         real-looking LLM outputs for tests
 ├── frontend/             React + Vite + Redux Toolkit (RTK Query for ALL API calls + state) + react-router. Port 3000.
@@ -64,7 +65,7 @@ learnos/
 - **No Qdrant, no LangChain/LangGraph.** Generation is prompt → JSON → Zod → DB.
 - **Postgres tables:** users, topics, concepts, concept_prereqs, items, cards (FSRS state per user×concept), review_events (every answer), tests, daily_pulse. Schema lives at `backend/src/db/schema.ts`.
 - **Auth for pilot:** magic link (email). `x-user-id` header is a dev shortcut only.
-- **LLM model:** `claude-sonnet-4-6` for generation. Every generated artifact is Zod-validated; failures retry once then fail the job loudly.
+- **LLM model:** `claude-sonnet-5` for generation (updated 2026-09-04 from `claude-sonnet-4-6` — current-gen, better quality at ~same price; decided with the founder in T-050). Set as `DEFAULT_MODEL` in `backend/src/llm/client.ts`; per-prompt overrides via `PromptDef.model`. All Anthropic calls go through the `backend/src/llm` module (file-based prompts + typed registry, T-050). Every generated artifact is Zod-validated; failures retry once then fail the job loudly.
 - **Run everything:** `docker compose up --build`. Run one project for dev: `cd backend && pnpm dev` (needs `docker compose up postgres redis`).
 
 ## 6. Key design rules
