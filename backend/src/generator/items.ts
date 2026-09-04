@@ -1,9 +1,25 @@
 import { z } from 'zod';
-import { definePrompt, runPrompt, stripFences } from '../llm/index.js';
+import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
 import { ItemPayloadSchema, type ItemPayload } from '../shared/index.js';
 
+/** sprint.md's Sprint 1 demo expects 6–8 items per taught concept. */
+export const MIN_ITEMS = 6;
+
+export type GenerationErrorReason =
+  | 'invalid_json'
+  | 'invalid_shape'
+  | 'truncated'
+  | 'missing_api_key'
+  | 'missing_item_type'
+  | 'transfer_count'
+  | 'explain_rubric'
+  | 'too_few_items';
+
 export class GenerationError extends Error {
-  constructor(public readonly reason: string, message: string) {
+  constructor(
+    public readonly reason: GenerationErrorReason,
+    message: string,
+  ) {
     super(`${reason}: ${message}`);
     this.name = 'GenerationError';
   }
@@ -34,7 +50,10 @@ function parseGeneratedItem(raw: unknown): GeneratedItem {
   if (!result.success) {
     const type = (raw as { type?: unknown } | null)?.type;
     const label = typeof type === 'string' ? type : 'item';
-    throw new GenerationError('invalid_shape', `invalid ${label} payload: ${result.error.issues.map((i) => i.message).join('; ')}`);
+    throw new GenerationError(
+      'invalid_shape',
+      `invalid ${label} payload: ${result.error.issues.map((i) => i.message).join('; ')}`,
+    );
   }
   const isTransfer = (raw as { isTransfer?: unknown } | null)?.isTransfer;
   if (typeof isTransfer !== 'boolean') {
@@ -47,6 +66,10 @@ export function parseItemsResponse(raw: string): GeneratedItems {
   return validateItems(JSON.parse(stripFences(raw)));
 }
 
+/**
+ * Per-item shape + the cross-item rules. Size-agnostic on purpose so it can be
+ * unit tested with small sets; the 6-item floor lives in generateItems.
+ */
 export function validateItems(data: unknown): GeneratedItems {
   const { topic, items: rawItems } = RawItemsResponseSchema.parse(data);
   const items = rawItems.map(parseGeneratedItem);
@@ -78,22 +101,19 @@ export const itemsPrompt = definePrompt({
   schema: RawItemsResponseSchema,
 });
 
+/** No outer retry — runPrompt already retries once (see generateConceptMap). */
 export async function generateItems(topic: string): Promise<GeneratedItems> {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const response = await runPrompt(itemsPrompt, { topic });
-      return validateItems(response);
-    } catch (error) {
-      lastError = error;
-      if (attempt === 0) continue;
-    }
+  let response: unknown;
+  try {
+    response = await runPrompt(itemsPrompt, { topic });
+  } catch (error) {
+    if (error instanceof LlmError) throw new GenerationError(error.reason, error.message);
+    throw new GenerationError('invalid_shape', `item generation failed: ${String(error)}`);
   }
 
-  if (lastError instanceof GenerationError) throw lastError;
-  if (lastError instanceof Error) {
-    throw new GenerationError('invalid_shape', `item generation failed: ${lastError.message}`);
+  const result = validateItems(response);
+  if (result.items.length < MIN_ITEMS) {
+    throw new GenerationError('too_few_items', `got ${result.items.length} items, need at least ${MIN_ITEMS}`);
   }
-  throw new GenerationError('invalid_shape', 'item generation failed');
+  return result;
 }

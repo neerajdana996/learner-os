@@ -7,22 +7,11 @@
 import type { ZodType } from 'zod';
 import { complete } from './client.js';
 import { loadTemplate, render } from './prompts.js';
+import { LlmError } from './errors.js';
 
 export { DEFAULT_MODEL, anthropic, complete } from './client.js';
 export { loadTemplate, render } from './prompts.js';
-
-export type LlmErrorReason = 'invalid_json' | 'invalid_shape';
-
-export class LlmError extends Error {
-  constructor(
-    public readonly reason: LlmErrorReason,
-    message: string,
-    public readonly raw?: string,
-  ) {
-    super(message);
-    this.name = 'LlmError';
-  }
-}
+export { LlmError, type LlmErrorReason } from './errors.js';
 
 /**
  * A registered prompt. `name` locates the .md folder; `Vars` is the render
@@ -62,6 +51,10 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
   const user = render(tpl.user, vars);
 
   let lastRaw = '';
+  // Two attempts total: one retry for a model that returns malformed or
+  // mis-shaped JSON. Errors thrown by complete() itself (truncation, missing
+  // key, SDK failures after its own retries) propagate immediately — retrying
+  // those would just repeat the same failure.
   for (let attempt = 0; attempt < 2; attempt++) {
     lastRaw = await complete({ system, user, model: def.model, maxTokens: def.maxTokens });
     let parsed: unknown;
@@ -78,9 +71,8 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
   // Second attempt still failed. Report why based on the last response.
   try {
     JSON.parse(stripFences(lastRaw));
-    throw new LlmError('invalid_shape', `${def.name}: response did not match schema`, lastRaw);
-  } catch (e) {
-    if (e instanceof LlmError) throw e;
+  } catch {
     throw new LlmError('invalid_json', `${def.name}: response was not valid JSON`, lastRaw);
   }
+  throw new LlmError('invalid_shape', `${def.name}: response did not match schema`, lastRaw);
 }

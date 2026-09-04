@@ -3,68 +3,139 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const promptStub = vi.fn();
-vi.mock('../llm/index.js', () => ({
-  runPrompt: (...args: unknown[]) => promptStub(...args),
-  definePrompt: (def: unknown) => def,
-  stripFences: (text: string) => {
-    const match = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/i);
-    return (match?.[1] ?? text).trim();
+// Mock at the SDK boundary (T-005: "mock anthropic.messages.create") so the real
+// complete() → stripFences → JSON.parse → Zod → graph-validation pipeline runs,
+// and "called twice" assertions count actual model calls.
+const create = vi.fn();
+vi.mock('@anthropic-ai/sdk', () => ({
+  default: class {
+    messages = { create };
   },
 }));
 
-const { generateConceptMap, parseConceptMapResponse, GenerationError, validateConceptMap } = await import('./conceptMap.js');
+const { generateConceptMap, validateConceptMap, parseConceptMapResponse, ConceptMapSchema, GenerationError } =
+  await import('./conceptMap.js');
 
-const fixturePath = join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/conceptMap.react-hooks.json');
-const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
+const fixtureText = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/conceptMap.react-hooks.json'),
+  'utf8',
+);
+const fixture = JSON.parse(fixtureText);
 
-beforeEach(() => {
-  promptStub.mockReset();
+const asText = (text: string, stopReason = 'end_turn') => ({
+  content: [{ type: 'text', text }],
+  stop_reason: stopReason,
 });
 
+/** Structurally valid map, small enough to sit under MIN_CONCEPTS. */
+const smallMap = {
+  topic: 'React Hooks',
+  concepts: [
+    { slug: 'a', title: 'A', summary: 'a', prereqs: [] },
+    { slug: 'b', title: 'B', summary: 'b', prereqs: ['a'] },
+  ],
+};
+
+beforeEach(() => create.mockReset());
+
 describe('concept map generation', () => {
-  it('fixture parses and returns at least 20 concepts', async () => {
-    promptStub.mockResolvedValueOnce(fixture);
+  it('fixture round-trips through ConceptMapSchema.parse', () => {
+    expect(() => ConceptMapSchema.parse(fixture)).not.toThrow();
+  });
+
+  it('parses the fixture and returns 20+ concepts in one model call', async () => {
+    create.mockResolvedValueOnce(asText(fixtureText));
     const result = await generateConceptMap('React Hooks');
     expect(result.concepts.length).toBeGreaterThanOrEqual(20);
-    expect(result.concepts.every((c) => c.prereqs.every((p) => result.concepts.some((x) => x.slug === p)))).toBe(true);
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
-  it('parses fenced json responses', () => {
-    const raw = `\n\`\`\`json\n${JSON.stringify(fixture)}\n\`\`\`\n`;
-    expect(parseConceptMapResponse(raw).concepts.length).toBeGreaterThanOrEqual(20);
+  it('parses a response wrapped in ```json fences', async () => {
+    create.mockResolvedValueOnce(asText(`Here you go:\n\`\`\`json\n${fixtureText}\n\`\`\``));
+    const result = await generateConceptMap('React Hooks');
+    expect(result.concepts.length).toBeGreaterThanOrEqual(20);
   });
 
-  it('rejects unknown prereqs', () => {
-    const bad = {
-      topic: 'React Hooks',
-      concepts: [{ slug: 'state', title: 'State', summary: 'A', prereqs: ['nope'] }],
-    };
-    expect(() => validateConceptMap(bad)).toThrow(GenerationError);
-    expect(() => validateConceptMap(bad)).toThrowError(/unknown_prereq/);
+  it('rejects a prereq slug that does not exist', async () => {
+    create.mockResolvedValueOnce(
+      asText(JSON.stringify({ topic: 'X', concepts: [{ slug: 'state', title: 'S', summary: 's', prereqs: ['nope'] }] })),
+    );
+    await expect(generateConceptMap('X')).rejects.toMatchObject({
+      name: 'GenerationError',
+      reason: 'unknown_prereq',
+    });
   });
 
-  it('rejects cycles', () => {
-    const bad = {
-      topic: 'React Hooks',
-      concepts: [
-        { slug: 'a', title: 'A', summary: 'A', prereqs: ['b'] },
-        { slug: 'b', title: 'B', summary: 'B', prereqs: ['a'] },
-      ],
-    };
-    expect(() => validateConceptMap(bad)).toThrow(GenerationError);
-    expect(() => validateConceptMap(bad)).toThrowError(/cycle/);
+  it('rejects a prereq cycle', async () => {
+    create.mockResolvedValueOnce(
+      asText(
+        JSON.stringify({
+          topic: 'X',
+          concepts: [
+            { slug: 'a', title: 'A', summary: 'a', prereqs: ['b'] },
+            { slug: 'b', title: 'B', summary: 'b', prereqs: ['a'] },
+          ],
+        }),
+      ),
+    );
+    await expect(generateConceptMap('X')).rejects.toMatchObject({ name: 'GenerationError', reason: 'cycle' });
   });
 
-  it('retries once on garbage, then succeeds', async () => {
-    promptStub.mockRejectedValueOnce(new Error('bad json')).mockResolvedValueOnce(fixture);
-    await expect(generateConceptMap('React Hooks')).resolves.toMatchObject({ topic: 'React Hooks' });
-    expect(promptStub).toHaveBeenCalledTimes(2);
+  it('rejects duplicate slugs before they hit the concepts unique index', async () => {
+    create.mockResolvedValueOnce(
+      asText(
+        JSON.stringify({
+          topic: 'X',
+          concepts: [
+            { slug: 'dup', title: 'A', summary: 'a', prereqs: [] },
+            { slug: 'dup', title: 'B', summary: 'b', prereqs: [] },
+          ],
+        }),
+      ),
+    );
+    await expect(generateConceptMap('X')).rejects.toMatchObject({
+      name: 'GenerationError',
+      reason: 'duplicate_slug',
+    });
   });
 
-  it('throws GenerationError when both attempts fail', async () => {
-    promptStub.mockRejectedValue(new Error('broken'));
-    await expect(generateConceptMap('React Hooks')).rejects.toMatchObject({ name: 'GenerationError' });
-    expect(promptStub).toHaveBeenCalledTimes(2);
+  it('rejects a map too small to teach', async () => {
+    create.mockResolvedValueOnce(asText(JSON.stringify(smallMap)));
+    await expect(generateConceptMap('X')).rejects.toMatchObject({
+      name: 'GenerationError',
+      reason: 'too_few_concepts',
+    });
+  });
+
+  it('retries once when the first response is not JSON, then resolves', async () => {
+    create.mockResolvedValueOnce(asText('sorry, here is your map!')).mockResolvedValueOnce(asText(fixtureText));
+    const result = await generateConceptMap('React Hooks');
+    expect(result.concepts.length).toBeGreaterThanOrEqual(20);
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects with GenerationError when both attempts fail, without a third call', async () => {
+    create.mockResolvedValue(asText('not json'));
+    await expect(generateConceptMap('X')).rejects.toMatchObject({
+      name: 'GenerationError',
+      reason: 'invalid_json',
+    });
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a truncated response', async () => {
+    create.mockResolvedValue(asText(`{"topic":"X","concepts":[`, 'max_tokens'));
+    await expect(generateConceptMap('X')).rejects.toMatchObject({
+      name: 'GenerationError',
+      reason: 'truncated',
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('validateConceptMap and parseConceptMapResponse work on raw input', () => {
+    expect(validateConceptMap(smallMap).concepts).toHaveLength(2);
+    expect(parseConceptMapResponse(`\`\`\`json\n${JSON.stringify(smallMap)}\n\`\`\``).concepts).toHaveLength(2);
+    expect(() => validateConceptMap({ topic: 'X', concepts: [{ slug: 'a', title: 'A', summary: 'a', prereqs: ['x'] }] }))
+      .toThrow(GenerationError);
   });
 });

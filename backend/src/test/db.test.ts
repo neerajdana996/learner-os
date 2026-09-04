@@ -19,7 +19,7 @@ describe('db helpers', () => {
 
   it('inserting a topic with a non-existent user_id throws', async () => {
     await expect(
-      db.insert(topics).values({ userId: 999999, title: 'Broken topic' }),
+      db.insert(topics).values({ userId: '00000000-0000-0000-0000-000000000000', title: 'Broken topic' }),
     ).rejects.toThrow();
   });
 

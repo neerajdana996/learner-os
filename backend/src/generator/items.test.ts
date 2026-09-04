@@ -3,30 +3,35 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const promptStub = vi.fn();
-vi.mock('../llm/index.js', () => ({
-  runPrompt: (...args: unknown[]) => promptStub(...args),
-  definePrompt: (def: unknown) => def,
-  stripFences: (text: string) => {
-    const match = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/i);
-    return (match?.[1] ?? text).trim();
+// Mocked at the SDK boundary, same as conceptMap.test.ts, so the real
+// complete() → stripFences → JSON.parse → Zod → rule-validation path runs.
+const create = vi.fn();
+vi.mock('@anthropic-ai/sdk', () => ({
+  default: class {
+    messages = { create };
   },
 }));
 
-const { generateItems, GenerationError, validateItems } = await import('./items.js');
+const { generateItems, validateItems, GenerationError } = await import('./items.js');
 
-const fixturePath = join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/items.usestate.json');
-const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'));
+const fixtureText = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/items.usestate.json'),
+  'utf8',
+);
+const fixture = JSON.parse(fixtureText);
 
-beforeEach(() => {
-  promptStub.mockReset();
+const asText = (text: string, stopReason = 'end_turn') => ({
+  content: [{ type: 'text', text }],
+  stop_reason: stopReason,
 });
 
+beforeEach(() => create.mockReset());
+
 describe('items generation', () => {
-  it('fixture parses and contains all four types', async () => {
-    promptStub.mockResolvedValueOnce(fixture);
+  it('parses the fixture, which contains all four types and 6+ items', async () => {
+    create.mockResolvedValueOnce(asText(fixtureText));
     const result = await generateItems('useState');
-    expect(result.items.length).toBeGreaterThan(0);
+    expect(result.items.length).toBeGreaterThanOrEqual(6);
     expect(new Set(result.items.map((item) => item.payload.type))).toEqual(
       new Set(['recall', 'recognition', 'application', 'explain']),
     );
@@ -95,15 +100,43 @@ describe('items generation', () => {
     expect(() => validateItems(bad)).toThrowError(/200|rubric|explain/i);
   });
 
-  it('retries once on garbage, then succeeds', async () => {
-    promptStub.mockRejectedValueOnce(new Error('bad json')).mockResolvedValueOnce(fixture);
-    await expect(generateItems('useState')).resolves.toMatchObject({ topic: 'useState' });
-    expect(promptStub).toHaveBeenCalledTimes(2);
+  it('rejects a set with fewer than 6 items', async () => {
+    // All four types present and exactly one transfer, so every other rule
+    // passes and only the count gate can fire.
+    const tooFew = {
+      topic: 'useState',
+      items: [
+        { type: 'recall', prompt: 'Q1', answer: 'A', isTransfer: false },
+        { type: 'recognition', prompt: 'Q2', options: ['a', 'b', 'c', 'd'], answerIndex: 0, isTransfer: false },
+        { type: 'application', prompt: 'Q3', answer: 'A', isTransfer: false },
+        { type: 'explain', prompt: 'Q4', rubric: 'R', isTransfer: true },
+      ],
+    };
+    create.mockResolvedValueOnce(asText(JSON.stringify(tooFew)));
+    await expect(generateItems('useState')).rejects.toMatchObject({
+      name: 'GenerationError',
+      reason: 'too_few_items',
+    });
   });
 
-  it('throws GenerationError when both attempts fail', async () => {
-    promptStub.mockRejectedValue(new Error('broken'));
+  it('retries once when the first response is not JSON, then resolves', async () => {
+    create.mockResolvedValueOnce(asText('here are your questions')).mockResolvedValueOnce(asText(fixtureText));
+    await expect(generateItems('useState')).resolves.toMatchObject({ topic: 'useState' });
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects with GenerationError when both attempts fail, without a third call', async () => {
+    create.mockResolvedValue(asText('broken'));
     await expect(generateItems('useState')).rejects.toMatchObject({ name: 'GenerationError' });
-    expect(promptStub).toHaveBeenCalledTimes(2);
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a truncated response', async () => {
+    create.mockResolvedValue(asText('{"topic":"useState","items":[', 'max_tokens'));
+    await expect(generateItems('useState')).rejects.toMatchObject({
+      name: 'GenerationError',
+      reason: 'truncated',
+    });
+    expect(create).toHaveBeenCalledTimes(1);
   });
 });

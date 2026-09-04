@@ -1,8 +1,29 @@
 import { z } from 'zod';
-import { definePrompt, runPrompt, stripFences } from '../llm/index.js';
+import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
+
+/**
+ * Floor on a usable map. sprint.md's Sprint 1 demo expects 10–40 concepts; the
+ * prompt asks for 20–40. Below this the course is unusable (the diagnostic,
+ * session planner and ~10% held-out selection all degrade), so fail the job
+ * loudly instead of enrolling someone in a 3-concept "course".
+ */
+export const MIN_CONCEPTS = 10;
+
+export type GenerationErrorReason =
+  | 'invalid_json'
+  | 'invalid_shape'
+  | 'truncated'
+  | 'missing_api_key'
+  | 'duplicate_slug'
+  | 'unknown_prereq'
+  | 'cycle'
+  | 'too_few_concepts';
 
 export class GenerationError extends Error {
-  constructor(public readonly reason: 'unknown_prereq' | 'cycle' | 'invalid_json' | 'invalid_shape', message: string) {
+  constructor(
+    public readonly reason: GenerationErrorReason,
+    message: string,
+  ) {
     super(`${reason}: ${message}`);
     this.name = 'GenerationError';
   }
@@ -20,14 +41,30 @@ export const ConceptMapSchema = z.object({
   concepts: z.array(ConceptSchema).min(1),
 });
 
-export function parseConceptMapResponse(raw: string) {
-  const json = JSON.parse(stripFences(raw));
-  return ConceptMapSchema.parse(json);
+export type ConceptMap = z.infer<typeof ConceptMapSchema>;
+
+export function parseConceptMapResponse(raw: string): ConceptMap {
+  return validateConceptMap(JSON.parse(stripFences(raw)));
 }
 
-export function validateConceptMap(data: unknown): z.infer<typeof ConceptMapSchema> {
+/**
+ * Structural + graph invariants. Size-agnostic on purpose so it can be unit
+ * tested with tiny maps; the "is this map big enough to teach" gate lives in
+ * generateConceptMap.
+ */
+export function validateConceptMap(data: unknown): ConceptMap {
   const parsed = ConceptMapSchema.parse(data);
-  const seen = new Set(parsed.concepts.map((concept) => concept.slug));
+
+  // Duplicate slugs would survive the prereq check below (a Set collapses them)
+  // and only blow up at persist time against concepts(topic_id, slug) unique.
+  const seen = new Set<string>();
+  for (const concept of parsed.concepts) {
+    if (seen.has(concept.slug)) {
+      throw new GenerationError('duplicate_slug', `slug ${concept.slug} appears more than once`);
+    }
+    seen.add(concept.slug);
+  }
+
   for (const concept of parsed.concepts) {
     for (const prereq of concept.prereqs) {
       if (!seen.has(prereq)) {
@@ -36,15 +73,14 @@ export function validateConceptMap(data: unknown): z.infer<typeof ConceptMapSche
     }
   }
 
+  const bySlug = new Map(parsed.concepts.map((concept) => [concept.slug, concept]));
   const visited = new Set<string>();
   const stack = new Set<string>();
   const visit = (slug: string): void => {
     if (stack.has(slug)) throw new GenerationError('cycle', `cycle detected involving ${slug}`);
     if (visited.has(slug)) return;
     stack.add(slug);
-    const concept = parsed.concepts.find((item) => item.slug === slug);
-    if (!concept) return;
-    for (const prereq of concept.prereqs) visit(prereq);
+    for (const prereq of bySlug.get(slug)?.prereqs ?? []) visit(prereq);
     stack.delete(slug);
     visited.add(slug);
   };
@@ -58,22 +94,30 @@ export const conceptMapPrompt = definePrompt({
   schema: ConceptMapSchema,
 });
 
-export async function generateConceptMap(topic: string) {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const response = await runPrompt(conceptMapPrompt, { topic });
-      return validateConceptMap(response);
-    } catch (error) {
-      lastError = error;
-      if (attempt === 0) continue;
-    }
+/**
+ * runPrompt already retries once on malformed/mis-shaped JSON, so there is no
+ * outer retry here — wrapping it in another loop would cost 4 model calls per
+ * failure instead of the 2 the task specifies. Graph violations are terminal:
+ * they mean the model produced a coherent but invalid map, and the job should
+ * fail loudly with a typed reason (plan.md §5).
+ */
+export async function generateConceptMap(topic: string): Promise<ConceptMap> {
+  // `unknown` because ConceptMapSchema's input type differs from its output
+  // (prereqs has a default); validateConceptMap re-parses into the output type.
+  let response: unknown;
+  try {
+    response = await runPrompt(conceptMapPrompt, { topic });
+  } catch (error) {
+    if (error instanceof LlmError) throw new GenerationError(error.reason, error.message);
+    throw new GenerationError('invalid_shape', `concept map generation failed: ${String(error)}`);
   }
 
-  if (lastError instanceof GenerationError) throw lastError;
-  if (lastError instanceof Error) {
-    throw new GenerationError('invalid_shape', `concept map generation failed: ${lastError.message}`);
+  const map = validateConceptMap(response);
+  if (map.concepts.length < MIN_CONCEPTS) {
+    throw new GenerationError(
+      'too_few_concepts',
+      `got ${map.concepts.length} concepts, need at least ${MIN_CONCEPTS}`,
+    );
   }
-  throw new GenerationError('invalid_shape', 'concept map generation failed');
+  return map;
 }

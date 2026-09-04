@@ -5,10 +5,13 @@ import { db, pg } from '../db/client.js';
 import { users } from '../db/schema.js';
 
 export async function truncateAll(): Promise<void> {
+  // table_type filter matters: information_schema.tables also lists views, and
+  // TRUNCATE on a view errors out, which would fail every DB test.
   const tables = await pg<{ table_name: string }[]>`
     SELECT table_name
     FROM information_schema.tables
     WHERE table_schema = 'public'
+      AND table_type = 'BASE TABLE'
       AND table_name NOT LIKE 'drizzle_%'
     ORDER BY table_name DESC;
   `;
