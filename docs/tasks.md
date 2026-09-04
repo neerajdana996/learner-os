@@ -192,7 +192,7 @@
   - curl: n/a — no route; T-008's `POST /topics` enqueues this job.
 
 ### T-008 · Topics API
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-002, T-003, T-007
 - **files:** `backend/src/routes/topics.ts`, `backend/src/routes/topics.test.ts`
@@ -203,6 +203,29 @@
   - POST valid → 202, row exists with status `generating`, one job in queue.
   - GET by id returns status and zero counts while generating.
   - GET by id as another user → 404.
+- **notes:** (2026-09-04) Built and verified against real Postgres + Redis. All 4 listed cases pass plus 5 extra (9 total, 71 across the suite). Also smoke-tested the running server by hand, not just through supertest — `POST /topics` → 202, 6-day span → 400, `GET /topics/:id` → 200 with zero counts, `GET /topics` → list, other user → 404, and the job confirmed present in Redis under `bull:generation:<topicId>`.
+  - **⚠️ Nothing consumes the queue yet.** `createGenerationWorker()` exists (T-007) but is never called, so a topic created in compose stays `generating` forever. That wiring belongs to **T-012**, which owns the end-to-end demo; left a `TODO(T-012)` at the wiring point in `src/index.ts` so it can't be missed. This is the one thing standing between here and a working Sprint 1 demo.
+  - **Files beyond the task list**, each with a reason:
+    - `backend/src/middleware/auth.ts` (new) — interim `requireUser` reading `x-user-id`. T-009 and T-010 need the same user resolution, so inlining it three times then deleting it at T-013 would be worse. T-013 replaces the body of this function with cookie sessions and routes keep calling it unchanged. **Deliberately does *not* reject `x-user-id` in production yet** (T-013 says to): compose runs `NODE_ENV=production`, and until magic links exist this header is the only way to authenticate, so rejecting it now would break the very Sprint 1 demo T-012 has to verify. Guard lands with its replacement; `TODO(T-013)` marks it.
+    - `backend/src/workers/queue.ts` (new) — the BullMQ `Queue` to enqueue onto. Lazily constructed via `getGenerationQueue()`, because `new Queue(...)` opens a Redis connection on construction and this module is imported transitively by the route, which would connect in every test that touches the Express app.
+    - `backend/src/shared/schemas.ts` — added `IdParamSchema`. loop.md requires route validation to use `validate()` with a schema from `src/shared`, and `:id` is now a uuid: without the 400, a malformed id reaches a uuid column and Postgres raises a syntax error instead.
+    - `backend/src/db/schema.ts` — see T-FIX-002 below.
+  - **Bug caught by the existing suite:** first cut used `topicsRouter.use(requireUser)`. This router is mounted at the root, so router-level middleware ran for *every* unmatched path too — turning every 404 into a 401 (and leaking that auth exists for paths that don't). `app.test.ts`'s "unknown route → 404" caught it. `requireUser` is now attached per route.
+  - `jobId` is set to the topic id, so a duplicate enqueue for the same topic is a no-op rather than generating — and paying for — the same map twice.
+  - `GET /topics/:id` scopes by owner **inside the query** and 404s rather than 403s: a 403 would confirm the id exists.
+  - curl (dev; needs a real user row):
+    - `curl -XPOST localhost:3001/topics -H 'content-type: application/json' -H 'x-user-id: <uuid>' -d '{"title":"React Hooks"}'` → `202 {"topicId":"…","status":"generating"}`
+    - `curl localhost:3001/topics/<topicId> -H 'x-user-id: <uuid>'` → topic + `counts`
+    - `curl localhost:3001/topics -H 'x-user-id: <uuid>'` → `{"topics":[…]}`
+
+### T-FIX-002 · Schema — `topics.why` had nowhere to land (schema task)
+- **status:** done
+- **sprint:** 1
+- **severity:** medium — silent data loss on every onboarding submit
+- **depends_on:** T-049
+- **files:** `backend/src/db/schema.ts`
+- **description:** Found while building T-008: `TopicCreateSchema` accepts `why` (max 500 chars), plan.md §4 collects it at onboarding, and T-018 submits it — but the `topics` table had no `why` column, so it would have been silently dropped on every create. Added `why: text('why')` (nullable — the Sprint 1 demo posts title only). Declared as its own schema task because loop.md forbids touching `schema.ts` otherwise; kept to this one column.
+- **acceptance:** `POST /topics` with a `why` persists it and `GET /topics/:id` returns it — covered by T-008's "accepts a valid topic" test.
 
 ### T-009 · Reviews API — record an answer
 - **status:** todo
