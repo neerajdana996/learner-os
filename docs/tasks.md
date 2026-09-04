@@ -95,7 +95,7 @@
   - curl: n/a — this task adds no routes, just shared validation.
 
 ### T-004 · Scheduler module — wrap ts-fsrs
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-001
 - **files:** `backend/src/scheduler/index.ts`, `backend/src/scheduler/index.test.ts`
@@ -108,6 +108,23 @@
   - Two consecutive `Good` ratings → second `scheduled_days` > first.
   - `predictedRecall` decreases monotonically as `now` advances (test at +0, +1, +7, +30 days).
   - `fromDbCard(toDbCard(card))` deep-equals `card`.
+- **notes:** (2026-09-04) Built and verified against installed `ts-fsrs@4.7.1`. All 6 test cases pass.
+  - `createEngine(params?)` builds an `FSRS` instance via `fsrs(generatorParameters({enable_fuzz:false, ...params}))`
+    — fuzz is already `false` by default in ts-fsrs 4.7.1, set explicitly per the task's determinism requirement.
+    A shared `defaultEngine` is used unless a test/caller passes its own via the optional last `engine` param
+    on `scheduleReview`/`predictedRecall`.
+  - `Rating` is re-exported directly from `ts-fsrs` rather than reinventing a rating type — its `Grade`
+    (`Again|Hard|Good|Easy`, excludes `Manual`) is exactly what `scheduleReview` needs.
+  - **`DbCard` interface is a placeholder** (`backend/src/scheduler/index.ts`): the `cards` table doesn't
+    exist yet (T-049 is still `todo`). Field names (`elapsedDays`, `scheduledDays`, `lastReview`, etc.) are
+    my best guess at what T-049's `cards` table will look like per plan.md §5 ("cards: FSRS state per
+    user×concept, taughtAt"). **Whoever does T-049 should either match these names or come back and update
+    `toDbCard`/`fromDbCard` to match the real column names** — flagging so it isn't missed.
+  - Learned while testing: with default `enable_short_term=true`, a `Good` rating on a **New** card moves
+    it to `Learning` (not `Review`) with `scheduled_days=0`; it only reaches `Review` after a second `Good`.
+    The "Again on a reviewed card increments lapses" test therefore does two `Good` reviews first to reach
+    `State.Review` before asserting the lapse increment — a single review wasn't enough to exercise that path.
+  - curl: n/a — no route yet, pure scheduling logic.
 
 ### T-005 · Generator — concept map prompt + fixtures
 - **status:** todo
