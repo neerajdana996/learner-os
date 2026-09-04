@@ -39,10 +39,10 @@
   - Docker Desktop was not running at verification start; had to `open -a Docker` and wait ~2 min for its VM networking to come up before `docker pull`/`docker compose up --build` would succeed (first attempt errored with `DeadlineExceeded` on image metadata fetch). Not a repo issue, just a note for next time.
 
 ### T-002 · Test database and DB test helpers
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-001, T-049
-- **files:** `docker/postgres-init.sql`, `backend/src/db/client.ts`, `backend/src/test/db.ts`, `backend/vitest.setup.ts`
+- **files:** `docker/postgres-init.sql`, `backend/src/db/client.ts`, `backend/src/test/db.ts`, `backend/src/test/db.test.ts`, `backend/vitest.setup.ts`
 - **description:** `learnos_test` is created by the compose init script (T-001). `client.ts` reads `DATABASE_URL`; tests set `DATABASE_URL` to the test DB via `vitest.setup.ts`. Write `truncateAll()` helper that truncates every table in dependency order and `seedUser()` that inserts and returns a user.
 - **acceptance:**
   - `pnpm db:test:push` creates all tables in `learnos_test`.
@@ -51,6 +51,11 @@
   - `db.test.ts`: seedUser → count users = 1 → truncateAll → count = 0.
   - Inserting a `topic` with a non-existent `user_id` throws (FK enforced).
   - Inserting two `concepts` with same `(topic_id, slug)` throws (unique index).
+- **notes:** (2026-09-04) Verified against real Postgres (`docker compose up postgres redis -d` + `pnpm db:test:push`). All 3 test cases pass. `client.ts`/`test/db.ts` were already well-built (found in-progress, not by me) — `truncateAll()` truncates every table via `information_schema.tables` (order-independent, `RESTART IDENTITY CASCADE`), `seedUser()` returns a real inserted row.
+  - Fixed two real bugs found during review: (1) `seedUser()`'s destructured `[user]` from `.returning()` was typed `T | undefined` under `noUncheckedIndexedAccess`, breaking `pnpm lint` (TS18048) at every call site — fixed by throwing inside `seedUser()` itself if the insert returns no row, so its return type is properly non-undefined everywhere downstream. (2) `client.ts`'s `postgres()` call logged a Postgres `NOTICE` (`"truncate cascades to table ..."`) to stdout on every `truncateAll()` call, cluttering test output — added `onnotice: () => {}` when `NODE_ENV==='test'`.
+  - curl: n/a — internal test helper, no route.
+
+**T-049** (DB schema, full table set) is also `done` as of this session — see its full entry under "Fix / discovered tasks" below (kept there since that's where it was originally logged as a discovered blocker).
 
 ### T-003 · Shared schemas — full set
 - **status:** done
@@ -127,10 +132,10 @@
   - curl: n/a — no route yet, pure scheduling logic.
 
 ### T-005 · Generator — concept map prompt + fixtures
-- **status:** todo
+- **status:** done
 - **sprint:** 1
-- **depends_on:** T-001
-- **files:** `backend/src/generator/conceptMap.ts`, `backend/fixtures/conceptMap.react-hooks.json`, `backend/src/generator/conceptMap.test.ts`
+- **depends_on:** T-001, T-050
+- **files:** `backend/src/generator/conceptMap.ts`, `backend/fixtures/conceptMap.react-hooks.json`, `backend/src/generator/conceptMap.test.ts`, `backend/src/llm/prompts/conceptMap/{system,user,example}.md`
 - **description:** Harden `generateConceptMap`. Strip markdown fences if the model adds them. Validate that every `prereqs` slug exists in the response and that the prereq graph is acyclic; on failure throw a typed `GenerationError` with `reason`. Retry the API call once on JSON/validation failure. Add a realistic fixture (20+ concepts) captured from a real run.
 - **acceptance:** A fixture round-trips through `ConceptMapSchema.parse` without error.
 - **tests:** (mock `anthropic.messages.create`)
@@ -140,12 +145,17 @@
   - Response with a cycle A→B→A → `GenerationError('cycle')`.
   - First call returns garbage, second returns fixture → resolves (retry works, `create` called twice).
   - Both calls fail → rejects with `GenerationError`.
+- **notes:** (2026-09-04) **Built on T-050** (rather than calling the Anthropic SDK directly, per that task's decision): `generateConceptMap` calls `runPrompt(conceptMapPrompt, {topic})`, then does the two domain checks (`unknown_prereq`, `cycle` — DFS with a recursion stack) that Zod alone can't express. All 6 required test cases pass, mocking `runPrompt` (not the SDK — there's no SDK call to mock directly anymore, `src/llm` owns that).
+  - **Fixture is hand-written, not captured from a real API call** — `backend/.env` has no `ANTHROPIC_API_KEY` set in this environment (confirmed with Neeraj). 23 concepts for "React Hooks" with a real prerequisite DAG (checked by hand: no cycles, every prereq slug exists, only a few zero-prereq roots). **Replace with a genuine captured run once a key is available** — hand-written fixtures can't catch real model quirks (inconsistent slug casing, unexpected fence styles, etc.) the way a real capture would.
+  - Wrote the actual prompt content (`prompts/conceptMap/system.md`/`user.md`/`example.md`) — this was the substantive missing piece: rules for atomic concepts, 20-40 count, DAG validity, slug format, plus a compact worked example on a different topic (photosynthesis) so the model doesn't just parrot the fixture's exact topic back.
+  - Found and fixed during review (this code was drafted mid-session across a model switch, before I'd seen it): the prompt folders (`prompts/conceptMap/`) were **empty directories with no .md files** — the generator code and mocked tests were all in place but the real prompt text didn't exist yet, so a real (non-mocked) call would have thrown `ENOENT`. Also fixed `pnpm lint` failures unrelated to this task but in the same uncommitted batch (see T-002 notes).
+  - curl: n/a — no route yet (T-008 adds `POST /topics`, which enqueues the job that calls this).
 
 ### T-006 · Generator — items prompt + fixtures
-- **status:** todo
+- **status:** done
 - **sprint:** 1
-- **depends_on:** T-003
-- **files:** `backend/src/generator/items.ts`, `backend/fixtures/items.usestate.json`, `backend/src/generator/items.test.ts`
+- **depends_on:** T-003, T-050
+- **files:** `backend/src/generator/items.ts`, `backend/fixtures/items.usestate.json`, `backend/src/generator/items.test.ts`, `backend/src/llm/prompts/items/{system,user,example}.md`
 - **description:** Harden `generateItems`. Validate payload shape per type using `ItemPayload` from shared. Enforce: ≥1 of each type, 1–2 `isTransfer`, recognition has 4 options. Retry once. Fixture from a real run.
 - **acceptance:** Fixture parses; violations produce `GenerationError` with a clear reason.
 - **tests:** (mocked)
@@ -154,6 +164,11 @@
   - Zero transfer items → rejected.
   - Three transfer items → rejected.
   - `explanation` > 200 chars → rejected.
+- **notes:** (2026-09-04) **Rewrote the validation core** during review: the version I found (drafted mid-session before I'd reviewed it) redefined its own local `Recall/Recognition/Application/ExplainSchema` — a straight duplicate of T-003's `ItemPayloadSchema` in `backend/src/shared/schemas.ts`, which loop.md forbids ("Never write a Zod schema anywhere else") and which this task's own description explicitly says not to do ("Validate payload shape per type using `ItemPayload` from shared"). Rewrote to import `ItemPayloadSchema` from `../shared/index.js`; `parseGeneratedItem()` validates each raw item against it and separately checks for a boolean `isTransfer` (which lives as a sibling DB column on `items`, not inside the jsonb `payload` — so it's correctly outside `ItemPayloadSchema`). `generateItems`/`validateItems` now return `{topic, items: {payload: ItemPayload, isTransfer: boolean}[]}`, a shape that maps directly onto `items` table columns for T-007's future insert.
+  - Also fixed: (1) `definePrompt({name: 'conceptMap', ...})` — copy-paste bug, referenced the *other* generator's prompt name; corrected to `'items'`. (2) Recognition's exactly-4-options rule is enforced by the (now correctly reused) shared schema itself, so the old manual `recognition_options` check was unreachable dead code — removed; a bad recognition item now fails inside `ItemPayloadSchema.safeParse`, and `parseGeneratedItem` wraps that into a `GenerationError` whose message names the item type (so `/recognition/i` still matches). (3) Three of the five required test cases had fixtures that didn't isolate what they claimed to test — e.g. "rejects zero transfer items" and "rejects three transfer items" only included `recall`-type items, so the type-completeness check (`missing_item_type`) fired *before* the transfer-count logic ever ran; the assertions happened to still pass by coincidence (the thrown message text didn't contain what was asserted, but `/transfer/i` was tested against the wrong error for the wrong reason on `"missing_item_type"`... verified this concretely by running the suite, not by inspection alone). Rewrote all three fixtures to include all four item types with an explicit `isTransfer` per item, varying only the one property under test. Added 2 extra tests (retry-once, both-attempts-fail) mirroring T-005's required cases, since `generateItems` has the identical retry loop.
+  - **Fixture is hand-written** (same reason as T-005 — no `ANTHROPIC_API_KEY` available). 4 items for the `useState` concept, one of each type, 2 marked transfer.
+  - Wrote the actual prompt content (`prompts/items/{system,user,example}.md`): 6-8 items per concept, all four types required, 1-2 transfer items, ≤200-char rubric, with a worked example on a different concept (stomata) so the model generalizes the pattern rather than echoing the fixture.
+  - curl: n/a — no route yet (T-007's worker calls this per non-held-out concept).
 
 ### T-007 · Generation worker — persist map, prereqs, items
 - **status:** todo
@@ -601,11 +616,11 @@
 _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 
 ### T-049 · DB schema — full table set (schema task)
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **severity:** high — blocks T-002 and everything that persists data
 - **depends_on:** T-001
-- **files:** `backend/src/db/schema.ts`, `backend/src/db/schema.test.ts`, `backend/drizzle.config.ts`
+- **files:** `backend/src/db/schema.ts`, `backend/src/db/schema.test.ts`, `backend/drizzle.config.ts`, `backend/src/db/client.ts`
 - **description:** Discovered in T-001: no task creates the Postgres tables that plan.md §5 lists. This is the designated **schema task** (loop.md: never edit `schema.ts` outside one). Define with Drizzle: `users`, `topics` (incl. `status` enum with `holdout`), `concepts` (`slug`, `held_out`, `teach_mode` enum `try_first|example_first`, `order`), `concept_prereqs`, `items` (`type` enum recall|recognition|application|explain, `payload` jsonb, `is_transfer`, `flagged_bad`), `cards` (FSRS state per user×concept, `taught_at`), `review_events` (`predicted_recall` NOT NULL, `gap_days_since_last` NOT NULL, `surface` enum web|extension, `idempotency_key` unique), `tests` (`kind` day0|day30|day45, `scores` jsonb), `daily_pulse`. Unique index on `concepts(topic_id, slug)`; FKs everywhere; `created_at` defaults.
 - **acceptance:**
   - `pnpm db:push` and `pnpm db:test:push` create every table listed in plan.md §5 with no prompts (`--force` in compose).
@@ -615,6 +630,13 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - `schema.test.ts`: after push, `information_schema.tables` contains all 9 tables.
   - Inserting a `review_events` row without `predicted_recall` throws.
   - Inserting two `cards` for the same `(user_id, concept_id)` throws.
+- **notes:** (2026-09-04) Verified against real Postgres (`docker compose up postgres redis -d`, `pnpm db:test:push` + `pnpm db:push`, `pnpm test`). All 9 tables created, both acceptance-listed constraints hold. The core table definitions (found drafted mid-session, before I'd reviewed them) were solid; found and fixed two real gaps against the full task list (not just this task's own acceptance) while closing it out:
+  1. **`review_events.surface` enum only had `web|extension`** (matching this task's own literal wording), but T-015 (diagnostic) and T-038 (Day-30/45 tests) both write `surface='diagnostic'`/`'test'` — and T-003's already-committed shared `SurfaceSchema` already has all 4 values. Expanded `reviewSurfaceEnum` to `['web','extension','diagnostic','test']` so it doesn't silently reject those inserts later.
+  2. **`topics.status` enum only had `generating|active|holdout|failed`**, but T-039's lifecycle needs `testing` (Day-30 test running) and `done` (Day-45 complete) too. Expanded to all 6: `generating|active|testing|holdout|done|failed`.
+  3. Added a unique index on `daily_pulse(user_id, date)` — T-032 says "`POST /pulse {day, mood}`, upsert", which needs a conflict target; wasn't in this task's original acceptance list but is a one-line addition now vs. a migration later.
+  - **`schema.test.ts`'s own tests were broken before I fixed them** (found this by actually running the suite, not just reading the code): both constraint tests did a single raw-SQL insert with hardcoded `user_id=1, concept_id=1` that don't exist in an empty test DB — so both tests "passed" only because the insert threw a **foreign-key** violation, never actually exercising the NOT-NULL or unique-index constraints they claimed to test. A schema regression (e.g. accidentally dropping the `cards` unique index) would **not** have been caught. Rewrote to seed a real user+topic+concept first (via T-002's `seedUser`/`truncateAll`, which exists in the same tree now), then test the actual constraints: one row succeeds, a genuine duplicate/null-field row is what throws.
+  - `client.ts` and `db/client.ts` were straightforward (drizzle + postgres-js, reads `DATABASE_URL` from `env`) — see T-002's notes for the two small fixes made there.
+  - curl: n/a — schema only, no route.
 
 ### T-050 · LLM module — client, file-based prompts, typed registry (foundation for generation)
 - **status:** done
@@ -624,7 +646,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **files:** `backend/src/llm/client.ts`, `backend/src/llm/prompts.ts`, `backend/src/llm/index.ts`, `backend/src/llm/index.test.ts`, `backend/src/llm/prompts/<name>/{system,user,example}.md`, `backend/scripts/copy-assets.mjs`, `backend/package.json`
 - **description:** Founder decision (2026-09-04, confirmed with Neeraj): all Anthropic calls go through one small, typed module instead of ad-hoc per-generator SDK calls. Prompts live as `.md` files on disk — `src/llm/prompts/<name>/system.md` (static), `user.md` (template with `{{vars}}`), optional `example.md` (few-shot) — so prompt text is diffable and QA-able without touching code. `definePrompt({name, schema, model?, maxTokens?})` registers a prompt keyed by name and ties it to its Zod response schema; `runPrompt(def, vars)` renders → calls the model → `stripFences` → `JSON.parse` → Zod-validate, **retrying once** on malformed/mis-shaped output, then throwing a typed `LlmError` (`invalid_json` | `invalid_shape`). This is the "prompt → JSON → Zod → DB" path plan.md §5 mandates, just centralised and type-safe. **This replaces the per-file `generateConceptMap`/`generateItems` SDK boilerplate T-005/T-006 originally implied** — those tasks now define a prompt folder + a `PromptDef` and call `runPrompt`, keeping every listed test case and fixture.
 - **decisions / notes:** (2026-09-04)
-  - **Model default is now `claude-sonnet-5`** (plan.md §5 pinned the previous-gen `claude-sonnet-4-6`; upgraded with Neeraj's sign-off for better generation quality → less content-QA fixing in T-024/T-045). Set in `client.ts` `DEFAULT_MODEL`; per-prompt override via `PromptDef.model`. **plan.md §5 still says `claude-sonnet-4-6` — update it there too** (contradiction noted per loop.md §1).
+  - **Model default is now `claude-sonnet-5`** (plan.md §5 pinned the previous-gen `claude-sonnet-4-6`; upgraded with Neeraj's sign-off for better generation quality → less content-QA fixing in T-024/T-045). Set in `client.ts` `DEFAULT_MODEL`; per-prompt override via `PromptDef.model`. plan.md §5 updated to match.
   - **Rate-limit / retry strategy:** lean on what exists — the Anthropic SDK already retries 429/5xx/network (default `maxRetries=2`, honours `retry-after`); BullMQ will add job-level retry/backoff in T-007. **No custom token-bucket limiter** for the 10-person pilot (would be building ahead of the sprint, loop.md §7). Revisit only if org-level 429s show up under worker concurrency.
   - **Model switching is a capability, not a default:** `PromptDef.model` allows per-prompt overrides, but default everything to one model and tune generation via prompt/max_tokens instead. Reason: prompt caches are model-scoped, so per-task model switching forfeits cache reuse.
   - **Structured outputs deferred:** installed `@anthropic-ai/sdk@0.52.0` has no `output_config`/`messages.parse()`/`effort` (its `Model` type is old but ends in `(string & {})`, so `claude-sonnet-5` passes through). When the SDK is upgraded, prefer `output_config.format` + a JSON schema over the strip-fences→Zod path in `run.ts` — noted in `client.ts`/`index.ts`. **SDK upgrade is its own future task, not done here.**
