@@ -123,7 +123,9 @@ export const cards = pgTable(
   }),
 );
 
-export const reviewEvents = pgTable('review_events', {
+export const reviewEvents = pgTable(
+  'review_events',
+  {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
   conceptId: uuid('concept_id').notNull().references(() => concepts.id),
@@ -142,9 +144,19 @@ export const reviewEvents = pgTable('review_events', {
   // to measure from, and NULL must stay distinguishable from a real 0-day gap
   // (T-009 asserts null here; T-040 bins scheduler calibration on gap >= 1).
   gapDaysSinceLast: integer('gap_days_since_last'),
-  idempotencyKey: text('idempotency_key').unique(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+  idempotencyKey: text('idempotency_key'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Per user, not global (T-009: "unique per user"). A global unique would let
+    // one user's key collide with another's and reject the second user's answer
+    // outright. Postgres treats NULLs as distinct, so un-keyed events are fine.
+    userIdempotencyUnique: uniqueIndex('review_events_user_id_idempotency_key_unique').on(
+      table.userId,
+      table.idempotencyKey,
+    ),
+  }),
+);
 
 export const tests = pgTable('tests', {
   id: uuid('id').primaryKey().defaultRandom(),
