@@ -11,6 +11,7 @@ import type {
   ItemPayloadSchema,
   PublicItemSchema,
   DueItemsResponseSchema,
+  DueQuerySchema,
   AnswerSchema,
   DiagnosticStartSchema,
   DiagnosticAnswerSchema,
@@ -36,6 +37,7 @@ export type TopicCreate = z.infer<typeof TopicCreateSchema>;
 export type ItemPayload = z.infer<typeof ItemPayloadSchema>;
 export type PublicItem = z.infer<typeof PublicItemSchema>;
 export type DueItemsResponse = z.infer<typeof DueItemsResponseSchema>;
+export type DueQuery = z.infer<typeof DueQuerySchema>;
 
 export type Answer = z.infer<typeof AnswerSchema>;
 

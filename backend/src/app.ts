@@ -4,6 +4,7 @@ import { env, isProd } from './lib/env.js';
 import { healthRouter } from './routes/health.js';
 import { topicsRouter } from './routes/topics.js';
 import { reviewsRouter } from './routes/reviews.js';
+import { dueRouter } from './routes/due.js';
 
 /**
  * Builds the Express app without binding a port, so tests can mount it with
@@ -22,7 +23,7 @@ export function createApp(): Express {
   app.use(healthRouter);
   app.use(topicsRouter);
   app.use(reviewsRouter);
-  // TODO(T-010): dueRouter
+  app.use(dueRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'not_found' });
