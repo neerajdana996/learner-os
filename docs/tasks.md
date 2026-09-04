@@ -170,7 +170,7 @@
   - curl: n/a — no route yet (T-007's worker calls this per non-held-out concept).
 
 ### T-007 · Generation worker — persist map, prereqs, items
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-002, T-005, T-006
 - **files:** `backend/src/workers/generator.worker.ts`, `backend/src/workers/generator.worker.test.ts`, `backend/src/lib/heldOut.ts`
@@ -181,6 +181,15 @@
   - Generator throws → topic status `failed`, `error` populated, 0 concepts persisted (transaction rolled back).
   - `pickHeldOut` with seeded rng is deterministic and respects `minOrder`.
   - `teach_mode` is set on every concept and both values appear in a 20-concept map (seeded rng).
+- **notes:** (2026-09-04) Built and verified against the real test DB. All 4 listed test cases pass, plus 2 extra (6 total); every acceptance bullet checked explicitly.
+  - **No schema change was needed** — the task said to add `topics.error` here, but T-049 already included it, so `schema.ts` is untouched (loop.md: never edit it outside a schema task).
+  - **Generation runs before the transaction opens, not inside it.** A 20-concept topic makes 1 + 18 model calls; holding a Postgres transaction open across minutes of API latency would pin a connection for the whole job. Everything is generated into memory first, then one transaction inserts concepts → prereqs → items and flips the topic to `active`. A failure anywhere leaves no partial map (covered by the extra "item generation fails partway through" test).
+  - The `status='failed'` update is deliberately **outside** the transaction — inside, it would roll back with everything else and the topic would be stuck on `generating` forever. The error is rethrown after so BullMQ marks the job failed too.
+  - `pickHeldOut(concepts, ratio, minOrder, rng)` in `lib/heldOut.ts` is pure and seedable (`seededRng` = mulberry32). It selects by sorting on a random key rather than index-swapping — same uniform result, no array indexing to type-guard under `noUncheckedIndexedAccess`. The "respects minOrder" test sweeps 50 seeds so it can't pass by luck on a single draw.
+  - **`order` is assigned by the worker from array position** (1-based), not by the model: the concept-map prompt returns concepts already in teaching order and has no `order` field, so position is the source of truth.
+  - Prereqs are **deduped per concept** before insert. `generateConceptMap` validates that prereq slugs exist and that the graph is acyclic, but not that a concept lists the same prereq only once — a duplicate would violate `concept_prereqs`' composite PK and roll back the entire map. Cheaper to dedupe here than to add another generator rule.
+  - `createGenerationWorker()` is a factory, never called at import time — constructing the BullMQ `Worker` on import would open a Redis connection in every test that touches this module. T-008 (enqueue) and T-012 (integration) wire it up.
+  - curl: n/a — no route; T-008's `POST /topics` enqueues this job.
 
 ### T-008 · Topics API
 - **status:** todo
