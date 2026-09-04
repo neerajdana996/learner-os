@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { eq } from 'drizzle-orm';
-import { createApp } from '../app.js';
-import { db } from '../db/client.js';
-import { cards, concepts, items, reviewEvents, topics } from '../db/schema.js';
-import { seedUser, truncateAll } from '../test/db.js';
-import { toPublicItem } from '../lib/publicItem.js';
+import { createApp } from '../../app.js';
+import { db } from '../../db/client.js';
+import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
+import { seedUser, truncateAll } from '../../test/db.js';
+import { toPublicItem } from '../../lib/publicItem.js';
 
 const app = createApp();
 

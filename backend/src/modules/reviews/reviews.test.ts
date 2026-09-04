@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { createApp } from '../app.js';
-import { db } from '../db/client.js';
-import { cards, concepts, items, reviewEvents, topics } from '../db/schema.js';
-import { recordReview } from '../lib/recordReview.js';
-import { seedUser, truncateAll } from '../test/db.js';
+import { createApp } from '../../app.js';
+import { db } from '../../db/client.js';
+import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
+import { recordReview } from '../../lib/recordReview.js';
+import { seedUser, truncateAll } from '../../test/db.js';
 
 // Only the LLM call is mocked; the real grade() still runs, so the deterministic
 // item types are unaffected.
 const gradeExplanation = vi.fn();
-vi.mock('../generator/grade.js', () => ({
+vi.mock('../../generator/grade.js', () => ({
   gradeExplanation: (...a: unknown[]) => gradeExplanation(...a),
 }));
 

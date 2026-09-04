@@ -1,11 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { eq } from 'drizzle-orm';
-import { createApp } from '../app.js';
-import { db } from '../db/client.js';
-import { concepts, items, topics } from '../db/schema.js';
-import { seedUser, truncateAll } from '../test/db.js';
-import { closeGenerationQueue, getGenerationQueue } from '../workers/queue.js';
+import { createApp } from '../../app.js';
+import { db } from '../../db/client.js';
+import { concepts, items, topics } from '../../db/schema.js';
+import { seedUser, truncateAll } from '../../test/db.js';
+import { closeGenerationQueue, getGenerationQueue } from '../../workers/queue.js';
 
 const app = createApp();
 

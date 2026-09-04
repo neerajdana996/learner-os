@@ -2,9 +2,9 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from 'cors';
 import { env, isProd } from './lib/env.js';
 import { healthRouter } from './routes/health.js';
-import { topicsRouter } from './routes/topics.js';
-import { reviewsRouter } from './routes/reviews.js';
-import { dueRouter } from './routes/due.js';
+import { topicsRouter } from './modules/topics/topics.routes.js';
+import { reviewsRouter } from './modules/reviews/reviews.routes.js';
+import { dueRouter } from './modules/due/due.routes.js';
 
 /**
  * Builds the Express app without binding a port, so tests can mount it with
