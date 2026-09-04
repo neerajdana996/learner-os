@@ -15,6 +15,11 @@ export const SurfaceSchema = z.enum(['web', 'extension', 'diagnostic', 'test']);
 export const TeachModeSchema = z.enum(['try_first', 'example_first']);
 export const ItemTypeSchema = z.enum(['recall', 'recognition', 'application', 'explain']);
 
+// ---------- Route params ----------
+/** `:id` path params. Rejects a malformed id with 400 before it reaches a
+ *  uuid-typed column, where Postgres would raise a syntax error instead. */
+export const IdParamSchema = z.object({ id: z.string().uuid() });
+
 // ---------- Users ----------
 export const UserCreateSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
