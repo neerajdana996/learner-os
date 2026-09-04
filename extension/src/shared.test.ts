@@ -5,6 +5,9 @@ import { TopicCreateSchema } from './shared';
 // extension's (browser) build — no Node-only imports leaked through.
 describe('synced shared schemas', () => {
   it('TopicCreateSchema parses a valid object', () => {
-    expect(TopicCreateSchema.parse({ title: 'React Hooks' })).toEqual({ title: 'React Hooks' });
+    expect(TopicCreateSchema.parse({ title: 'React Hooks' })).toEqual({
+      title: 'React Hooks',
+      dailyBudgetMin: 15,
+    });
   });
 });
