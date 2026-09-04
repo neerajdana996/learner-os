@@ -5,6 +5,7 @@ import type {
   SurfaceSchema,
   TeachModeSchema,
   ItemTypeSchema,
+  IdParamSchema,
   UserCreateSchema,
   TopicCreateSchema,
   ItemPayloadSchema,
@@ -28,6 +29,7 @@ export type Surface = z.infer<typeof SurfaceSchema>;
 export type TeachMode = z.infer<typeof TeachModeSchema>;
 export type ItemType = z.infer<typeof ItemTypeSchema>;
 
+export type IdParam = z.infer<typeof IdParamSchema>;
 export type UserCreate = z.infer<typeof UserCreateSchema>;
 export type TopicCreate = z.infer<typeof TopicCreateSchema>;
 

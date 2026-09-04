@@ -7,6 +7,10 @@ const app = createApp();
 const server = createServer(app);
 attachWebSocket(server);
 
+// TODO(T-012): start the generation worker here (createGenerationWorker() from
+// workers/generator.worker.ts). Until then POST /topics enqueues a job that
+// nothing consumes, so a topic stays `generating` forever in compose.
+
 server.listen(env.PORT, () => {
   console.log(`learnos backend listening on http://localhost:${env.PORT} (ws at /ws)`);
 });

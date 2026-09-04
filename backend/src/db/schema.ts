@@ -50,6 +50,9 @@ export const topics = pgTable('topics', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
   title: text('title').notNull(),
+  // Why the learner wants this topic — collected at onboarding (plan.md §4,
+  // T-018) and accepted by TopicCreateSchema, so it needs somewhere to land.
+  why: text('why'),
   startsAt: timestamp('starts_at', { withTimezone: true }),
   endsAt: timestamp('ends_at', { withTimezone: true }),
   dailyBudgetMin: integer('daily_budget_min').default(15),
