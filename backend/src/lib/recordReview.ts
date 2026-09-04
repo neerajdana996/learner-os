@@ -2,7 +2,8 @@ import { and, desc, eq, isNotNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { cards, items, reviewEvents } from '../db/schema.js';
 import { fromDbCard, newCard, predictedRecall, Rating, scheduleReview, toDbCard } from '../scheduler/index.js';
-import type { Answer, Surface } from '../shared/index.js';
+import { ItemPayloadSchema, type Answer, type Surface } from '../shared/index.js';
+import { grade } from './grade.js';
 
 /** Surfaces that record the answer but must never move the card's schedule:
  *  the diagnostic measures prior knowledge (T-015) and the Day-30/45 tests
@@ -19,6 +20,8 @@ export interface RecordReviewResult {
   scheduled: boolean;
   due: Date | null;
   reps: number;
+  /** One line for the learner, from the grader. Null when nothing was answered. */
+  feedback: string | null;
 }
 
 export class ReviewError extends Error {
@@ -69,13 +72,37 @@ export async function recordReview(
         scheduled: existing.cardId !== null,
         due: card?.due ?? null,
         reps: card?.reps ?? 0,
+        // Not stored — a replayed answer returns the recorded outcome, not fresh feedback.
+        feedback: null,
       };
     }
   }
 
-  const [item] = await db.select({ conceptId: items.conceptId }).from(items).where(eq(items.id, answer.itemId));
+  const [item] = await db
+    .select({ conceptId: items.conceptId, payload: items.payload })
+    .from(items)
+    .where(eq(items.id, answer.itemId));
   if (!item) throw new ReviewError('item_not_found', `item ${answer.itemId} not found`);
   const { conceptId } = item;
+
+  // Grading lives here rather than in the route so every surface gets it —
+  // web, extension, diagnostic and test all go through recordReview, and a
+  // per-route check would eventually be forgotten on one of them.
+  //
+  // `answer.correct` from the client is never used. The client can't grade
+  // anyway (T-010 strips the answer key), and trusting it would let a learner
+  // inflate the retention score the pilot exists to measure. No response means
+  // nothing was answered — a snooze, a dismissal, or an auto-close — so
+  // `correct` stays null rather than falling back to whatever was sent.
+  //
+  // A grader failure on an `explain` item propagates: a 500 makes the
+  // extension's offline queue retry (T-031), which preserves the answer
+  // without handing out a free pass.
+  const graded =
+    answer.response === null || answer.response === undefined
+      ? null
+      : await grade(ItemPayloadSchema.parse(item.payload), answer.response);
+  const correct = graded?.correct ?? null;
 
   const [existingCard] = await db
     .select()
@@ -111,18 +138,17 @@ export async function recordReview(
     ? Math.floor((now.getTime() - previous.createdAt.getTime()) / MS_PER_DAY)
     : null;
 
-  // No rating field on AnswerSchema yet, so the rating comes from `correct`.
-  // A null `correct` (snoozed, dismissed, or an unanswered close) records the
+  // The FSRS rating comes from the *graded* result, never the client's claim.
+  // A null `correct` (nothing answered, snoozed, or dismissed) records the
   // event without touching the schedule.
   const shouldSchedule =
-    answer.correct !== null &&
-    answer.correct !== undefined &&
+    correct !== null &&
     !answer.snoozed &&
     !answer.dismissed &&
     !NON_SCHEDULING_SURFACES.has(answer.surface);
 
   const scheduledCard = shouldSchedule
-    ? scheduleReview(fsrsCard, answer.correct ? Rating.Good : Rating.Again, now)
+    ? scheduleReview(fsrsCard, correct ? Rating.Good : Rating.Again, now)
     : null;
 
   return db.transaction(async (tx) => {
@@ -146,7 +172,7 @@ export async function recordReview(
         conceptId,
         itemId: answer.itemId,
         cardId: scheduledCard ? cardId : null,
-        correct: answer.correct ?? null,
+        correct,
         confidence: answer.confidence,
         latencyMs: answer.latencyMs ?? null,
         snoozed: answer.snoozed ?? false,
@@ -168,12 +194,13 @@ export async function recordReview(
     return {
       eventId: event.id,
       conceptId,
-      correct: answer.correct ?? null,
+      correct,
       predictedRecall: recall,
       gapDaysSinceLast,
       scheduled: scheduledCard !== null,
       due: card?.due ?? null,
       reps: card?.reps ?? 0,
+      feedback: graded?.feedback ?? null,
     };
   });
 }
