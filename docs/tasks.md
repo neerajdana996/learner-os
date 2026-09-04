@@ -53,7 +53,7 @@
   - Inserting two `concepts` with same `(topic_id, slug)` throws (unique index).
 
 ### T-003 · Shared schemas — full set
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-001
 - **files:** `backend/src/shared/schemas.ts`, `backend/src/shared/types.ts`
@@ -65,6 +65,34 @@
   - `Answer` requires `confidence` to be one of guess/think/sure or null.
   - `ItemPayload` for `recognition` requires exactly 4 options and `answerIndex` in 0..3.
   - `ItemPayload` for `recall` requires non-empty `answer`.
+- **notes:** (2026-09-04) Built and verified. `backend/src/shared/schemas.ts` now has the full set:
+  `UserCreateSchema`, `TopicCreateSchema` (extended, see below), `ItemPayloadSchema` (discriminated union
+  recall/recognition/application/explain + a client-safe `PublicItemSchema` that strips the answer key),
+  `DueItemsResponseSchema`, `AnswerSchema`, `DiagnosticStartSchema`/`DiagnosticAnswerSchema`/
+  `DiagnosticNextResponseSchema`, `SessionResponseSchema`, `TestStartSchema`/`TestSubmitSchema`,
+  `PulseCreateSchema`, plus shared enums `ConfidenceSchema`/`SurfaceSchema`/`TeachModeSchema`/`ItemTypeSchema`.
+  All inferred types added to `types.ts`.
+  - **`TopicCreateSchema` design note:** made `startsAt`/`endsAt`/`dailyBudgetMin` optional (with
+    `dailyBudgetMin` defaulting to 15) rather than required, even though plan.md's onboarding flow implies
+    all are collected up front. Reason: sprint.md's Sprint 1 demo is `curl -X POST /topics -d
+    '{"title":"React Hooks"}'` — if these fields were required, that exact documented demo would 400.
+    The 7-day-minimum refinement (`endsAt - startsAt >= 7`) only fires when both dates are actually
+    supplied, so it doesn't block the bare-title case. Whoever builds T-018 (onboarding) should always
+    send both dates.
+  - **Breaking test update:** T-001's `TopicCreateSchema.parse({title}) toEqual({title})` assertion in
+    `backend/src/shared/index.test.ts` (and the duplicate smoke tests in `frontend/src/shared/index.test.ts`,
+    `extension/src/shared/index.test.ts`, `extension/src/shared.test.ts` — these three are NOT synced,
+    `sync-shared.sh` excludes `*.test.ts`, so each project keeps its own) broke once `dailyBudgetMin`
+    got a default value. Updated all four to expect `{title, dailyBudgetMin: 15}` instead of deleting them —
+    this is a schema intentionally growing per this task's own acceptance criteria, not cheating past a
+    real regression.
+  - **Unresolved judgment calls for later tasks to revisit if wrong:** `DiagnosticStartSchema`/`Next`/`Answer`
+    and `SessionResponseSchema`/`TestStart`/`TestSubmit`/`PulseCreate` have no dedicated test cases in this
+    task and no prior API contract to match, so their shapes are inferred from prose in plan.md/sprint.md
+    and later tasks' descriptions (T-015, T-016, T-019, T-038, T-032). Flagging so T-015/T-016/T-019/T-038/
+    T-032 authors know these are first-draft and may need adjusting once the actual routes are built — not
+    yet exercised by any route or integration test.
+  - curl: n/a — this task adds no routes, just shared validation.
 
 ### T-004 · Scheduler module — wrap ts-fsrs
 - **status:** todo
