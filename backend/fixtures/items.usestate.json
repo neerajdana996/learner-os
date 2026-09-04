@@ -1,0 +1,37 @@
+{
+  "topic": "useState",
+  "items": [
+    {
+      "type": "recall",
+      "prompt": "What does useState return when you call it?",
+      "answer": "an array with the current value and a setter function",
+      "accept": ["[value, setValue]", "an array containing current value and setter"],
+      "isTransfer": false
+    },
+    {
+      "type": "recognition",
+      "prompt": "Which statement best describes why state updates in React are asynchronous?",
+      "options": [
+        "React waits for the browser to repaint before applying state.",
+        "React batches updates for efficiency and schedules the UI refresh.",
+        "State updates never update the UI immediately.",
+        "State changes are always synchronous in class components only."
+      ],
+      "answerIndex": 1,
+      "isTransfer": true
+    },
+    {
+      "type": "application",
+      "prompt": "Write a component that increments a counter when a button is clicked.",
+      "answer": "const [count, setCount] = useState(0); return <button onClick={() => setCount(count + 1)}>{count}</button>;",
+      "accept": ["setCount(count + 1)", "useState(0)"],
+      "isTransfer": false
+    },
+    {
+      "type": "explain",
+      "prompt": "Explain why a state setter can be called with a function instead of a value.",
+      "rubric": "Answer should mention that React may batch updates and the updater function receives the latest state, helping avoid stale closures.",
+      "isTransfer": true
+    }
+  ]
+}
