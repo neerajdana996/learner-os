@@ -1,0 +1,10 @@
+# Umbrella repo (learner-os): docs, compose, scripts.
+# The three projects are their own git repos — clone them in with scripts/create-github-repos.sh.
+backend/
+frontend/
+extension/
+
+.env
+node_modules/
+*.log
+.DS_Store

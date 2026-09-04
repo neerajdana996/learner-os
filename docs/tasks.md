@@ -1,0 +1,573 @@
+# tasks.md — learnos
+
+> Format for every task is fixed. Pick the first `todo` whose dependencies are `done`. Update `status` and `notes` when you finish. Add new tasks in the same format; never do unlisted work silently.
+>
+> Statuses: `todo` | `in_progress` | `blocked` | `done`
+
+---
+
+## Sprint 1 — Foundation & generation
+
+### T-001 · Three-project bootstrap, Docker, shared-sync
+- **status:** done
+- **sprint:** 1
+- **depends_on:** —
+- **files:** `docker-compose.yml`, `scripts/sync-shared.sh`, `backend/package.json`, `backend/tsconfig.json`, `backend/Dockerfile`, `backend/vitest.config.ts`, `frontend/package.json`, `frontend/Dockerfile`, `frontend/nginx.conf`, `extension/Dockerfile`, `.env.example` in each project
+- **description:** Make each project runnable on its own and all of them together. Backend: scripts `dev` (tsx watch), `build`, `lint` (tsc --noEmit), `test` (vitest), `db:push`, `db:test:push`, `seed`, `qa`. Frontend: Vite scripts + `test`. Extension: WXT scripts + `test`. `scripts/sync-shared.sh`: `rsync --delete backend/src/shared/ frontend/src/shared/` and same for extension, then `diff -r` to verify. Root `docker-compose.yml`: `postgres` (with init script creating `learnos` and `learnos_test`), `redis`, `backend` (build from `backend/Dockerfile`, runs migrations then starts, depends_on healthy postgres/redis), `frontend` (multi-stage: node build → nginx serving `dist` with `/api` proxied to backend). Extension is not a service; its Dockerfile just builds the zip (`docker compose run extension`).
+- **acceptance:**
+  - Fresh clone → `docker compose up --build` → `curl localhost:3001/health` → `{ok:true}`; `localhost:3000` serves the app.
+  - `cd backend && pnpm install && pnpm lint && pnpm test` succeed (0 tests OK).
+  - `scripts/sync-shared.sh` runs and reports "in sync".
+  - `frontend/src/shared` and `extension/src/shared` contain no Node-only imports (`node:`, `drizzle`, `postgres`).
+- **tests:**
+  - `backend/src/shared/index.test.ts`: imports `TopicCreateSchema` and parses a valid object.
+  - `scripts/sync-shared.test.sh` (bash): modify a synced copy → script exits non-zero and reports drift; run sync → exit 0.
+- **notes:** (2026-09-04) Built by Claude in Cowork; **verification pending on Neeraj's machine** — the session sandbox had no npm registry / docker access, so run `scripts/verify.sh` and set `done` once green.
+  - Plan: (1) backend = Express 5 + `ws` (founder decision, replaces Hono — plan.md §5 updated), `src/app.ts` builds the app, `src/index.ts` binds HTTP + `/ws`; `validate()` middleware in `src/lib/validate.ts` replaces zValidator. (2) frontend = Vite + React 19 + Redux Toolkit; **all** API calls via RTK Query in `src/store/api.ts` (replaces TanStack Query — plan.md updated). (3) extension = WXT 0.20 + `@wxt-dev/module-react`, `vitest` with `WxtVitest()`. (4) `scripts/sync-shared.sh` gained `--check` and excludes `*.test.ts`; `scripts/sync-shared.test.sh` covers drift + Node-import guard (passes). (5) compose: backend healthcheck on `/health`, frontend waits for it, nginx proxies `/api/` and `/ws`.
+  - Shared: only `TopicCreateSchema` (title only), the ws `ping/pong/hello/error` protocol, and `HealthResponse`. Full set is T-003.
+  - Deliberately skipped: `backend/src/db/schema.ts` is an empty module so `drizzle-kit push` is a no-op — **no task created the tables**, so T-049 (schema task) was added and T-002 now depends on it. `seed`/`qa` scripts are stubs that exit 1 with the owning task ID.
+  - Extra tests beyond the listed ones: `app.test.ts` (/health, 404), `lib/validate.test.ts`, `ws.test.ts` (ping→pong), frontend `LoginPage.test.tsx` (RTK Query online/offline), extension `shared.test.ts`.
+  - Repos: `scripts/create-github-repos.sh` creates `learner-os` (umbrella, project dirs git-ignored) + `learner-os-{backend,frontend,extension}` via `gh` and pushes. Root `.gitignore` ignores the three project folders.
+  - curl: `curl localhost:3001/health` → `{"ok":true}`; via nginx `curl localhost:3000/api/health`.
+  - (2026-09-04) **Verified on Neeraj's machine, set done.** `scripts/verify.sh` (with docker) passes end-to-end: shared-sync check, all three projects' `pnpm install && pnpm lint && pnpm test` green, no Node-only imports in synced copies, `docker compose up --build` brings up postgres/redis/backend/frontend all healthy, `/health` → `{"ok":true}`, frontend serves the app and proxies `/api/health`, `learnos_test` DB exists and is queryable.
+  - Bugs found and fixed during verification (none touch business logic, all build/tooling config):
+    1. `backend/tsconfig.json` had `rootDir: "src"` while also including root-level `drizzle.config.ts`/`vitest.config.ts`/`vitest.setup.ts` — broke `tsc --noEmit` (the `lint` script) with TS6059. Moved `rootDir` into `tsconfig.build.json` (which only compiles `src/**/*.ts`), removed it from the base config used for lint.
+    2. `frontend/src/store/index.ts`: `makeStore(preloadedState?: Partial<RootState>)` where `RootState = ReturnType<AppStore['getState']>` and `AppStore = ReturnType<typeof makeStore>` — TS2456 circular type reference. Fixed by defining a standalone `rootReducer` via `combineReducers` and deriving `RootState` from that instead of from `makeStore`'s own return type.
+    3. `frontend` test suite: jsdom (test environment) ships its own `AbortController`/`AbortSignal` implementation that fails Node's native (undici) fetch's `instanceof` checks; RTK Query's `fetchBaseQuery` builds a `Request` with an internal abort signal even when `fetch` is mocked, so `LoginPage.test.tsx` failed with "Expected signal to be an instance of AbortSignal". Swapped the vitest `test.environment` from `jsdom` to `happy-dom` (removed `jsdom` devDependency, added `happy-dom`) — happy-dom doesn't shadow these globals. One-line reason for the dependency swap: fixes a jsdom+undici incompatibility that breaks any RTK-Query fetch test, not just this one.
+    4. `extension`: fresh installs resolved two conflicting `vite` majors at once (7.3.6 via `vitest`, 8.2.2 via `@wxt-dev/module-react`'s `@vitejs/plugin-react@6` and via `wxt`'s own direct dependency range) — `vitest.config.ts`'s `WxtVitest()` plugin failed to typecheck against `defineConfig`'s expected `PluginOption` type (TS2769) because the two `Plugin` types came from different `vite` majors. Fixed via `pnpm-workspace.yaml` `overrides`: pinned `@vitejs/plugin-react: ^4.4.1` (still within `@wxt-dev/module-react`'s accepted range) and `vite: ^7.3.6` (within `wxt`'s own accepted range), collapsing both to a single vite version. One-line reason: pins existing deps to compatible versions, adds no new dependency.
+  - Also had to run `pnpm approve-builds --all` in each of backend/frontend/extension (pnpm 11's new default blocks postinstall scripts for esbuild/msgpackr-extract/spawn-sync); this persisted itself into each project's `pnpm-workspace.yaml` under `allowBuilds` — not a code change, just local tooling consent, worth knowing about for future fresh clones.
+  - Docker Desktop was not running at verification start; had to `open -a Docker` and wait ~2 min for its VM networking to come up before `docker pull`/`docker compose up --build` would succeed (first attempt errored with `DeadlineExceeded` on image metadata fetch). Not a repo issue, just a note for next time.
+
+### T-002 · Test database and DB test helpers
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-001, T-049
+- **files:** `docker/postgres-init.sql`, `backend/src/db/client.ts`, `backend/src/test/db.ts`, `backend/vitest.setup.ts`
+- **description:** `learnos_test` is created by the compose init script (T-001). `client.ts` reads `DATABASE_URL`; tests set `DATABASE_URL` to the test DB via `vitest.setup.ts`. Write `truncateAll()` helper that truncates every table in dependency order and `seedUser()` that inserts and returns a user.
+- **acceptance:**
+  - `pnpm db:test:push` creates all tables in `learnos_test`.
+  - `truncateAll()` leaves every table at 0 rows.
+- **tests:**
+  - `db.test.ts`: seedUser → count users = 1 → truncateAll → count = 0.
+  - Inserting a `topic` with a non-existent `user_id` throws (FK enforced).
+  - Inserting two `concepts` with same `(topic_id, slug)` throws (unique index).
+
+### T-003 · Shared schemas — full set
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-001
+- **files:** `backend/src/shared/schemas.ts`, `backend/src/shared/types.ts`
+- **description:** Add Zod schemas for every request/response the pilot needs: `UserCreate`, `TopicCreate` (enforce `endsAt − startsAt ≥ 7 days`), `Answer`, `DiagnosticStart/Next/Answer`, `SessionResponse`, `DueItemsResponse`, `TestStart/Submit`, `PulseCreate`. Export inferred types. Add `ItemPayload` discriminated union by item type.
+- **acceptance:** Every API route in later tasks imports its schema from here; no schema defined in `apps/api`.
+- **tests:**
+  - `TopicCreate` rejects a 6-day span, accepts 7.
+  - `TopicCreate` rejects `dailyBudgetMin` 4 and 31.
+  - `Answer` requires `confidence` to be one of guess/think/sure or null.
+  - `ItemPayload` for `recognition` requires exactly 4 options and `answerIndex` in 0..3.
+  - `ItemPayload` for `recall` requires non-empty `answer`.
+
+### T-004 · Scheduler module — wrap ts-fsrs
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-001
+- **files:** `backend/src/scheduler/index.ts`, `backend/src/scheduler/index.test.ts`
+- **description:** Verify the wrapper against the installed `ts-fsrs` version. Export `newCard()`, `scheduleReview(card, rating, now)`, `predictedRecall(card, now)`, `toDbCard()`/`fromDbCard()` converters between ts-fsrs `Card` and the `cards` table row shape. Use default FSRS parameters with fuzz **disabled** in tests (pass a deterministic instance).
+- **acceptance:** Converters are lossless; `predictedRecall` ∈ [0,1].
+- **tests:**
+  - `newCard()` has `reps = 0`, `state = 0`, `predictedRecall = 0`.
+  - Rating `Good` on a new card → `due` is later than `now`, `reps = 1`.
+  - Rating `Again` on a reviewed card → `lapses` increments.
+  - Two consecutive `Good` ratings → second `scheduled_days` > first.
+  - `predictedRecall` decreases monotonically as `now` advances (test at +0, +1, +7, +30 days).
+  - `fromDbCard(toDbCard(card))` deep-equals `card`.
+
+### T-005 · Generator — concept map prompt + fixtures
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-001
+- **files:** `backend/src/generator/conceptMap.ts`, `backend/fixtures/conceptMap.react-hooks.json`, `backend/src/generator/conceptMap.test.ts`
+- **description:** Harden `generateConceptMap`. Strip markdown fences if the model adds them. Validate that every `prereqs` slug exists in the response and that the prereq graph is acyclic; on failure throw a typed `GenerationError` with `reason`. Retry the API call once on JSON/validation failure. Add a realistic fixture (20+ concepts) captured from a real run.
+- **acceptance:** A fixture round-trips through `ConceptMapSchema.parse` without error.
+- **tests:** (mock `anthropic.messages.create`)
+  - Fixture parses; returns 20+ concepts.
+  - Response wrapped in ```json fences parses.
+  - Response with a prereq slug that doesn't exist → `GenerationError('unknown_prereq')`.
+  - Response with a cycle A→B→A → `GenerationError('cycle')`.
+  - First call returns garbage, second returns fixture → resolves (retry works, `create` called twice).
+  - Both calls fail → rejects with `GenerationError`.
+
+### T-006 · Generator — items prompt + fixtures
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-003
+- **files:** `backend/src/generator/items.ts`, `backend/fixtures/items.usestate.json`, `backend/src/generator/items.test.ts`
+- **description:** Harden `generateItems`. Validate payload shape per type using `ItemPayload` from shared. Enforce: ≥1 of each type, 1–2 `isTransfer`, recognition has 4 options. Retry once. Fixture from a real run.
+- **acceptance:** Fixture parses; violations produce `GenerationError` with a clear reason.
+- **tests:** (mocked)
+  - Fixture parses; contains all four types.
+  - Recognition item with 3 options → rejected.
+  - Zero transfer items → rejected.
+  - Three transfer items → rejected.
+  - `explanation` > 200 chars → rejected.
+
+### T-007 · Generation worker — persist map, prereqs, items
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-002, T-005, T-006
+- **files:** `backend/src/workers/generator.worker.ts`, `backend/src/workers/generator.worker.test.ts`, `backend/src/lib/heldOut.ts`
+- **description:** Move held-out selection to `pickHeldOut(concepts, ratio=0.1, minOrder=3, rng)` (pure, seedable). Wrap the whole persist in a transaction. Set `topics.status = 'active'` on success, `'failed'` on error with the reason in a new `topics.error` text column (schema change — do it here). Skip item generation for held-out concepts.
+- **acceptance:** After a successful job: concepts, prereqs, items rows exist; exactly `max(1, floor(n*0.1))` held out; none of the first 3 by order are held out; every held-out concept has 0 items; topic active.
+- **tests:** (mock generator functions, real test DB)
+  - Happy path assertions above.
+  - Generator throws → topic status `failed`, `error` populated, 0 concepts persisted (transaction rolled back).
+  - `pickHeldOut` with seeded rng is deterministic and respects `minOrder`.
+  - `teach_mode` is set on every concept and both values appear in a 20-concept map (seeded rng).
+
+### T-008 · Topics API
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-002, T-003, T-007
+- **files:** `backend/src/routes/topics.ts`, `backend/src/routes/topics.test.ts`
+- **description:** `POST /topics` validates, inserts, enqueues job, returns 202 `{topicId, status}`. `GET /topics/:id` returns topic + counts (concepts, items) + status. `GET /topics` lists the user's topics.
+- **acceptance:** Enqueue is verified via BullMQ queue `getJobs`. Non-owner gets 404 on `GET /topics/:id`.
+- **tests:**
+  - POST with 6-day span → 400.
+  - POST valid → 202, row exists with status `generating`, one job in queue.
+  - GET by id returns status and zero counts while generating.
+  - GET by id as another user → 404.
+
+### T-009 · Reviews API — record an answer
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-002, T-003, T-004
+- **files:** `backend/src/routes/reviews.ts`, `backend/src/routes/reviews.test.ts`, `backend/src/lib/recordReview.ts`
+- **description:** Extract `recordReview(userId, answer, now)` as a testable function. It: loads/creates card, computes `predictedRecall` **before** scheduling, maps `correct` → rating if `rating` absent (`true→Good`, `false→Again`, `null→no scheduling, event only`), schedules, upserts card, inserts event with `predicted_recall` and `gap_days_since_last`. Accepts an `idempotencyKey` (new column on `review_events`, unique per user) so the extension can safely retry.
+- **acceptance:** Every event row has `predicted_recall` non-null and `gap_days_since_last` null only on first review of a concept.
+- **tests:**
+  - First correct answer → card `reps=1`, event `gap_days_since_last=null`, `predicted_recall=0`.
+  - Second answer 3 days later (inject `now`) → `gap_days_since_last≈3`, `predicted_recall` ∈ (0,1).
+  - `correct=null, dismissed=true` → event row written, card unchanged.
+  - Same `idempotencyKey` twice → one event row, second call returns 200 with same body.
+  - Snoozed answer → `snoozed=true`, card unchanged.
+
+### T-010 · Due items API
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-009
+- **files:** `backend/src/routes/due.ts`, `backend/src/routes/due.test.ts`
+- **description:** `GET /due?limit=n` returns items for cards where `due ≤ now`, `taughtAt IS NOT NULL`, concept not held out, topic status `active`. One item per concept, choose an item the user hasn't seen in the last 3 reviews of that concept (fall back to any). Order by `due` ascending. Response uses `DueItemsResponse` (never leaks the answer key: strip `answer`, `accept`, `answerIndex`, `rubric` — return an `itemId` only; grading happens server-side in T-011).
+- **acceptance:** Response payload contains no answer fields (assert by key inspection).
+- **tests:**
+  - Untaught card → excluded.
+  - Held-out concept → excluded.
+  - Topic in `holdout` status → excluded.
+  - Two due cards → two items, ordered by due.
+  - Item shown in last 3 reviews is not chosen when alternatives exist.
+  - Payload has no `answer`/`accept`/`answerIndex`/`rubric` keys.
+
+### T-011 · Grading — server-side answer checking
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-003, T-006
+- **files:** `backend/src/lib/grade.ts`, `backend/src/lib/grade.test.ts`, `backend/src/routes/reviews.ts`
+- **description:** `grade(item, response) → {correct, feedback}`. Recognition: index match. Recall/application: normalised string match against `answer` + `accept` (trim, lowercase, collapse whitespace, strip punctuation); numeric tolerance ±1% if both parse as numbers. Explain: call a small LLM grading prompt with the rubric (via `backend/src/generator/grade.ts`, `gradeExplanation(rubric, response) → {correct, feedback}`), mocked in tests. `POST /reviews` now accepts `response` and computes `correct` itself when the item is not extension-pre-graded.
+- **acceptance:** Client-supplied `correct` is ignored for recall/recognition/application items.
+- **tests:**
+  - Recognition: correct index → true; other → false.
+  - Recall: `" The Answer. "` matches `"the answer"`.
+  - Recall: accept list match → true.
+  - Numeric: `"3.14"` vs `"3.1416"` → true; `"3"` vs `"4"` → false.
+  - Explain: mocked grader returns `{correct:true}` → event `correct=true`.
+  - POST with `correct:true` but wrong recall response → stored `correct=false`.
+
+### T-012 · Sprint 1 integration test + curl doc
+- **status:** todo
+- **sprint:** 1
+- **depends_on:** T-008, T-009, T-010, T-011
+- **files:** `backend/src/integration/sprint1.test.ts`, `docs/api.md`, `docker-compose.yml`
+- **description:** End-to-end with mocked generator: create topic → run worker inline → mark two concepts taught (direct DB) → GET /due → POST /reviews → GET /due (now empty). Write `docs/api.md` with curl examples for every route so far.
+- **acceptance:** Test passes in < 10 s. `docs/api.md` exists. `docker compose up --build` passes the Sprint 1 demo end-to-end with a real API key in `backend/.env`.
+- **tests:** the integration flow above, plus: after review, the card's `due` is in the future.
+
+---
+
+## Sprint 2 — Diagnostic, session, map
+
+### T-013 · Magic-link auth
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-002
+- **files:** `backend/src/routes/auth.ts`, `backend/src/middleware/auth.ts`, `backend/src/lib/mail.ts`, tests
+- **description:** `POST /auth/magic {email}` creates user if absent, stores a 15-min single-use token (new table `auth_tokens`), sends email (console transport in dev). `GET /auth/verify?token=` sets an httpOnly cookie session (new table `sessions`, 30 days). `requireUser` middleware reads cookie; in `NODE_ENV=production` it rejects `x-user-id`. Extension auth: `POST /auth/extension-token` returns a bearer token for the extension (same session table, `kind='extension'`).
+- **acceptance:** All existing routes now use `requireUser`; tests updated to log in via helper.
+- **tests:**
+  - Magic → token row; verify → cookie set, session row; token reused → 401.
+  - Expired token (inject clock) → 401.
+  - `x-user-id` in production → 401.
+  - Bearer extension token authenticates `/due`.
+
+### T-014 · Users API + onboarding profile
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-013
+- **files:** `backend/src/routes/users.ts`, tests
+- **description:** `PATCH /me {name, timezone, activeWindows}`. Validate windows (`HH:MM`, start<end, max 3, no overlap). `GET /me` returns user + profile.
+- **tests:**
+  - Overlapping windows → 400. Four windows → 400. Valid two windows → 200 persisted.
+  - Invalid IANA timezone → 400.
+
+### T-015 · Diagnostic engine (adaptive, server-side)
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-007, T-009
+- **files:** `backend/src/lib/diagnostic.ts`, `backend/src/routes/diagnostic.ts`, tests
+- **description:** Simple adaptive walk over the prereq DAG, no IRT library. State per (user, topic): `estimates: Map<conceptId, number>` in 0..1 starting at 0.5, `asked: Set`. `next()`: pick the unasked, non-held-out concept whose estimate is closest to 0.5 (max uncertainty), prefer concepts whose prereqs are all estimated > 0.7 or all asked. On correct: estimate → 0.9 and propagate +0.15 to prerequisites (capped 1). On wrong: estimate → 0.1 and propagate −0.15 to dependents. Stop at 15 asked or when every concept's estimate is outside (0.35, 0.65). Store state in a new `diagnostic_state` jsonb column on `topics`. Each answer is also recorded via `recordReview` with `surface='diagnostic'` and **does not** schedule a card (pass `correct` but flag `noSchedule`). On finish: create cards for all non-held-out concepts; set `mastery = estimate`, `taughtAt = now` for concepts with estimate ≥ 0.8 (they're "known" — skip teaching), and write `tests` row `kind='day0'` with per-concept scores. Also write day-0 confidence gap into `users.profile.calibrationGap`.
+- **acceptance:** Diagnostic never asks a held-out concept. Ends in ≤ 15 questions. Known concepts (≥0.8) are skipped by the session planner.
+- **tests:**
+  - Seeded 12-concept DAG, all correct → stops early, all estimates ≥ 0.8, cards created with `taughtAt` set.
+  - All wrong → estimates ≤ 0.2, no `taughtAt`.
+  - Mixed: wrong on a leaf lowers its dependents' estimates.
+  - Never returns a held-out concept.
+  - Hard cap: 40-concept DAG with alternating answers → exactly 15 asked.
+  - `tests` row `kind=day0` exists with `scores.overall` in [0,1] and `scores.calibrationGap`.
+
+### T-016 · Session planner
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-015
+- **files:** `backend/src/lib/planner.ts`, `backend/src/routes/session.ts`, tests
+- **description:** `GET /session` returns today's plan: `newConcepts` (untaught, non-held-out, prereqs taught or known, in `order`) limited to `ceil(remainingUntaught / remainingDays)` and capped at 3, plus `dueReviews` (reuse T-010 logic, limit by budget: assume 45 s per review, 3 min per new concept). Include `teach_mode`, `tryFirstPrompt`, `explanationShort/Long`, `corrections`, and one item per new concept for the immediate retrieval check. `POST /session/complete {conceptIds}` sets `taughtAt` and creates cards (via `newCard`) for those concepts.
+- **tests:**
+  - 20 untaught, 10 days left → 2 new concepts per session.
+  - 20 untaught, 2 days left → 3 (cap).
+  - Concept whose prereq is untaught and unknown → not offered.
+  - Budget 5 min → at most 1 new concept and reviews fill the rest.
+  - `complete` sets `taughtAt` and card `due` ≈ now (so the extension can ask it later today).
+  - Held-out concept never in `newConcepts`.
+
+### T-017 · Knowledge score + map API
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-016
+- **files:** `backend/src/routes/map.ts`, `backend/src/lib/score.ts`, tests
+- **description:** `GET /topics/:id/map` returns concepts with `state: known|taught|untaught|heldout`, `mastery` (= `predictedRecall(card, now)` for cards, else 0), `atRisk` (`mastery < 0.6 && taught`), prereq edges, and `score` = mean mastery over taught+known concepts × 100, rounded. Held-out concepts are returned with `state='heldout'` but **no title** (render as "?" so users don't study them).
+- **tests:**
+  - No cards → score 0, all untaught.
+  - Two taught, one at mastery 1.0 and one at 0.5 (inject cards) → score 75.
+  - Held-out concept has `title === null`.
+  - `atRisk` true only for taught with mastery < 0.6.
+
+### T-018 · Web — auth + onboarding screens 1 & 2
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-013, T-014, T-008
+- **files:** `frontend/src/pages/Login.tsx`, `Onboarding.tsx`, `frontend/src/lib/api.ts`, `frontend/src/lib/auth.ts`, component tests
+- **description:** Login page (email → "check your inbox"). Onboarding step 1: name, timezone (auto-detect), 2–3 active windows picker. Step 2: topic, why, days slider (min 7, default 30), budget. Submit → POST /topics → poll `GET /topics/:id` until `active` (show "building your map…", show error on `failed`).
+- **tests:** (vitest + @testing-library/react, mock fetch)
+  - Days slider cannot go below 7.
+  - Submit disabled until title present.
+  - Polling stops on `active` and navigates to `/diagnostic/:topicId`.
+  - `failed` status shows the error and a retry button.
+
+### T-019 · Web — diagnostic screen
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-015, T-018
+- **files:** `frontend/src/pages/Diagnostic.tsx`, `frontend/src/components/QuestionCard.tsx`, `ConfidenceTap.tsx`, tests
+- **description:** Renders one question at a time from `/diagnostic/:topicId/next`. Each answer requires a confidence tap (guess/think/sure) before submit. Shows a live progress "N of ≤15" and a mini-map filling in (grey → green/yellow). On finish, shows calibration message ("You were sure 8 times and right 5") and a "See your map" button.
+- **tests:**
+  - Submit disabled until both answer and confidence chosen.
+  - Latency is measured from question render to submit and sent as `latencyMs`.
+  - On `done: true` response, renders the summary.
+
+### T-020 · Web — map page + knowledge score
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-017
+- **files:** `frontend/src/pages/Map.tsx`, `frontend/src/components/ConceptGraph.tsx`, `ScoreBadge.tsx`, tests
+- **description:** Render the DAG as a layered list (group by `order`, not a force graph — keep it simple). Colours: known green, taught by mastery gradient, untaught grey, heldout "?" grey. "At risk this week" strip on top. Score badge in the header, present on every page after onboarding.
+- **tests:**
+  - Held-out renders "?" and no title.
+  - At-risk strip lists only `atRisk` concepts.
+  - Score badge shows `score` from API.
+
+### T-021 · Web — today's session
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-016, T-011, T-020
+- **files:** `frontend/src/pages/Session.tsx`, `frontend/src/components/TryFirst.tsx`, `Explanation.tsx`, tests
+- **description:** For each new concept: if `teach_mode=try_first` → TryFirst prompt (free text) → submit → show matching `correction` if any, else generic "here's how to think about it" → Explanation (short by default, "read more" for long) → one retrieval item → record via `/reviews` with `surface='web'`. If `example_first` → Explanation first, then the same retrieval item. Then due reviews. On finish → `POST /session/complete` → summary ("3 locked in, 2 at risk tomorrow") → back to map.
+- **tests:**
+  - `try_first` concept renders the prompt before the explanation; `example_first` the reverse.
+  - Try-first response matching a `corrections.wrong` shows that correction's `why`.
+  - Completing calls `/session/complete` with all new concept ids.
+  - Every `/reviews` call includes `surface:'web'` and `latencyMs`.
+
+### T-022 · Web — dashboard/home
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-020, T-021
+- **files:** `frontend/src/pages/Dashboard.tsx`
+- **description:** Single screen: score, "Start today's session" (disabled with "done for today" once complete), days remaining, map preview link, extension install prompt if no extension token issued yet.
+- **tests:** Button disabled state after completion; extension prompt hidden when token exists.
+
+### T-023 · Timezone-correct "today" and daily completion
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-016
+- **files:** `backend/src/lib/today.ts`, `backend/src/routes/session.ts`, tests
+- **description:** All "today" logic uses the user's timezone. Track session completion in a new `session_days (user_id, topic_id, day)` table. `GET /session` returns `completedToday`.
+- **tests:**
+  - User in `Asia/Kolkata` at 23:30 IST and a completion at 00:10 IST next day → two different days.
+  - Completing twice on the same day is idempotent.
+
+### T-024 · Content QA tool
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-007
+- **files:** `backend/src/scripts/qa.ts`, `docs/qa-checklist.md`
+- **description:** CLI `pnpm qa <topicId>` prints every concept + items in a readable Markdown file to `qa/<topic>.md` with checkboxes, so the founder can review accuracy in ~1 hour per topic. `pnpm qa:apply <file>` reads edits back (title/explanation/answer changes) and updates rows. Also `pnpm qa:retire <itemId>`.
+- **tests:** Round-trip: export → edit an explanation in the file → apply → DB updated.
+
+### T-025 · Seed script for local dev
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-015
+- **files:** `backend/src/scripts/seed.ts`
+- **description:** `pnpm seed` creates a dev user, a topic from the concept-map fixture (no LLM call), items from the items fixture, runs a scripted diagnostic, marks 5 concepts taught with staggered `due` dates (some overdue) so `/due` and the extension have data immediately.
+- **tests:** After seed: `/due` returns ≥ 2 items for the dev user.
+
+### T-026 · Sprint 2 integration test
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-019, T-021, T-023
+- **files:** `backend/src/integration/sprint2.test.ts`
+- **description:** API-level flow: login → onboard → topic (mocked gen) → full diagnostic → session → complete → map shows taught concepts and score > 0 → `/due` has items after time travel of +1 day.
+- **tests:** the flow; plus assert `review_events` from diagnostic have `surface='diagnostic'` and no card scheduling side-effect.
+
+---
+
+## Sprint 3 — Chrome extension
+
+### T-027 · Extension scaffold (WXT) + auth
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-013
+- **files:** `extension/wxt.config.ts`, `extension/entrypoints/background.ts`, `extension/entrypoints/popup/`, `extension/lib/api.ts`, `extension/lib/storage.ts`, `extension/src/shared/` (synced)
+- **description:** Init WXT react-ts inside `extension/` (standalone project). Import types only from `extension/src/shared` (synced copy). Options page: paste the extension token (web shows it under "Connect extension" — add that to T-022 as a follow-up note). Store token in `chrome.storage.local`. `api.ts` sends `Authorization: Bearer`. Manifest permissions: `storage`, `alarms`, `notifications`, `idle`. No host permissions beyond the API origin.
+- **tests:** (vitest with `@webext-core/fake-browser` or WXT's testing utils)
+  - Token saved/read from storage.
+  - API call attaches bearer header.
+
+### T-028 · Background scheduler — when to pop
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-027, T-010
+- **files:** `entrypoints/background.ts`, `lib/schedule.ts`, tests
+- **description:** `chrome.alarms` every 5 min. On alarm: if now is inside an active window (user's timezone, fetched from `/me` and cached 1 h), not idle (`chrome.idle` state active), daily count < cap (default 12, from `/me`), backoff not active → fetch `/due?limit=1`; if an item, open the popup card (T-029). Persist `dailyCount`, `lastShownAt`, `consecutiveDismissals`, `backoffUntil` in storage, keyed by user-local day. Minimum 20 min between cards.
+- **tests:** (pure `shouldShow(state, now, me)` function)
+  - Outside windows → false.
+  - Inside window, count 12 → false.
+  - Inside window, 15 min since last → false; 21 min → true.
+  - `backoffUntil` in future → false.
+  - New local day resets `dailyCount`.
+
+### T-029 · Question card UI
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-028, T-011
+- **files:** `entrypoints/popup/App.tsx`, `components/Card.tsx`, tests
+- **description:** One item. Recognition: 4 buttons. Recall/application: input + submit. Explain: textarea (short). After answer: correct/incorrect + `explanation` line + optional confidence tap + "Done" (auto-close after 6 s). Buttons: Snooze (30 min), Dismiss (✕). Every outcome POSTs to `/reviews` with `surface='extension'`, `latencyMs`, `idempotencyKey` (uuid generated on card open), and sets `snoozed`/`dismissed` accordingly. "Report bad question" link → `POST /items/:id/flag` (add route here, increments `flagged_bad`).
+- **tests:**
+  - Selecting an option sends `response` with the option index.
+  - Snooze → POST with `snoozed:true`, `correct:null`.
+  - Dismiss → POST with `dismissed:true`.
+  - Same card retry uses the same `idempotencyKey`.
+  - Flag link → POST `/items/:id/flag`.
+
+### T-030 · Dismissal backoff
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-029
+- **files:** `lib/schedule.ts`, tests
+- **description:** 3 consecutive dismissals → `backoffUntil = end of user's local day`; show a one-line "Okay, no more today — see you tomorrow" toast. Any answered card resets the counter. Snooze does not count as a dismissal.
+- **tests:**
+  - D,D,D → backoff set. D,D,A,D → no backoff. D,S,D,D → counter 3 (snooze ignored) → backoff.
+
+### T-031 · Offline queue + sync
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-029
+- **files:** `lib/queue.ts`, tests
+- **description:** If `/reviews` fails (network), push the payload to a storage-backed queue. On alarm and on `online` event, drain FIFO with 3 retries and exponential backoff; stop draining on 4xx (log and drop that item). Idempotency key guarantees no duplicates server-side.
+- **tests:**
+  - Failing fetch → item queued.
+  - Drain sends in order; on 500 keeps it; on 400 drops it.
+  - Server receives duplicate key → one event (integration test against API from T-009).
+
+### T-032 · Daily mood tap
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-029
+- **files:** `components/Pulse.tsx`, `backend/src/routes/pulse.ts`, tests
+- **description:** After the **first answered** card of the local day, show 😩 😐 🙂 once. `POST /pulse {day, mood}`, upsert.
+- **tests:** Shown once per day; second card same day → not shown; API upsert idempotent.
+
+### T-033 · Extension never leaks answers / never shows wrong content
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-010, T-029
+- **files:** tests only
+- **description:** Contract tests: `/due` response shape has no answer keys; extension renders only from that shape; untaught and held-out never appear (API-level). Also verify the popup never requests any URL other than the API origin (inspect fetch mock calls).
+- **tests:** as described.
+
+### T-034 · Extension options page + connect flow on web
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-027, T-022
+- **files:** `entrypoints/options/`, `frontend/src/pages/ConnectExtension.tsx`
+- **description:** Web page shows a one-time token + install steps. Options page accepts the token, verifies via `GET /me`, shows connected state, and a "pause for today" switch (sets backoff).
+- **tests:** Invalid token → error shown, nothing stored. Pause → `backoffUntil` set.
+
+### T-035 · Extension telemetry hooks
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-029
+- **files:** `backend/src/routes/telemetry.ts`
+- **description:** `POST /telemetry {event, meta}` for: `card_shown`, `card_closed_no_action` (auto-closed unanswered → counts as dismissal), `popup_error`. Stored in a new `client_events` table. Needed for answer-rate metrics.
+- **tests:** Each event type stores; unanswered auto-close increments consecutive dismissals client-side.
+
+### T-036 · Extension build + load doc
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-034
+- **files:** `docs/extension.md`
+- **description:** How to `pnpm build` and load unpacked in Chrome; how pilot users install (zip + steps with screenshots placeholders).
+- **tests:** none (doc).
+
+### T-037 · Sprint 3 integration test
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-031, T-032, T-033
+- **files:** `extension/tests/flow.test.ts`
+- **description:** Simulated day: two windows, 4 cards shown, one answered wrong, one snoozed, two dismissed then one more → backoff; queue drains after simulated offline.
+- **tests:** the flow; final storage state asserted.
+
+---
+
+## Sprint 4 — Tests, metrics, dry run
+
+### T-038 · Test generator (Day-30 / Day-45)
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-015, T-017
+- **files:** `backend/src/lib/testGen.ts`, `backend/src/routes/tests.ts`, tests
+- **description:** `POST /topics/:id/tests {kind}` builds a test: 25–30 items — every held-out concept (generate 1 item each on demand via generator, cached in `items`), a stratified sample of taught concepts (low/mid/high mastery), and 3–5 `is_transfer` items. Never reuse an item the user answered in the last 7 days. Store `tests.itemIds`. `GET /tests/:id/next`, `POST /tests/:id/answer` (confidence required, recorded with `surface='test'`, **no scheduling**), `POST /tests/:id/complete` computes `scores`: `overall, taught, heldOut, transfer, calibrationGap, perConcept`.
+- **tests:**
+  - Built test includes every held-out concept.
+  - No item answered within 7 days is included.
+  - Scores: taught 8/10, held-out 1/5, transfer 2/4 → correct fractions.
+  - `calibrationGap` = mean(confidence numeric) − accuracy, with guess=0.33, think=0.66, sure=1.0.
+  - Test answers create no card changes.
+
+### T-039 · Test scheduling jobs + holdout period
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-038
+- **files:** `backend/src/workers/lifecycle.worker.ts`, tests
+- **description:** Daily job at 06:00 user-local: on `endsAt` day → create Day-30 test, set `topics.status='testing'`; when Day-30 completed → `status='holdout'` for 15 days (extension `/due` returns empty — already enforced by T-010); at `endsAt + 15d` → create Day-45 test; when completed → `status='done'`. Email (console in dev) on each.
+- **tests:** Time-travel through the lifecycle; assert statuses and that `/due` is empty during holdout.
+
+### T-040 · Metrics queries
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-038, T-035
+- **files:** `backend/src/lib/metrics.ts`, tests
+- **description:** Pure SQL/Drizzle functions returning JSON for: `retentionGain(userId, topicId)` (day30 − day0, taught vs heldOut), `durability` (day45/day30), `transfer`, `calibrationGapDelta`, `schedulerCalibration` (bins of `predicted_recall` 0.1 wide → actual accuracy, review surface only, `gap ≥ 1`), `teachModeComparison` (per user: mean correct on reviews with `gap ≥ 1` grouped by concept `teach_mode`), `extensionStats` (shown, answered, snoozed, dismissed, median latency).
+- **tests:** Seed a synthetic dataset with known values and assert each function's numbers exactly.
+
+### T-041 · Metrics dashboard (founder-only)
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-040
+- **files:** `frontend/src/pages/Admin.tsx`, `backend/src/routes/admin.ts`
+- **description:** `ADMIN_EMAILS` env gate. Table per user × topic with every metric from T-040 plus cohort means. Simple bar chart for scheduler calibration (predicted vs actual per bin). Export CSV of `review_events` per topic.
+- **tests:** Non-admin → 403. CSV has the expected header.
+
+### T-042 · User-facing results page
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-040
+- **files:** `frontend/src/pages/Results.tsx`
+- **description:** After Day-30/45: "You remembered X% of what we taught, vs Y% of what we didn't. Here's what stuck and what didn't." Per-concept list, calibration message, and the Day-45 note ("we'll check once more without reminders").
+- **tests:** Renders held-out vs taught comparison from scores.
+
+### T-043 · Email transport (real)
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-013, T-039
+- **files:** `backend/src/lib/mail.ts`
+- **description:** Resend (or SMTP) transport behind the existing interface. Templates: magic link, test-ready, day-14 check-in.
+- **tests:** Transport selected by env; templates render without missing variables.
+
+### T-044 · Dry-run checklist + annoyance log
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-037, T-041
+- **files:** `docs/dryrun.md`
+- **description:** Founder runs 5 days on a real topic. Log every friction point as a `T-FIX-xxx` task with a severity. Fix all `high` before pilot.
+- **tests:** none.
+
+### T-045 · Pilot content generation + QA for two topics
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-024, T-044
+- **files:** `qa/<topic>.md` ×2
+- **description:** Generate both pilot topics, run QA export, review, apply edits. Record time taken and error rate found (this is a metric too).
+- **tests:** none.
+
+### T-046 · Privacy & data handling
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-013
+- **files:** `docs/privacy.md`, `backend/src/routes/users.ts`
+- **description:** Plain-language note shown at onboarding: what we log, why, that it's a pilot. `DELETE /me` wipes the user (cascade). Export `GET /me/export` (JSON of all their data).
+- **tests:** Delete cascades to all tables; export contains review_events count.
+
+### T-047 · Error monitoring + health
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-001
+- **files:** `backend/src/index.ts`, `backend/src/lib/log.ts`
+- **description:** Structured JSON logging with request id; `/health` checks Postgres and Redis; worker failures logged with job data; optional Sentry DSN.
+- **tests:** `/health` returns 503 if Redis is down (mock).
+
+### T-048 · Deployment
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-047
+- **files:** `backend/Dockerfile` (already exists — harden), `fly.toml` or `render.yaml`, `docs/deploy.md`
+- **description:** Backend container runs api+worker; managed Postgres + Redis; web on static hosting; extension zip. Env vars documented. One-command deploy.
+- **tests:** Container builds; `/health` OK in the deployed environment (manual).
+
+---
+
+## Fix / discovered tasks
+_(add here in the same format as `T-FIX-001`, with sprint and severity)_
+
+### T-049 · DB schema — full table set (schema task)
+- **status:** todo
+- **sprint:** 1
+- **severity:** high — blocks T-002 and everything that persists data
+- **depends_on:** T-001
+- **files:** `backend/src/db/schema.ts`, `backend/src/db/schema.test.ts`, `backend/drizzle.config.ts`
+- **description:** Discovered in T-001: no task creates the Postgres tables that plan.md §5 lists. This is the designated **schema task** (loop.md: never edit `schema.ts` outside one). Define with Drizzle: `users`, `topics` (incl. `status` enum with `holdout`), `concepts` (`slug`, `held_out`, `teach_mode` enum `try_first|example_first`, `order`), `concept_prereqs`, `items` (`type` enum recall|recognition|application|explain, `payload` jsonb, `is_transfer`, `flagged_bad`), `cards` (FSRS state per user×concept, `taught_at`), `review_events` (`predicted_recall` NOT NULL, `gap_days_since_last` NOT NULL, `surface` enum web|extension, `idempotency_key` unique), `tests` (`kind` day0|day30|day45, `scores` jsonb), `daily_pulse`. Unique index on `concepts(topic_id, slug)`; FKs everywhere; `created_at` defaults.
+- **acceptance:**
+  - `pnpm db:push` and `pnpm db:test:push` create every table listed in plan.md §5 with no prompts (`--force` in compose).
+  - `review_events.predicted_recall` and `gap_days_since_last` are NOT NULL (plan §6).
+  - `cards` has a unique `(user_id, concept_id)`.
+- **tests:**
+  - `schema.test.ts`: after push, `information_schema.tables` contains all 9 tables.
+  - Inserting a `review_events` row without `predicted_recall` throws.
+  - Inserting two `cards` for the same `(user_id, concept_id)` throws.
+
