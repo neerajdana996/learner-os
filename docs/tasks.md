@@ -307,13 +307,14 @@
   - curl: `curl -XPOST localhost:3001/reviews -H 'content-type: application/json' -H 'x-user-id: <uuid>' -d '{"itemId":"<uuid>","response":"a hook","confidence":"think","surface":"extension"}'` → `200 {"correct":true,"feedback":"Correct.","scheduled":true,…}`
 
 ### T-012 · Sprint 1 integration test + curl doc
-- **status:** todo
+- **status:** done
 - **sprint:** 1
 - **depends_on:** T-008, T-009, T-010, T-011
 - **files:** `backend/src/integration/sprint1.test.ts`, `docs/api.md`, `docker-compose.yml`
 - **description:** End-to-end with mocked generator: create topic → run worker inline → mark two concepts taught (direct DB) → GET /due → POST /reviews → GET /due (now empty). Write `docs/api.md` with curl examples for every route so far.
 - **acceptance:** Test passes in < 10 s. `docs/api.md` exists. `docker compose up --build` passes the Sprint 1 demo end-to-end with a real API key in `backend/.env`.
 - **tests:** the integration flow above, plus: after review, the card's `due` is in the future.
+- **notes:** (2026-09-04) Added `backend/src/integration/sprint1.test.ts` with mocked generation and real Postgres/Redis flow: create topic, process generation, teach two concepts, retrieve due items, review both, assert the queue is empty and reviewed cards are due in the future. Started `createGenerationWorker()` from `src/index.ts` with graceful shutdown, updated compose comments, and added `docs/api.md` for health, topics, due, reviews, and WebSocket routes. `pnpm lint` passes; full backend suite passes with 122 tests.
 
 ---
 
@@ -743,4 +744,14 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - `src/llm/prompts/_smoke/` is a tiny reference prompt used by the unit tests (real file-load + render, network mocked) and doubles as living documentation of the folder format. The first *real* prompt (conceptMap) lands in T-005.
   - Tests (10, all green, network mocked): `render` (substitution + unknown-var throw), `stripFences` (```json / bare ``` / no-fence), `runPrompt` happy path (loads template, renders `{{topic}}`, validates), fence-stripping, retry-once-then-resolve (asserts `complete` called twice), both-attempts-bad → `LlmError('invalid_json')`, valid-JSON-wrong-shape → `LlmError('invalid_shape')`.
   - curl: n/a — internal module, no route.
+
+### T-051 · Route modules — controller, service, repository layers
+- **status:** done
+- **sprint:** 1
+- **depends_on:** T-008, T-009, T-010, T-011
+- **files:** `backend/src/modules/due/`, `backend/src/modules/reviews/`, `backend/src/modules/topics/`, `backend/src/app.ts`
+- **description:** Restructure the existing `due`, `reviews`, and `topics` APIs into feature modules with route, controller, service, and repository layers. Move each route test beside its module while preserving the existing endpoint contracts and shared validation.
+- **acceptance:** Each API flow enters through a module route, delegates HTTP handling to a controller, domain orchestration to a service, and persistence queries to a repository. Existing due, reviews, and topics behavior remains green.
+- **tests:** Existing route suites are colocated under their respective module folders and pass unchanged in behavior.
+- **notes:** (2026-09-04) Implemented the requested Stage 3 restructure. Due has dedicated query repository plus item-selection service; reviews has controller/service/repository delegation around the existing grading and scheduling primitive; topics has repository queries, topic orchestration/queueing service, and controllers. Moved `due.test.ts`, `reviews.test.ts`, and `topics.test.ts` into `src/modules/{due,reviews,topics}/`. Deliberately left `recordReview` as the existing tested domain primitive rather than duplicating its transaction logic during this structural pass. `pnpm lint` and the three moved suites pass; full backend suite run follows.
 

@@ -39,7 +39,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
-    # push schema (no-op until T-049 adds tables), then start the API + ws server
+    # Push schema, then start the API, WebSocket server, and generation worker.
     command: sh -c "pnpm drizzle-kit push --force && node dist/index.js"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health | grep -q '\"ok\":true'"]
