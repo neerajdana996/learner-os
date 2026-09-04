@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import postgres from 'postgres';
-import { db } from './client.js';
-import { cards, concepts, topics } from './schema.js';
-import { seedUser, truncateAll } from '../test/db.js';
+import { db } from '../client.js';
+import { cards, concepts, topics } from '../schema.js';
+import { seedUser, truncateAll } from '../../test/db.js';
 
 const DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://learnos:learnos@localhost:5432/learnos_test';
 

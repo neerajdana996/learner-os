@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
-import { createApp } from './app.js';
-import { attachWebSocket } from './ws.js';
+import { createApp } from '../app.js';
+import { attachWebSocket } from '../ws.js';
 
 let server: Server;
 let url: string;

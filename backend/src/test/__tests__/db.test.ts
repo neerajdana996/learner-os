@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '../db/client.js';
-import { concepts, topics, users } from '../db/schema.js';
-import { seedUser, truncateAll } from './db.js';
+import { db } from '../../db/client.js';
+import { concepts, topics, users } from '../../db/schema.js';
+import { seedUser, truncateAll } from '../db.js';
 
 describe('db helpers', () => {
   beforeEach(async () => {

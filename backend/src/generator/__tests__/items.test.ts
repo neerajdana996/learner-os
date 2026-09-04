@@ -6,23 +6,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Mocked at the SDK boundary, same as conceptMap.test.ts, so the real
 // complete() → stripFences → JSON.parse → Zod → rule-validation path runs.
 const create = vi.fn();
-vi.mock('@anthropic-ai/sdk', () => ({
+vi.mock('openai', () => ({
   default: class {
-    messages = { create };
+    chat = { completions: { create } };
   },
 }));
 
-const { generateItems, validateItems, GenerationError } = await import('./items.js');
+const { generateItems, validateItems, GenerationError } = await import('../items.js');
 
 const fixtureText = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/items.usestate.json'),
+  join(dirname(fileURLToPath(import.meta.url)), '../../../fixtures/items.usestate.json'),
   'utf8',
 );
 const fixture = JSON.parse(fixtureText);
 
-const asText = (text: string, stopReason = 'end_turn') => ({
-  content: [{ type: 'text', text }],
-  stop_reason: stopReason,
+const asText = (text: string, finishReason = 'stop') => ({
+  choices: [{ message: { content: text }, finish_reason: finishReason }],
 });
 
 beforeEach(() => create.mockReset());
@@ -132,7 +131,7 @@ describe('items generation', () => {
   });
 
   it('does not retry a truncated response', async () => {
-    create.mockResolvedValue(asText('{"topic":"useState","items":[', 'max_tokens'));
+    create.mockResolvedValue(asText('{"topic":"useState","items":[', 'length'));
     await expect(generateItems('useState')).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'truncated',

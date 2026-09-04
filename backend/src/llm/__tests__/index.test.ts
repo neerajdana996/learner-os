@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 // Mock the network layer; every test drives `complete`'s return value.
 const complete = vi.fn();
-vi.mock('./client.js', () => ({ complete: (...a: unknown[]) => complete(...a), DEFAULT_MODEL: 'test-model' }));
+vi.mock('../client.js', () => ({ complete: (...a: unknown[]) => complete(...a), DEFAULT_MODEL: 'test-model' }));
 
-const { runPrompt, definePrompt, render, stripFences, LlmError } = await import('./index.js');
+const { runPrompt, definePrompt, render, stripFences, LlmError } = await import('../index.js');
 
 const smoke = definePrompt({ name: '_smoke', schema: z.object({ topic: z.string() }) });
 

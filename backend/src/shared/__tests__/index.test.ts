@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TopicCreateSchema, WsClientMessageSchema, AnswerSchema, ItemPayloadSchema } from './index.js';
+import { TopicCreateSchema, WsClientMessageSchema, AnswerSchema, ItemPayloadSchema } from '../index.js';
 
 describe('shared schemas', () => {
   it('TopicCreateSchema parses a valid object with just a title', () => {

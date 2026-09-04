@@ -3,14 +3,14 @@ import { eq } from 'drizzle-orm';
 
 const generateConceptMap = vi.fn();
 const generateItems = vi.fn();
-vi.mock('../generator/conceptMap.js', () => ({ generateConceptMap: (...a: unknown[]) => generateConceptMap(...a) }));
-vi.mock('../generator/items.js', () => ({ generateItems: (...a: unknown[]) => generateItems(...a) }));
+vi.mock('../../generator/conceptMap.js', () => ({ generateConceptMap: (...a: unknown[]) => generateConceptMap(...a) }));
+vi.mock('../../generator/items.js', () => ({ generateItems: (...a: unknown[]) => generateItems(...a) }));
 
-const { processGenerationJob } = await import('./generator.worker.js');
-const { pickHeldOut, seededRng } = await import('../lib/heldOut.js');
-const { db } = await import('../db/client.js');
-const { concepts, conceptPrereqs, items, topics } = await import('../db/schema.js');
-const { seedUser, truncateAll } = await import('../test/db.js');
+const { processGenerationJob } = await import('../generator.worker.js');
+const { pickHeldOut, seededRng } = await import('../../lib/heldOut.js');
+const { db } = await import('../../db/client.js');
+const { concepts, conceptPrereqs, items, topics } = await import('../../db/schema.js');
+const { seedUser, truncateAll } = await import('../../test/db.js');
 
 /** n concepts in teaching order, each depending on the one before it. */
 function fakeMap(n: number) {

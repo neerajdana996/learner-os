@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const gradeExplanation = vi.fn();
-vi.mock('../generator/grade.js', () => ({
+vi.mock('../../generator/grade.js', () => ({
   gradeExplanation: (...a: unknown[]) => gradeExplanation(...a),
 }));
 
-const { grade, normalise } = await import('./grade.js');
+const { grade, normalise } = await import('../grade.js');
 
 const recall = (answer: string, accept?: string[]) => ({
   type: 'recall' as const,

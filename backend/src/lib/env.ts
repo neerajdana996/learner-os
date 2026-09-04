@@ -5,7 +5,9 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z.string().url().default('postgres://learnos:learnos@localhost:5432/learnos'),
   REDIS_URL: z.string().url().default('redis://localhost:6379'),
-  ANTHROPIC_API_KEY: z.string().default(''),
+  // Generation runs against NVIDIA's OpenAI-compatible endpoint (see src/llm/client.ts).
+  NVIDIA_API_KEY: z.string().default(''),
+  NVIDIA_BASE_URL: z.string().url().default('https://integrate.api.nvidia.com/v1'),
   CORS_ORIGINS: z
     .string()
     .default('http://localhost:3000,http://localhost:5173')

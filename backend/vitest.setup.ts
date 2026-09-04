@@ -4,4 +4,4 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgres://learnos:learnos@localhost:5432/learnos_test';
 process.env.REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
-process.env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'test-key-never-used';
+process.env.NVIDIA_API_KEY = process.env.NVIDIA_API_KEY ?? 'test-key-never-used';

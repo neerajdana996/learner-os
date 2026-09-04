@@ -3,28 +3,27 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock at the SDK boundary (T-005: "mock anthropic.messages.create") so the real
+// Mock at the SDK boundary (openai.chat.completions.create) so the real
 // complete() → stripFences → JSON.parse → Zod → graph-validation pipeline runs,
 // and "called twice" assertions count actual model calls.
 const create = vi.fn();
-vi.mock('@anthropic-ai/sdk', () => ({
+vi.mock('openai', () => ({
   default: class {
-    messages = { create };
+    chat = { completions: { create } };
   },
 }));
 
 const { generateConceptMap, validateConceptMap, parseConceptMapResponse, ConceptMapSchema, GenerationError } =
-  await import('./conceptMap.js');
+  await import('../conceptMap.js');
 
 const fixtureText = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '../../fixtures/conceptMap.react-hooks.json'),
+  join(dirname(fileURLToPath(import.meta.url)), '../../../fixtures/conceptMap.react-hooks.json'),
   'utf8',
 );
 const fixture = JSON.parse(fixtureText);
 
-const asText = (text: string, stopReason = 'end_turn') => ({
-  content: [{ type: 'text', text }],
-  stop_reason: stopReason,
+const asText = (text: string, finishReason = 'stop') => ({
+  choices: [{ message: { content: text }, finish_reason: finishReason }],
 });
 
 /** Structurally valid map, small enough to sit under MIN_CONCEPTS. */
@@ -124,7 +123,7 @@ describe('concept map generation', () => {
   });
 
   it('does not retry a truncated response', async () => {
-    create.mockResolvedValue(asText(`{"topic":"X","concepts":[`, 'max_tokens'));
+    create.mockResolvedValue(asText(`{"topic":"X","concepts":[`, 'length'));
     await expect(generateConceptMap('X')).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'truncated',
