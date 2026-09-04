@@ -31,11 +31,13 @@ grep -q "drift: frontend/src/shared" "$TMP/err" || fail "--check should report w
 
 # sync fixes it
 bash scripts/sync-shared.sh >/dev/null || fail "sync should exit 0"
-diff -r -x '*.test.ts' backend/src/shared frontend/src/shared >/dev/null || fail "frontend copy still differs after sync"
-diff -r -x '*.test.ts' backend/src/shared extension/src/shared >/dev/null || fail "extension copy still differs after sync"
+diff -r -x '*.test.ts' -x '__tests__' backend/src/shared frontend/src/shared >/dev/null || fail "frontend copy still differs after sync"
+diff -r -x '*.test.ts' -x '__tests__' backend/src/shared extension/src/shared >/dev/null || fail "extension copy still differs after sync"
 
-# test files must not be synced
+# tests must not be synced, in either layout
 [ ! -e frontend/src/shared/index.test.ts ] || fail "*.test.ts leaked into synced copy"
+[ ! -e frontend/src/shared/__tests__ ] || fail "__tests__/ leaked into synced copy"
+[ ! -e extension/src/shared/__tests__ ] || fail "__tests__/ leaked into synced copy"
 
 # node-only import guard
 echo "import { x } from 'node:fs';" > backend/src/shared/bad.ts

@@ -11,8 +11,9 @@ SRC=backend/src/shared
 TARGETS=(frontend/src/shared extension/src/shared)
 MODE=${1:-sync}
 
-# Guard: shared must be browser-safe. Test files stay in backend only.
-if grep -rEn --include='*.ts' --exclude='*.test.ts' "from ['\"](node:|drizzle|postgres|bullmq|ioredis|express|ws)" "$SRC"; then
+# Guard: shared must be browser-safe. Tests stay in backend only — both the
+# `*.test.ts` naming and the `__tests__/` directory layout.
+if grep -rEn --include='*.ts' --exclude='*.test.ts' --exclude-dir='__tests__' "from ['\"](node:|drizzle|postgres|bullmq|ioredis|express|ws)" "$SRC"; then
   echo "❌ $SRC contains Node-only imports — not browser-safe" >&2
   exit 1
 fi
@@ -21,19 +22,19 @@ copy() {
   local target=$1
   mkdir -p "$target"
   if command -v rsync >/dev/null 2>&1; then
-    rsync -a --delete --exclude='*.test.ts' "$SRC/" "$target/"
+    rsync -a --delete --exclude='*.test.ts' --exclude='__tests__/' "$SRC/" "$target/"
   else
     rm -rf "$target" && mkdir -p "$target"
-    (cd "$SRC" && find . -type f ! -name '*.test.ts' -exec sh -c 'mkdir -p "$0/$(dirname "$1")" && cp "$1" "$0/$1"' "$OLDPWD/$target" {} \;)
+    (cd "$SRC" && find . -type f ! -name '*.test.ts' ! -path './__tests__/*' -exec sh -c 'mkdir -p "$0/$(dirname "$1")" && cp "$1" "$0/$1"' "$OLDPWD/$target" {} \;)
   fi
 }
 
 verify() {
   local ok=0
   for target in "${TARGETS[@]}"; do
-    if ! diff -r -x '*.test.ts' "$SRC" "$target" >/dev/null 2>&1; then
+    if ! diff -r -x '*.test.ts' -x '__tests__' "$SRC" "$target" >/dev/null 2>&1; then
       echo "❌ drift: $target differs from $SRC" >&2
-      diff -r -x '*.test.ts' "$SRC" "$target" >&2 || true
+      diff -r -x '*.test.ts' -x '__tests__' "$SRC" "$target" >&2 || true
       ok=1
     fi
   done
