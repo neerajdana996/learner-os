@@ -9,7 +9,7 @@ import { complete } from './client.js';
 import { loadTemplate, render } from './prompts.js';
 import { LlmError } from './errors.js';
 
-export { DEFAULT_MODEL, anthropic, complete } from './client.js';
+export { DEFAULT_MODEL, openai, complete } from './client.js';
 export { loadTemplate, render } from './prompts.js';
 export { LlmError, type LlmErrorReason } from './errors.js';
 

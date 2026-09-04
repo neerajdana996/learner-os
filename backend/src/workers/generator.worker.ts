@@ -1,5 +1,5 @@
 // Generation job: topic title in → validated concept map + practice items
-// persisted, topic flipped to `active`. plan.md §5: the Anthropic API is only
+// persisted, topic flipped to `active`. plan.md §5: the model API is only
 // ever called from here, never from a route or a client.
 import { eq } from 'drizzle-orm';
 import { Worker } from 'bullmq';
