@@ -4,7 +4,7 @@ import { TopicCreateSchema, WsClientMessageSchema } from './index.js';
 describe('shared schemas', () => {
   it('TopicCreateSchema parses a valid object', () => {
     const parsed = TopicCreateSchema.parse({ title: 'React Hooks' });
-    expect(parsed).toEqual({ title: 'React Hooks' });
+    expect(parsed).toEqual({ title: 'React Hooks', dailyBudgetMin: 15 });
   });
 
   it('TopicCreateSchema rejects an empty title', () => {
