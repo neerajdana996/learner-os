@@ -185,6 +185,93 @@ export const WsServerMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('error'), message: z.string() }),
 ]);
 
+// ---------- Users / profile (T-014) ----------
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export const ActiveWindowSchema = z.object({
+  start: z.string().regex(HHMM, 'start must be HH:MM'),
+  end: z.string().regex(HHMM, 'end must be HH:MM'),
+});
+
+/**
+ * When the extension is allowed to interrupt (T-028). Wall-clock local times in
+ * the user's own timezone.
+ *
+ * A window never crosses midnight — 22:00–02:00 is entered as two windows — so
+ * the extension can compare `start <= now < end` as plain strings with no
+ * wraparound case. Zero-padded HH:MM sorts and compares lexicographically, which
+ * is why the times are strings rather than minute counts.
+ */
+export const ActiveWindowsSchema = z
+  .array(ActiveWindowSchema)
+  .max(3, 'at most 3 active windows')
+  .superRefine((windows, ctx) => {
+    for (const [i, w] of windows.entries()) {
+      if (w.start >= w.end) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [i, 'end'],
+          message: 'end must be after start; a window may not cross midnight',
+        });
+      }
+    }
+
+    const sorted = [...windows].sort((a, b) => a.start.localeCompare(b.start));
+    for (let i = 1; i < sorted.length; i += 1) {
+      const prev = sorted[i - 1];
+      const cur = sorted[i];
+      // Adjacent is fine (09:00-12:00 then 12:00-15:00); strict overlap is not.
+      if (prev && cur && cur.start < prev.end) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [i, 'start'],
+          message: 'active windows must not overlap',
+        });
+      }
+    }
+  });
+
+/** Uses the runtime's own tz database rather than shipping a list that rots.
+ *  Available in browsers too, so this stays safe for the synced copy. */
+export function isValidTimeZone(tz: string): boolean {
+  if (!tz) return false;
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const TimeZoneSchema = z.string().refine(isValidTimeZone, 'unknown IANA timezone');
+
+export const UserUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120).nullable(),
+    timezone: TimeZoneSchema,
+    activeWindows: ActiveWindowsSchema,
+  })
+  .partial();
+
+export const UserProfileSchema = z.object({
+  /** Extension cards per local day (T-028). */
+  dailyCap: z.number().int().positive().default(12),
+  /** Day-0 confidence minus accuracy, written by the diagnostic (T-015). */
+  calibrationGap: z.number().nullable().default(null),
+});
+
+/** The shape the extension polls hourly (T-028) — everything `shouldShow()`
+ *  needs in one request, so it never has to make a second. */
+export const MeResponseSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string().nullable(),
+  timezone: z.string().nullable(),
+  activeWindows: ActiveWindowsSchema,
+  profile: UserProfileSchema,
+  hasExtensionToken: z.boolean(),
+});
+
 // ---------- Auth (T-013) ----------
 export const MagicLinkSchema = z.object({
   // trim/lowercase run before the format check, not after: a pasted address
