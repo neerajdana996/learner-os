@@ -48,14 +48,19 @@
     font-size: 14px;
   }
 
+  // Block, because these are authored as <span> inside the label: as inline
+  // elements they ran together on one line and ignored the margin entirely.
   &__title {
+    display: block;
     font-family: $font-display;
     font-size: 20px;
     font-weight: $weight-medium;
+    line-height: 1.25;
     margin-bottom: 6px;
   }
 
   &__body {
+    display: block;
     font-size: 13.5px;
     line-height: 1.55;
     color: var(--ink-2);

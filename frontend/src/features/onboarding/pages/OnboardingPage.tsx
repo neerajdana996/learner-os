@@ -158,7 +158,7 @@ export default function OnboardingPage() {
         <Step
           kicker="Second"
           title="What do you keep forgetting?"
-          lede="Two topics in this pilot, five people on each. Every question in both has been read by hand before it reaches you."
+          lede="Three topics in this pilot. Every question in all of them has been read by hand before it reaches you."
           because="Your reason comes back to you on the mornings you don’t feel like starting. Nobody else sees it."
           onNext={() => go(2)}
           onBack={() => go(0)}

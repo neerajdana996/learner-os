@@ -4,7 +4,16 @@ import type { Role } from './topics';
 
 const STORAGE_KEY = 'learnos.onboarding';
 
+/**
+ * Bumped whenever the draft's shape changes. A stored draft from an older
+ * version is discarded rather than merged: the `role` step was added after the
+ * first drafts were saved, so merging left people on step 2 with no role — past
+ * a question they were never asked.
+ */
+const DRAFT_VERSION = 2;
+
 export interface OnboardingDraft {
+  version: number;
   step: number;
   name: string;
   /** Routes the topic recommendation. Never used to decide *how* to teach —
@@ -30,6 +39,7 @@ export interface OnboardingDraft {
  * shared, durable client state lives.
  */
 const emptyDraft: OnboardingDraft = {
+  version: DRAFT_VERSION,
   step: 0,
   name: '',
   role: null,
@@ -51,7 +61,12 @@ function readDraft(): OnboardingDraft {
   const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return { ...emptyDraft, timezone: detected, ...JSON.parse(stored) };
+    if (stored) {
+      const parsed = JSON.parse(stored) as Partial<OnboardingDraft>;
+      if (parsed.version === DRAFT_VERSION) {
+        return { ...emptyDraft, timezone: detected, ...parsed };
+      }
+    }
   } catch {
     // Corrupt or unavailable storage: start clean rather than fail to boot.
   }

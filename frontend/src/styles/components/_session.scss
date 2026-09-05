@@ -1,0 +1,103 @@
+@use "../variables" as *;
+@use "../mixins" as *;
+
+.teach {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 660px;
+
+  &__card {
+    @include card;
+    padding: 26px 28px;
+    animation: rise-in $duration $ease both;
+  }
+
+  /// A misconception the learner just walked into. Ochre, never red: being
+  /// wrong here is the mechanism working.
+  &__card--correction {
+    border-left: 3px solid var(--ochre);
+  }
+
+  /// The retrieval check. Inverted so it reads as a different kind of moment
+  /// from the reading above it.
+  &__card--retrieval {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  &__label {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+
+    &--warn {
+      color: var(--ochre);
+    }
+    &--invert {
+      color: var(--stone);
+    }
+  }
+
+  &__prompt {
+    font-family: $font-display;
+    font-size: 21px;
+    line-height: 1.4;
+  }
+
+  &__prose {
+    font-size: $text-md;
+    line-height: 1.7;
+  }
+
+  &__more {
+    @include control;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    min-height: $tap;
+    color: var(--clay);
+    font-size: 14px;
+  }
+
+  &__attempt {
+    background: var(--sunken);
+    border-radius: $radius;
+    padding: 14px 16px;
+    font-size: $text-base;
+    line-height: 1.6;
+  }
+}
+
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: $s-2;
+  font-size: $text-base;
+  font-weight: $weight-semibold;
+
+  &--right {
+    color: var(--sage);
+  }
+}
+
+.summary-stat {
+  display: flex;
+  gap: $s-6;
+
+  &__value {
+    font-family: $font-mono;
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    font-weight: $weight-medium;
+  }
+
+  &__label {
+    font-size: $text-sm;
+    color: var(--muted);
+  }
+}

@@ -14,6 +14,9 @@ import { RouteFallback } from './RouteFallback';
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
 const OnboardingPage = lazy(() => import('../features/onboarding/pages/OnboardingPage'));
 const DiagnosticPage = lazy(() => import('../features/diagnostic/pages/DiagnosticPage'));
+const SessionPage = lazy(() => import('../features/session/pages/SessionPage'));
+const MapPage = lazy(() => import('../features/map/pages/MapPage'));
+const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
 
 export function AppRoutes() {
   return (
@@ -42,6 +45,38 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <DiagnosticPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/home"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <DashboardPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/session"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <SessionPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/map"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <MapPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/map/:topicId"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <MapPage />
             </Suspense>
           }
         />

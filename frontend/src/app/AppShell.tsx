@@ -9,7 +9,7 @@ export function AppShell() {
   return (
     <>
       <header className="app-header">
-        <Link className="app-header__brand" to="/">
+        <Link className="app-header__brand" to="/home">
           learnos
         </Link>
         <nav className="app-header__nav">
