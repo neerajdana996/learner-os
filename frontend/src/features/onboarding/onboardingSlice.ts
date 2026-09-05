@@ -8,9 +8,11 @@ const STORAGE_KEY = 'learnos.onboarding';
  * Bumped whenever the draft's shape changes. A stored draft from an older
  * version is discarded rather than merged: the `role` step was added after the
  * first drafts were saved, so merging left people on step 2 with no role — past
- * a question they were never asked.
+ * a question they were never asked. Bumped to 3 for `language` (T-091), which
+ * is the same shape of bug: merging would default a stored draft to "doesn't
+ * matter" and never show anyone the question.
  */
-const DRAFT_VERSION = 2;
+const DRAFT_VERSION = 3;
 
 export interface OnboardingDraft {
   version: number;
@@ -24,6 +26,13 @@ export interface OnboardingDraft {
   dailyCap: number;
   topic: string;
   why: string;
+  /**
+   * The language the topic's examples are written in (T-091). Empty string is
+   * "doesn't matter", a real answer rather than an unanswered question — the
+   * create call omits the field entirely for it, and the topic profile infers
+   * one (T-092).
+   */
+  language: string;
   budgetMin: number;
   /** Set once the topic exists and generation is running. */
   topicId: string | null;
@@ -51,6 +60,7 @@ const emptyDraft: OnboardingDraft = {
   dailyCap: 12,
   topic: '',
   why: '',
+  language: '',
   budgetMin: 10,
   topicId: null,
 };

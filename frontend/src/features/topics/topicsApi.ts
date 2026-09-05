@@ -15,6 +15,9 @@ export interface TopicSummary {
   id: string;
   title: string;
   why: string | null;
+  /** The language the course's examples are written in (T-091). Null when the
+   *  learner didn't name one — the topic profile fills it in (T-092). */
+  language: string | null;
   status: 'generating' | 'active' | 'testing' | 'holdout' | 'done' | 'failed';
   error: string | null;
   startsAt: string | null;

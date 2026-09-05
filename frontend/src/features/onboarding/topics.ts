@@ -54,6 +54,24 @@ export const PILOT_TOPICS: PilotTopic[] = [
   },
 ];
 
+/**
+ * The languages onboarding offers (T-091).
+ *
+ * Six, not a directory. Two of the three pilot topics are code topics and the
+ * list only has to cover what those learners actually write; a longer list is a
+ * longer decision on a screen whose real question is the topic. "Doesn't
+ * matter" is rendered alongside these as an equal option rather than a skip —
+ * plenty of topics have no language at all, and the topic profile (T-092)
+ * infers one for those and records that it inferred it.
+ *
+ * Free text is deliberately not offered here even though `TopicCreateSchema`
+ * accepts any string up to 40 characters: the schema has to stay open for the
+ * seed script and for topics created outside onboarding, but a text box on this
+ * screen invites "whatever you think" — which is the option below, worded
+ * honestly.
+ */
+export const LANGUAGES = ['Python', 'JavaScript', 'TypeScript', 'Java', 'Go', 'C++'] as const;
+
 const RECOMMENDED_BY_ROLE: Record<Role, string> = {
   product: 'Dynamic programming',
   backend: 'Consistency in distributed systems',

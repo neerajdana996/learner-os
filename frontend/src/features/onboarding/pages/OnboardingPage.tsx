@@ -17,7 +17,7 @@ import { draftChanged, onboardingReset, selectDraft, stepChanged } from '../onbo
 import { Step, Stepper } from '../Step';
 import { WindowsStep } from '../WindowsStep';
 
-import { PILOT_TOPICS, recommendTopic, type Role } from '../topics';
+import { LANGUAGES, PILOT_TOPICS, recommendTopic, type Role } from '../topics';
 
 // Every option maps to a topic that genuinely suits it. "I design" was dropped:
 // all three pilot topics are engineering, so offering it would imply something
@@ -100,6 +100,9 @@ export default function OnboardingPage() {
     const result = await createTopic({
       title: draft.topic,
       why: draft.why.trim() || undefined,
+      // Omitted, not sent empty: "doesn't matter" and "never asked" are the
+      // same null in the topic row, and T-092 is what fills either one in.
+      language: draft.language || undefined,
       startsAt,
       endsAt: new Date(startsAt.getTime() + DAYS * 86_400_000),
       dailyBudgetMin: draft.budgetMin,
@@ -225,6 +228,36 @@ export default function OnboardingPage() {
             value={draft.why}
             onChange={(e) => set({ why: e.target.value })}
           />
+
+          <fieldset className="u-stack u-stack--tight">
+            <legend className="field__label">Which language should the examples be in?</legend>
+            <p className="field__hint">
+              Every snippet in the course is written in this one. Not every topic has a language —
+              if yours doesn’t, or you don’t mind, the last option is a real answer and we’ll pick
+              something that suits the material.
+            </p>
+            <div className="choice-group choice-group--inline">
+              {LANGUAGES.map((language) => (
+                <Choice
+                  key={language}
+                  name="language"
+                  checked={draft.language === language}
+                  onSelect={() => set({ language })}
+                  inline
+                >
+                  {language}
+                </Choice>
+              ))}
+              <Choice
+                name="language"
+                checked={draft.language === ''}
+                onSelect={() => set({ language: '' })}
+                inline
+              >
+                Doesn’t matter — you choose
+              </Choice>
+            </div>
+          </fieldset>
         </Step>
       ) : null}
 
