@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Button } from '../../../components/Button';
+import { Choice } from '../../../components/Choice';
 import { Field } from '../../../components/Field';
 import { useUpdateMeMutation } from '../../users/usersApi';
 import { generationPollInterval, useCreateTopicMutation, useTopicQuery } from '../topicsApi';
@@ -60,19 +61,19 @@ export default function OnboardingPage() {
   if (topicId) {
     const failed = status === 'failed';
     return (
-      <div style={{ maxWidth: 520 }}>
-        <h1 style={{ fontSize: 32, marginBottom: 12 }}>
-          {failed ? 'That didn’t build' : 'Building your map'}
-        </h1>
-        <p style={{ fontSize: 15, color: 'var(--ink-2)', marginBottom: 24 }}>
+      <div className="u-stack u-measure">
+        <h1>{failed ? 'That didn’t build' : 'Building your map'}</h1>
+        <p className="u-muted">
           {failed
             ? topicState?.error ?? 'Something went wrong while generating the course.'
             : 'Writing out every concept and the questions that go with them. This takes a few minutes — you can close the tab and come back.'}
         </p>
         {failed ? (
-          <Button onClick={() => { setTopicId(null); setSettled(false); }}>Try again</Button>
+          <div>
+            <Button onClick={() => { setTopicId(null); setSettled(false); }}>Try again</Button>
+          </div>
         ) : (
-          <div className="mono" style={{ fontSize: 13, color: 'var(--muted)' }}>
+          <div className="stat">
             {topicState?.counts.concepts ?? 0} concepts so far
           </div>
         )}
@@ -81,46 +82,30 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 'var(--s-6)' }}>
-      <div>
-        <h1 style={{ fontSize: 34, marginBottom: 10 }}>Which one for the next thirty days?</h1>
-        <p style={{ fontSize: 15, color: 'var(--ink-2)' }}>
+    <div className="u-stack u-stack--loose u-measure">
+      <div className="u-stack u-stack--tight">
+        <h1>Which one for the next thirty days?</h1>
+        <p className="u-muted">
           Two topics in this pilot, five people on each. Every question in both has been read by hand
           before it reaches you.
         </p>
       </div>
 
-      <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend className="sr-only">Choose a topic</legend>
-        {TOPICS.map((t) => {
-          const selected = topic === t.title;
-          return (
-            <label
+      <fieldset>
+        <legend className="u-sr-only">Choose a topic</legend>
+        <div className="choice-group">
+          {TOPICS.map((t) => (
+            <Choice
               key={t.title}
-              style={{
-                background: 'var(--surface)',
-                border: `${selected ? 1.5 : 1}px solid ${selected ? 'var(--clay)' : 'var(--border-strong)'}`,
-                borderRadius: 'var(--radius-lg)',
-                padding: '17px 19px',
-                cursor: 'pointer',
-                display: 'block',
-              }}
+              name="topic"
+              checked={topic === t.title}
+              onSelect={() => setTopic(t.title)}
             >
-              <input
-                type="radio"
-                name="topic"
-                value={t.title}
-                checked={selected}
-                onChange={() => setTopic(t.title)}
-                className="sr-only"
-              />
-              <div className="serif" style={{ fontSize: 20, fontWeight: 500, marginBottom: 6 }}>
-                {t.title}
-              </div>
-              <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--ink-2)' }}>{t.blurb}</div>
-            </label>
-          );
-        })}
+              <span className="choice__title">{t.title}</span>
+              <span className="choice__body">{t.blurb}</span>
+            </Choice>
+          ))}
+        </div>
       </fieldset>
 
       <Field
@@ -131,9 +116,9 @@ export default function OnboardingPage() {
         hint="Only you see this. We show it back on the days you don’t feel like starting."
       />
 
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 7 }}>Minutes a day</div>
-        <div style={{ display: 'flex', gap: 9 }}>
+      <div className="u-stack u-stack--tight">
+        <div className="field__label">Minutes a day</div>
+        <div className="u-row">
           {[5, 10, 15, 20].map((m) => (
             <Button
               key={m}

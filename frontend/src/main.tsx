@@ -4,13 +4,19 @@ import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { store } from './store';
 import { AppRoutes } from './app/router';
-import './styles/base.css';
+import { useApplyTheme } from './app/ThemeToggle';
+import './styles/main.scss';
+
+function Root() {
+  useApplyTheme();
+  return <AppRoutes />;
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Provider store={store}>
       <BrowserRouter>
-        <AppRoutes />
+        <Root />
       </BrowserRouter>
     </Provider>
   </React.StrictMode>,

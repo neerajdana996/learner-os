@@ -1,0 +1,118 @@
+@use "../variables" as *;
+@use "../mixins" as *;
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px $s-8;
+  border-bottom: 1px solid var(--border);
+
+  &__brand {
+    font-family: $font-display;
+    font-size: 19px;
+    font-weight: $weight-semibold;
+    color: var(--ink);
+  }
+
+  &__nav {
+    display: flex;
+    gap: $s-6;
+    align-items: center;
+  }
+
+  &__link {
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+
+  @include until($breakpoint-sm) {
+    padding: 14px $s-4;
+    &__nav { gap: $s-4; }
+  }
+}
+
+.app-main {
+  padding: $s-7 $s-8;
+
+  @include until($breakpoint-sm) {
+    padding: $s-5 $s-4;
+  }
+}
+
+/// Single-column, vertically centred — sign-in and other one-action screens.
+.centred-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 60px $s-5;
+
+  &__inner {
+    width: 100%;
+    max-width: 396px;
+  }
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  &::before,
+  &::after {
+    content: "";
+    height: 1px;
+    background: var(--border);
+    flex-grow: 1;
+  }
+
+  &__label {
+    font-size: $text-xs;
+    color: var(--muted);
+  }
+}
+
+.notice {
+  background: var(--sunken);
+  border-radius: 5px;
+  padding: 14px 17px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.brand {
+  font-family: $font-display;
+  font-size: 22px;
+  font-weight: $weight-semibold;
+  color: var(--ink);
+}
+
+.route-fallback {
+  min-height: 50vh;
+  display: grid;
+  place-items: center;
+  font-size: $text-xs;
+}
+
+/// The reading column on question screens.
+.question-page {
+  max-width: 620px;
+  margin-inline: auto;
+}
+
+.question {
+  &__prompt {
+    font-family: $font-display;
+    font-size: 30px;
+    line-height: 1.28;
+    margin-bottom: $s-6;
+  }
+}
+
+.stat {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+  font-size: $text-sm;
+  color: var(--muted);
+}

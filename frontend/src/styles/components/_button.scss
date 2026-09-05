@@ -1,0 +1,46 @@
+@use "../variables" as *;
+@use "../mixins" as *;
+
+.btn {
+  @include control;
+
+  &--primary {
+    background: var(--clay);
+    color: var(--clay-on);
+
+    &:hover:not(:disabled) {
+      background: var(--clay-ink);
+    }
+  }
+
+  &--secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--border-strong);
+
+    &:hover:not(:disabled) {
+      background: var(--sunken);
+    }
+  }
+
+  &--quiet {
+    background: transparent;
+    color: var(--muted);
+    padding: 0 $s-1;
+
+    &:hover:not(:disabled) {
+      color: var(--ink);
+    }
+  }
+
+  &--block {
+    width: 100%;
+  }
+
+  &:disabled {
+    background: var(--sunken);
+    color: var(--stone);
+    border-color: transparent;
+    cursor: not-allowed;
+  }
+}

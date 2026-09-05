@@ -1,4 +1,5 @@
 import type { Confidence } from '../shared';
+import { Choice } from './Choice';
 
 type Rating = NonNullable<Confidence>;
 
@@ -18,49 +19,27 @@ export interface ConfidenceTapProps {
  *
  * A default would silently become data — and how often "certain" was actually
  * right is one of the numbers the pilot exists to measure (plan.md §3.6), so an
- * untapped answer must be distinguishable from a real one.
+ * untapped answer must stay distinguishable from a real one.
  */
 export function ConfidenceTap({ value, onChange }: ConfidenceTapProps) {
   return (
-    <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-      <legend style={{ fontSize: 14, fontWeight: 500, padding: 0, marginBottom: 4 }}>
-        How sure are you?
-      </legend>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 15, lineHeight: 1.55 }}>
+    <fieldset className="u-stack u-stack--tight">
+      <legend className="field__label">How sure are you?</legend>
+      <p className="field__hint">
         Required — and we’ll show you at the end how often “certain” was actually right.
-      </div>
-      <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-        {OPTIONS.map((option) => {
-          const selected = value === option.value;
-          return (
-            <label
-              key={option.value}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                minHeight: 'var(--tap)',
-                padding: '0 22px',
-                fontSize: 14,
-                fontWeight: selected ? 500 : 400,
-                cursor: 'pointer',
-                borderRadius: 'var(--radius)',
-                border: `${selected ? 1.5 : 1}px solid ${selected ? 'var(--clay)' : 'var(--border-strong)'}`,
-                background: selected ? 'var(--clay-wash)' : 'transparent',
-                color: selected ? 'var(--clay-ink)' : 'var(--ink)',
-              }}
-            >
-              <input
-                type="radio"
-                name="confidence"
-                value={option.value}
-                checked={selected}
-                onChange={() => onChange(option.value)}
-                className="sr-only"
-              />
-              {option.label}
-            </label>
-          );
-        })}
+      </p>
+      <div className="choice-group choice-group--inline">
+        {OPTIONS.map((option) => (
+          <Choice
+            key={option.value}
+            name="confidence"
+            checked={value === option.value}
+            onSelect={() => onChange(option.value)}
+            inline
+          >
+            {option.label}
+          </Choice>
+        ))}
       </div>
     </fieldset>
   );

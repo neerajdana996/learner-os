@@ -1,32 +1,15 @@
 /**
- * Shown while a route chunk loads.
- *
- * Deliberately not a spinner: on a warm cache these chunks resolve in a few
- * milliseconds, and a spinner that flashes for 30ms reads as jank. This holds
- * the layout open and stays invisible until the wait is long enough to be worth
- * acknowledging.
+ * Shown while a route chunk loads. Held invisible for 400ms by `u-delayed-in`:
+ * on a warm cache these resolve in milliseconds, and a spinner that flashes and
+ * vanishes reads as jank.
  */
 export function RouteFallback() {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{ minHeight: '50vh', display: 'grid', placeItems: 'center' }}
-    >
-      <span className="sr-only">Loading</span>
-      <span
-        aria-hidden="true"
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 12,
-          color: 'var(--muted)',
-          opacity: 0,
-          animation: 'route-fallback-in 1ms linear 400ms forwards',
-        }}
-      >
+    <div className="route-fallback" role="status" aria-live="polite">
+      <span className="u-sr-only">Loading</span>
+      <span className="u-mono u-muted u-delayed-in" aria-hidden="true">
         one moment
       </span>
-      <style>{`@keyframes route-fallback-in { to { opacity: 1 } }`}</style>
     </div>
   );
 }
