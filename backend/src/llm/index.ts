@@ -92,6 +92,7 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
     lastRaw = await complete({
       system,
       user,
+      name: def.name,
       model,
       reasoningEffort,
       maxTokens: def.maxTokens,

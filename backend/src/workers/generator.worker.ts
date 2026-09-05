@@ -10,6 +10,7 @@ import { generateItems } from '../generator/items.js';
 import { generateTeaching } from '../generator/teaching.js';
 import { pickHeldOut, seededRng, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER } from '../lib/heldOut.js';
 import { env } from '../lib/env.js';
+import { collectUsage } from '../llm/usage.js';
 
 export const GENERATION_QUEUE = 'generation';
 
@@ -64,6 +65,10 @@ export async function processGenerationJob(
   const [topic] = await db.select().from(topics).where(eq(topics.id, topicId));
   if (!topic) throw new Error(`generation: topic ${topicId} not found`);
 
+  // Wrapped so the whole job reports one cost line. Without it nobody could
+  // answer "what does a topic cost?", which is the number that decides whether
+  // per-learner generated topics are viable at all (T-058, T-074).
+  const { calls, usd } = await collectUsage(async () => {
   try {
     await onProgress({ stage: 'map', completed: 0, total: 1 });
     const map = await generateConceptMap(topic.title);
@@ -170,6 +175,13 @@ export async function processGenerationJob(
     await db.update(topics).set({ status: 'failed', error: reason }).where(eq(topics.id, topicId));
     throw error;
   }
+  });
+
+  console.log(
+    `generation ${topicId} "${topic.title}": ${calls.length} model calls, ` +
+      `${calls.reduce((n, c) => n + c.prompt, 0)} in / ${calls.reduce((n, c) => n + c.completion, 0)} out tokens, ` +
+      `$${usd.toFixed(3)}, ${(calls.reduce((n, c) => n + c.ms, 0) / 1000).toFixed(0)}s of model time`,
+  );
 }
 
 export { seededRng };

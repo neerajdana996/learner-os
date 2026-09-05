@@ -284,6 +284,80 @@ describe('requireUser', () => {
   });
 });
 
+describe('POST /auth/dev-login', () => {
+  it('signs in with the dev credentials and sets a real session cookie', async () => {
+    const res = await request(app)
+      .post('/auth/dev-login')
+      .send({ email: 'dev@learnos.local', password: 'learnos' });
+
+    expect(res.status).toBe(200);
+    const cookie = (res.headers['set-cookie'] as unknown as string[])[0] ?? '';
+    expect(cookie).toContain(`${SESSION_COOKIE}=`);
+    expect(cookie).toContain('HttpOnly');
+
+    // A real session row, not a special case the rest of the app has to know
+    // about — every downstream route treats it like any other sign-in.
+    const rows = await db.select().from(sessions);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.kind).toBe('web');
+
+    const me = await request(app).get('/me').set('Cookie', cookie.split(';')[0] ?? '');
+    expect(me.status).toBe(200);
+    expect(me.body.email).toBe('dev@learnos.local');
+  });
+
+  it('creates the dev user on first use, and reuses it afterwards', async () => {
+    await request(app).post('/auth/dev-login').send({ email: 'dev@learnos.local', password: 'learnos' });
+    await request(app).post('/auth/dev-login').send({ email: 'dev@learnos.local', password: 'learnos' });
+
+    const rows = await db.select().from(users).where(eq(users.email, 'dev@learnos.local'));
+    expect(rows).toHaveLength(1);
+  });
+
+  it('rejects the wrong password and any other address', async () => {
+    const wrongPassword = await request(app)
+      .post('/auth/dev-login')
+      .send({ email: 'dev@learnos.local', password: 'nope' });
+    expect(wrongPassword.status).toBe(401);
+
+    const wrongEmail = await request(app)
+      .post('/auth/dev-login')
+      .send({ email: 'someone@example.com', password: 'learnos' });
+    expect(wrongEmail.status).toBe(401);
+
+    expect(await db.select().from(sessions)).toHaveLength(0);
+  });
+
+  it('is not rate limited — three sign-ins in an afternoon is normal', async () => {
+    // /auth/magic allows 3 per address per 15 minutes because it mails a
+    // stranger. Sharing that budget here would lock a developer out.
+    for (let i = 0; i < 5; i += 1) {
+      const res = await request(app)
+        .post('/auth/dev-login')
+        .send({ email: 'dev@learnos.local', password: 'learnos' });
+      expect(res.status).toBe(200);
+    }
+  });
+
+  it('does not exist at all under NODE_ENV=production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+    const { createApp: createProdApp } = await import('../../app.js');
+
+    const res = await request(createProdApp())
+      .post('/auth/dev-login')
+      .send({ email: 'dev@learnos.local', password: 'learnos' });
+
+    // 404, not 401: the route is never registered, so a misconfigured secret or
+    // a forgotten flag cannot turn it back on.
+    expect(res.status).toBe(404);
+    expect(await db.select().from(sessions)).toHaveLength(0);
+
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+});
+
 describe('POST /auth/extension-token', () => {
   it('returns a bearer token for an authenticated web session', async () => {
     const user = await seedUser();

@@ -8,7 +8,16 @@ export async function postTopic(req: Request, res: Response) {
 }
 
 export async function getTopics(req: Request, res: Response) {
-  res.json({ topics: await listTopics(userId(req)) });
+  const rows = await listTopics(userId(req));
+  // Nested to match GET /topics/:id exactly, so one client-side type describes
+  // both responses and the dashboard can read a list entry the same way it
+  // reads a single topic (T-072).
+  res.json({
+    topics: rows.map(({ concepts, items, ...topic }) => ({
+      ...topic,
+      counts: { concepts, items },
+    })),
+  });
 }
 
 export async function getTopic(req: Request, res: Response) {

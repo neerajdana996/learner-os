@@ -14,6 +14,7 @@ import OpenAI from 'openai';
 import { env } from '../lib/env.js';
 import { LlmError } from './errors.js';
 import { DEFAULT_MODEL, DEFAULT_REASONING_EFFORT, type ReasoningEffort } from './models.js';
+import { estimateUsd, LOG_EVERY_CALL, recordUsage } from './usage.js';
 
 export { DEFAULT_MODEL } from './models.js';
 
@@ -36,6 +37,8 @@ export function getClient(): OpenAI {
 export interface CompleteOpts {
   system: string;
   user: string;
+  /** For the usage log, so a cost line can name which prompt spent it. */
+  name?: string;
   model?: string;
   maxTokens?: number;
   reasoningEffort?: ReasoningEffort;
@@ -56,9 +59,11 @@ export async function complete(opts: CompleteOpts): Promise<string> {
   }
 
   const maxTokens = opts.maxTokens ?? 8192;
+  const model = opts.model ?? DEFAULT_MODEL;
+  const startedAt = Date.now();
 
   const completion = await getClient().chat.completions.create({
-    model: opts.model ?? DEFAULT_MODEL,
+    model,
     messages: [
       { role: 'system', content: opts.system },
       { role: 'user', content: opts.user },
@@ -77,6 +82,28 @@ export async function complete(opts: CompleteOpts): Promise<string> {
         }
       : {}),
   } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
+
+  const usage = {
+    prompt: completion.usage?.prompt_tokens ?? 0,
+    completion: completion.usage?.completion_tokens ?? 0,
+    reasoning: completion.usage?.completion_tokens_details?.reasoning_tokens ?? 0,
+  };
+  const record = {
+    prompt_name: opts.name ?? 'unnamed',
+    model,
+    ms: Date.now() - startedAt,
+    usd: estimateUsd(model, usage),
+    ...usage,
+  };
+  // Recorded before the checks below: a truncated or refused response still
+  // cost tokens, and a cost report that only counts successes understates the
+  // thing it exists to measure.
+  recordUsage(record);
+  if (LOG_EVERY_CALL) {
+    console.log(
+      `llm ${record.prompt_name} ${model} ${record.ms}ms in=${usage.prompt} out=${usage.completion} (reasoning ${usage.reasoning}) $${record.usd.toFixed(4)}`,
+    );
+  }
 
   const choice = completion.choices[0];
 

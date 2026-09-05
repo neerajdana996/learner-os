@@ -314,6 +314,17 @@ export const MagicLinkSchema = z.object({
 
 export const VerifyQuerySchema = z.object({ token: z.string().min(1).max(512) });
 
+/**
+ * Dev-only password sign-in (T-070). The route that accepts this is not mounted
+ * under `NODE_ENV=production` — it exists so a developer can reach the app
+ * without a mail round trip, and it is the only place in the product where a
+ * password appears at all.
+ */
+export const DevLoginSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(320),
+  password: z.string().min(1).max(200),
+});
+
 /** Deliberately says nothing about whether the address is registered — a
  *  different response for a known email would make this an account oracle. */
 export const MagicLinkResponseSchema = z.object({ ok: z.literal(true) });

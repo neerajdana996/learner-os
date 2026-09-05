@@ -58,6 +58,11 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().default(''),
   /** Public origin of this API — the base the provider redirects back to. */
   API_URL: z.string().url().default('http://localhost:3001'),
+  // Dev-only password sign-in (T-070), so a developer can get into the app
+  // without a mail round trip. The route is not mounted at all under
+  // NODE_ENV=production — these are convenience defaults, never a credential.
+  DEV_LOGIN_EMAIL: z.string().email().default('dev@learnos.local'),
+  DEV_LOGIN_PASSWORD: z.string().default('learnos'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
