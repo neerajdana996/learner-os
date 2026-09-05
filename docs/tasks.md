@@ -1075,7 +1075,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:** Existing concept-map and items suites pass unchanged (they import via the re-export); the new teaching suite asserts `instanceof GenerationError` on errors from a third module.
 
 ### T-FIX-011 · Generation fails on real content: model omits `isTransfer`
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **severity:** high — topic generation currently fails end-to-end against the real API
 - **depends_on:** T-056
@@ -1090,6 +1090,13 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The derived schema for `ItemPayloadSchema` satisfies strict mode (all properties required, `additionalProperties: false`).
   - An item response missing `isTransfer` still raises `GenerationError` (the validation stays, belt and braces).
   - Existing generator suites pass unchanged.
+- **notes:** (2026-09-05) Built and verified. Backend suite 251 → 260 tests (9 new), lint clean.
+  - **Schemas are hand-written, not derived.** `zod/v4`'s `toJSONSchema` cannot read zod **v3** schema instances (it throws reading `.def`), and this project is on zod 3.25 — deriving would have meant migrating every schema in `src/shared` to the v4 API, which is a far larger change than the bug warrants. `zod-to-json-schema` was the other option; rejected because the two contracts genuinely differ (see next point), so a converter would have needed post-processing anyway and CLAUDE.md wants a reason for every dependency.
+  - **The JSON schema and the Zod schema are deliberately not the same contract.** Strict mode guarantees *structure and presence* — every field emitted, nothing extra — but ignores value constraints. So exactly-4 options, the 200-char rubric, the 2–4 correction count and the short-vs-long length rule all stay in Zod and the domain validators. The two layers are complementary: the provider makes malformed output impossible, Zod makes *wrong* output impossible.
+  - **Drift is guarded by tests, since the schemas are hand-written.** One walks each JSON schema asserting strict-mode conformance (`additionalProperties: false` everywhere, `required` covering every property) — a violation is a 400 from the provider at generation time, i.e. in production rather than in CI. Another compares the JSON schema's `required` lists against the Zod schemas' `.shape` keys, so a field added to Zod without the JSON schema fails here. A third asserts every item variant requires `isTransfer` by name — the exact field that broke the real run.
+  - `isTransfer` is added explicitly to each item variant because it is a sibling **column** on the `items` table rather than part of the jsonb payload, so `ItemPayloadSchema` does not declare it. That asymmetry is what let it go missing in the first place, and the drift test now encodes it.
+  - The `explain` variant is the one the model actually dropped the field on, and under `anyOf` a variant missing a required property simply fails to match — so the model can no longer emit it.
+  - Zod validation and the `GenerationError` paths are all left in place. Structured outputs make the failure impossible at the provider; keeping the validators means a provider change, a schema mistake, or a non-strict fallback still fails loudly rather than persisting junk.
 
 ### T-FIX-010 · Backend could not boot: .env never loaded, LLM client built at import
 - **status:** done
