@@ -19,6 +19,14 @@ for p in backend frontend extension; do
   ( cd "$p" && pnpm install && pnpm lint && pnpm test )
 done
 
+# `pnpm lint` is `tsc --noEmit` in both client projects and never compiles a
+# stylesheet, so a broken `@use` path — the exact failure mode `shared-ui`
+# introduces (T-090) — passes lint and fails only at build.
+for p in frontend extension; do
+  step "$p: pnpm build (proves every @use path resolves)"
+  ( cd "$p" && pnpm build )
+done
+
 step "synced copies contain no Node-only imports"
 ! grep -rEn "from ['\"](node:|drizzle|postgres|bullmq|ioredis|express|ws)['\"/]" frontend/src/shared extension/src/shared
 

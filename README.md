@@ -88,7 +88,16 @@ scripts/verify.sh --no-docker
 ```
 
 ## Shared code
-Edit only `backend/src/shared/`, then `scripts/sync-shared.sh`. `scripts/sync-shared.sh --check` fails on drift.
+Two folders are copied into the projects that consume them, and neither copy is ever edited by hand:
+
+| Source | Copied to | Holds |
+| --- | --- | --- |
+| `backend/src/shared/` | `frontend/src/shared/`, `extension/src/shared/` | the API contract — Zod schemas and types |
+| `shared-ui/` | `frontend/src/shared-ui/`, `extension/src/shared-ui/` | presentation — colour tokens, the scale, the mixins |
+
+Edit the source, then run `scripts/sync-shared.sh`. `scripts/sync-shared.sh --check` fails on drift.
+
+A copy rather than a package on purpose: a package buys per-project version pinning, and drift between the web app and the extension is precisely the failure this prevents.
 
 ## GitHub repos
 All four are private under [`neerajdana996`](https://github.com/neerajdana996):
