@@ -16,7 +16,9 @@
     "db:push": "drizzle-kit push",
     "db:test:push": "cross-env DATABASE_URL=${TEST_DATABASE_URL:-postgres://learnos:learnos@localhost:5432/learnos_test} drizzle-kit push",
     "seed": "tsx src/scripts/seed.ts",
-    "qa": "tsx src/scripts/qa.ts",
+    "qa": "tsx src/scripts/qa.ts export",
+    "qa:apply": "tsx src/scripts/qa.ts apply",
+    "qa:retire": "tsx src/scripts/qa.ts retire",
     "preflight": "tsx src/scripts/preflight.ts"
   },
   "dependencies": {

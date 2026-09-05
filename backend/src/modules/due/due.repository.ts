@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, inArray, isNotNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, lt, lte } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
+import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
 
 export const RECENT_WINDOW = 3;
 
@@ -23,11 +24,15 @@ export async function findDueCards(userId: string, now: Date, limit: number) {
     .limit(limit);
 }
 
+/** Retired items (T-024's `pnpm qa:retire`, and the backlog's auto-retire) are
+ *  excluded here: a question the founder rejected must never be asked again. */
 export async function findCandidates(conceptIds: string[]) {
   return db
     .select({ id: items.id, conceptId: items.conceptId, payload: items.payload })
     .from(items)
-    .where(inArray(items.conceptId, conceptIds));
+    .where(
+      and(inArray(items.conceptId, conceptIds), lt(items.flaggedBad, RETIRED_FLAG_THRESHOLD)),
+    );
 }
 
 export async function findRecentHistory(userId: string, conceptIds: string[]) {
