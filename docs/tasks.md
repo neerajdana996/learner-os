@@ -501,7 +501,7 @@
   - `remainingDays` of 0 or negative (past `endsAt`) → does not divide by zero; falls back to the cap.
 
 ### T-023 · Timezone-correct "today" and daily completion
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-014, T-054
 - **files:** `backend/src/lib/today.ts`, `backend/src/lib/__tests__/today.test.ts`, `backend/src/modules/session/session.repository.ts`
@@ -516,6 +516,15 @@
   - A server running in `UTC` and one in `Asia/Tokyo` compute the same `localDay` for the same instant and timezone.
   - Completing twice on the same local day is idempotent (one `session_days` row).
   - Completing on two different local days writes two rows.
+- **notes:** (2026-09-05) Built and verified. Backend suite 183 → 194 tests (7 pure + 4 DB), lint clean.
+  - **`localDay` uses `formatToParts`, not a locale that happens to emit ISO order.** `en-CA` would give `YYYY-MM-DD` today but that is a property of locale data, not a guarantee; building the string from named parts makes it independent of the runtime's ICU version.
+  - **The value stays a string end to end.** `session_days.day` is a `date` column in string mode, so nothing round-trips through a JS `Date` — that round trip is precisely how the UTC-versus-local bug this module exists to prevent gets reintroduced.
+  - The DST test samples 24 consecutive days across the 2026-11-01 US fall-back and asserts **24 distinct dates**. A fixed-offset implementation yields 23 or 25 there, so this catches the classic mistake; sampling at midday avoids the genuinely ambiguous hour.
+  - A test flips `process.env.TZ` between UTC and Asia/Tokyo and asserts the same instant yields the same local day — the function must not depend on where the server runs, which is the whole point.
+  - `localDayFor(now, null)` falls back to UTC so a user mid-onboarding (T-014 leaves `timezone` null until then) doesn't crash the session route.
+  - **Completion is idempotent via the unique index, not a read-then-write.** `onConflictDoNothing` on `(user_id, topic_id, day)`: two taps on "finish" race, and a check-then-insert would let both through and 500 on the second. Same reasoning as the idempotency-key race noted against `recordReview`.
+  - `isValidTimeZone` is imported from `src/shared` rather than redefined, so T-014's `PATCH /me` validation and this share one definition.
+  - Built ahead of T-016 as planned — `session.repository.ts` now exists with the completion helpers, and T-016 extends that same file.
 
 ### T-017 · Knowledge score + map API
 - **status:** todo
