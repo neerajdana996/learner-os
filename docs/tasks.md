@@ -554,7 +554,7 @@
   - Built ahead of T-016 as planned — `session.repository.ts` now exists with the completion helpers, and T-016 extends that same file.
 
 ### T-017 · Knowledge score + map API
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-016
 - **files:** `backend/src/lib/score.ts`, `backend/src/lib/__tests__/score.test.ts`, `backend/src/modules/map/map.{routes,controller,service,repository}.ts`, `backend/src/modules/map/map.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/app.ts`
@@ -578,6 +578,15 @@
   - A concept known from the diagnostic (estimate ≥ 0.8) reports `state='known'` and contributes to the score.
   - `edges` includes prereq pairs for held-out concepts.
   - Another user's topic → 404.
+- **notes:** (2026-09-05) Built and verified. Backend suite 293 → 314 tests (10 pure + 11 route), lint clean. This was the last endpoint the web tier was waiting on.
+  - **`known` vs `taught` is read from `topics.diagnostic_state`, not from the card.** Both get `taughtAt` set, so the card cannot distinguish them — and after the first review even `reps` stops being a discriminator. The diagnostic's own estimate (≥ 0.8) is the actual source of truth for "they arrived with this", and telling the two apart is what lets the day-30 comparison separate what we taught from what they already knew.
+  - **Still no stored `mastery`.** It is `predictedRecall(card, now)` and nothing else, which keeps T-015's seeding, T-017's display and T-040's metrics on one definition. A column would be a second definition that drifts the moment either side changes.
+  - **Untaught concepts are excluded from the score mean rather than counted as zero.** Counting them would peg the score near zero for most of the thirty days and barely move it, when plan.md §4 wants a number that visibly rises with recall. Tested with 9 untaught + 1 mastered → 100, not 10.
+  - Held-out concepts return `title: null`, built field by field like `toPublicItem` — fail-closed, so a field added to the row later is excluded by default. The leak test checks the **serialised body** for the seeded title string, not just the key, since key inspection would miss a leak through any other field.
+  - **Edges are kept for held-out concepts.** The shape of the graph is not the secret; only what the node is called. Without them the map would render with holes where the control group sits, which is more revealing than a "?" node.
+  - Mounted **ahead of `topicsRouter`** so `/topics/:id/map` is not shadowed by `/topics/:id`.
+  - Score is 0 rather than `NaN` when nothing is taught — an empty mean would render literally as "NaN" in the header badge.
+  - curl: `curl -b cookies.txt localhost:3001/topics/<id>/map` → `{"score":67,"concepts":[…],"edges":[…]}`
 
 ### T-018 · Web — auth + onboarding screens 1 & 2
 - **status:** todo
