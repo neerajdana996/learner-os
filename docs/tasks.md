@@ -589,7 +589,7 @@
   - curl: `curl -b cookies.txt localhost:3001/topics/<id>/map` → `{"score":67,"concepts":[…],"edges":[…]}`
 
 ### T-018 · Web — auth + onboarding screens 1 & 2
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-013, T-014, T-008
 - **files:** `frontend/src/pages/LoginPage.tsx` (exists — extend), `frontend/src/pages/Onboarding.tsx`, `frontend/src/features/auth/authApi.ts`, `frontend/src/features/users/usersApi.ts`, `frontend/src/features/topics/topicsApi.ts`, `frontend/src/store/sessionSlice.ts` (exists), `frontend/src/App.tsx`, component tests
@@ -610,9 +610,10 @@
   - Overlapping windows → submit blocked.
   - Both `startsAt` and `endsAt` are present in the `POST /topics` body.
   - Login submits the email and renders "check your inbox" without revealing whether the account existed.
+- **notes:** (2026-09-05) Built. Login (magic link + Google/GitHub) and onboarding as five steps — see the onboarding note below; the two-screen shape in this task grew to five once the missing signals were found.
 
 ### T-019 · Web — diagnostic screen
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-015, T-018
 - **files:** `frontend/src/pages/Diagnostic.tsx`, `frontend/src/components/QuestionCard.tsx`, `frontend/src/components/ConfidenceTap.tsx`, `frontend/src/features/diagnostic/diagnosticApi.ts`, `frontend/src/App.tsx`, tests
@@ -631,9 +632,10 @@
   - All four item types render (recall input, 4-option recognition, application input, explain textarea).
   - Progress shows the asked count and the ≤15 cap.
   - A slow/failed answer request surfaces an error and does not advance to the next question or lose the typed answer.
+- **notes:** (2026-09-05) Built. Server-driven walk: the client renders whatever `next` returns and posts an answer back, and the mutation response replaces the cached question so each answer is one round trip rather than answer-then-refetch. Confidence is required and never pre-selected; latency is measured from question *render*, not mount.
 
 ### T-020 · Web — map page + knowledge score
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-017
 - **files:** `frontend/src/pages/Map.tsx`, `frontend/src/components/ConceptGraph.tsx`, `frontend/src/components/ScoreBadge.tsx`, `frontend/src/features/map/mapApi.ts`, `frontend/src/App.tsx`, tests
@@ -650,9 +652,10 @@
   - Score badge shows `score` from the API.
   - Concepts are grouped by `order` in ascending layers.
   - Empty map (topic still generating) renders a loading state, not a crash.
+- **notes:** (2026-09-05) Built. Layered list grouped in fives by teaching order, deliberately not a force graph — it has to read on a phone and order is the only axis carrying meaning. `ConceptDot` never relies on hue: fill level (full/half/hollow/dashed) carries the same information, because green-vs-amber is exactly the pair ~8% of men cannot separate, and every dot has an `aria-label`. Held-out rows key off `state`, not off a null title — fail-closed, so a server that ever started sending one would still render "Held back".
 
 ### T-021 · Web — today's session
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-016, T-011, T-020, T-053
 - **files:** `frontend/src/pages/Session.tsx`, `frontend/src/components/TryFirst.tsx`, `frontend/src/components/Explanation.tsx`, `frontend/src/features/session/sessionApi.ts`, `frontend/src/App.tsx`, tests
@@ -675,9 +678,10 @@
   - Every `/reviews` call includes `surface: 'web'` and `latencyMs`, and no `correct` field.
   - Due reviews render after the new concepts, not interleaved.
   - `completedToday: true` from `GET /session` renders the "done for today" state instead of the session.
+- **notes:** (2026-09-05) Built. `try_first` withholds the explanation until an attempt is made; `example_first` reveals it immediately — that difference is the entire plan.md §3.4 A/B, so it is the one behaviour the screen must not blur. The try-first attempt is never graded and never scheduled: it is a teaching device, and only the retrieval item afterwards posts to `/reviews`. Correction matching is a loose word overlap chosen from prepared corrections — explicitly not grading, which stays server-side in one place.
 
 ### T-022 · Web — dashboard/home
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-020, T-021
 - **files:** `frontend/src/pages/Dashboard.tsx`, `frontend/src/App.tsx`, tests
@@ -689,6 +693,7 @@
   - Extension prompt is hidden when `hasExtensionToken` is true, shown when false.
   - Days remaining is computed from `endsAt` and reads 0 (not negative) once past.
   - Score badge renders the current score.
+- **notes:** (2026-09-05) Built. Score, days remaining, one primary action that flips to a disabled "Done for today" from T-023's `completedToday`, and the extension prompt when `hasExtensionToken` is false. Reads the map through the shared RTK Query cache, so opening the dashboard and the map costs one request rather than two.
 
 ### T-024 · Content QA tool
 - **status:** todo
