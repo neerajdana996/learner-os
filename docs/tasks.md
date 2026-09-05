@@ -12,9 +12,11 @@
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
-**Sprint 3 is under way** — T-027 (scaffold + bearer auth) is done; next is `T-028`, the background scheduler.
+**Re-sequenced to measurement-first (2026-09-05).** Sprint numbers still label each task; the order of work is in `sprint.md`'s **Build order** block and runs:
 
-**Before the pilot, two open items matter more than new features:** `T-073` (the web session counts due reviews and never asks them — retrieval practice is the mechanism, and until the extension ships this is the only place it can happen) and `T-069` (a topic stuck on `generating` blocks the learner from creating any other).
+`T-073` → `T-038` → `T-039` → `T-040` → `T-041` → the rest of the extension (`T-028`…) → `T-045`, `T-044`.
+
+The teaching machine is built and the measuring instrument is not: nothing can generate a Day-30 test, score one, or compute a retention gain, so a pilot run today would produce ten learners and no answer. `T-073` leads because `GET /session` returns due reviews that the screen counts and never asks — no retrieval happens between sessions at all, and retrieval is the mechanism.
 
 ### Run it
 
@@ -893,13 +895,17 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **tests:** as described.
 
 ### T-034 · Extension options page + connect flow on web
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-027, T-022
 - **files:** `entrypoints/options/`, `frontend/src/pages/ConnectExtension.tsx`
 - **description:** Web page shows a one-time token + install steps. Options page accepts the token, verifies via `GET /me`, shows connected state, and a "pause for today" switch (sets backoff).
   - **Mostly done already.** T-027 built the options page: it accepts a token, verifies it against `GET /me` **before** storing, shows the connected account, and disconnects. What is left is the **web** half — a "Connect extension" page that calls `POST /auth/extension-token` and shows the token with install steps (today the README hands you a curl) — and the **"pause for today"** switch, which needs T-030's backoff state to exist first.
 - **tests:** Invalid token → error shown, nothing stored (**done in T-027**). Pause → `backoffUntil` set.
+- **notes:** (2026-09-05) `/connect` finishes the flow. Raised by the founder — "Connect extension, I do not see this" — and they were right: T-027's options page told them to "open the web app, go to Connect extension", and that screen did not exist. The only route to a token was a curl in the README, which is not a route at all for a pilot participant who isn't a developer.
+  - Three numbered steps (install unpacked → get token → paste), the token minted **on demand by an explicit click** rather than rendered into the page for anyone who wanders past, shown once, with a copy button. A second click issues a second token instead of revealing the first.
+  - The dashboard's "extension isn't connected" nudge now links here instead of being a dead end.
+  - **Still open:** the "pause for today" switch, which needs T-030's backoff state to exist first. Kept in T-030's scope rather than stubbed here.
 
 ### T-035 · Extension telemetry hooks
 - **status:** todo
@@ -1565,7 +1571,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Counts are per topic and correct with several topics in play.
 
 ### T-073 · The session never runs the due reviews
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-021
 - **files:** `frontend/src/features/session/pages/SessionPage.tsx`, its tests
@@ -1579,6 +1585,12 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Each review answer posts to `/reviews` with `surface: 'web'`.
   - A session with no new concepts but due reviews still runs them (today it shows "Nothing due today" and stops).
   - The summary counts what was actually answered, not what was offered.
+- **notes:** (2026-09-05) The session is now a queue — new concepts, then the due reviews — walked by one index. 4 tests.
+  - **A review reuses the same retrieval card as the post-teaching check**, in one shared component: a review *is* the same act, only with a gap in front of it, and two near-copies would drift apart the day one gained a field. It is labelled "From an earlier day" and carries no teaching, no explanation and no chance to re-read first — the gap is what makes it worth anything.
+  - Reviews come **after** the new concepts: teaching is what the day is paced around, so a learner who runs out of time should lose a review rather than the concept the schedule expected them to be taught.
+  - The summary counted `dueReviews.length` under the label "reviews waiting" — a number that never moved because the reviews were never asked. It now counts what was answered.
+  - A session with no new concepts but due reviews used to render "Nothing due today" over a queue of real work; it runs them.
+  - `POST /session/complete` still takes only the taught concept ids: a review is already recorded by `POST /reviews`, and completion means "the day was finished", not "these reviews happened".
 
 ### T-074 · Nobody knew what a topic costs
 - **status:** done
