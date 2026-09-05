@@ -19,6 +19,9 @@ import type {
   SessionResponseSchema,
   SessionCompleteSchema,
   CorrectionSchema,
+  ConceptStateSchema,
+  MapConceptSchema,
+  MapResponseSchema,
   TestStartSchema,
   TestSubmitSchema,
   PulseCreateSchema,
@@ -59,6 +62,10 @@ export type DiagnosticNextResponse = z.infer<typeof DiagnosticNextResponseSchema
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export type SessionComplete = z.infer<typeof SessionCompleteSchema>;
 export type Correction = z.infer<typeof CorrectionSchema>;
+
+export type ConceptState = z.infer<typeof ConceptStateSchema>;
+export type MapConcept = z.infer<typeof MapConceptSchema>;
+export type MapResponse = z.infer<typeof MapResponseSchema>;
 
 export type TestStart = z.infer<typeof TestStartSchema>;
 export type TestSubmit = z.infer<typeof TestSubmitSchema>;
