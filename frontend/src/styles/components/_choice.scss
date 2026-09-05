@@ -1,5 +1,5 @@
-@use "../variables" as *;
-@use "../mixins" as *;
+@use "../../shared-ui/styles/variables" as *;
+@use "../../shared-ui/styles/mixins" as *;
 
 /// A selectable card wrapping a hidden radio: the topic picker, answer options
 /// and the confidence tap are all the same control at different sizes, so they

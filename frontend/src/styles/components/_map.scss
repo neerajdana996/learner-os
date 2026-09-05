@@ -1,5 +1,5 @@
-@use "../variables" as *;
-@use "../mixins" as *;
+@use "../../shared-ui/styles/variables" as *;
+@use "../../shared-ui/styles/mixins" as *;
 
 /// The score and the at-risk callout, side by side above the map. Stacks on a
 /// phone, where two columns of 300px is neither.
