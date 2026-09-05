@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .mth { font-family: "Newsreader", Georgia, serif; font-size: 21px; line-height: 1.5; }
+    .var { font-style: italic; }
+    .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 3px; }
+    .frac__n { padding: 0 7px 2px; } .frac__d { padding: 2px 7px 0; border-top: 1px solid currentColor; }
+    .sub { font-size: .6em; vertical-align: -.35em; } .sup { font-size: .6em; vertical-align: .55em; }
+    .step { display: grid; grid-template-columns: 1fr 260px; align-items: center; gap: 20px; padding: 13px 0; border-top: 1px solid #E6E1DA; }
+    .why { font-size: 12.5px; line-height: 1.55; color: #57504A; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 44px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div class="serif" style="font-size: 18px; font-weight: 600;">learnos</div>
+    <div class="mono" style="font-size: 11.5px; color: #8A827A; letter-spacing: .05em;">CONCEPT 1 OF 2 &middot; THEN 4 REVIEWS</div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 11px;">New concept &middot; Why a geometric series converges</div>
+
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 26px 28px; margin-bottom: 16px;">
+    <div class="lbl" style="margin-bottom: 16px;">How to hold it</div>
+
+    <div style="font-size: 16px; line-height: 1.72; margin-bottom: 22px;">
+      The trick is one line long and it is worth memorising as a <em>move</em> rather than a result: multiply the sum by
+      <span class="mth" style="font-size: 17px;"><span class="var">r</span></span>, subtract it from itself, and almost everything cancels.
+    </div>
+
+    <!-- DERIVATION -->
+    <div style="background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 6px 20px 16px; margin-bottom: 22px;">
+      <div class="step" style="border-top: none;">
+        <div class="mth"><span class="var">S</span> = <span class="var">a</span> + <span class="var">ar</span> + <span class="var">ar</span><span class="sup">2</span> + <span class="var">ar</span><span class="sup">3</span> + &hellip;</div>
+        <div class="why">What we want, written out.</div>
+      </div>
+      <div class="step">
+        <div class="mth"><span class="var">rS</span> = &nbsp;&nbsp;&nbsp;&nbsp; <span class="var">ar</span> + <span class="var">ar</span><span class="sup">2</span> + <span class="var">ar</span><span class="sup">3</span> + &hellip;</div>
+        <div class="why">Multiply through by <span class="mth" style="font-size: 14px;"><span class="var">r</span></span>. Every term shifts one place right.</div>
+      </div>
+      <div class="step">
+        <div class="mth"><span class="var">S</span> &minus; <span class="var">rS</span> = <span class="var">a</span></div>
+        <div class="why">Subtract. Everything after the first term appears in both rows and cancels &mdash; <strong style="color: #2B2723;">this is the whole idea.</strong></div>
+      </div>
+      <div class="step">
+        <div class="mth"><span class="var">S</span>(1 &minus; <span class="var">r</span>) = <span class="var">a</span></div>
+        <div class="why">Factor.</div>
+      </div>
+      <div class="step" style="background: #FBF3EC; margin: 0 -20px; padding-left: 20px; padding-right: 20px;">
+        <div class="mth"><span class="var">S</span> = <span class="frac"><span class="frac__n"><span class="var">a</span></span><span class="frac__d">1 &minus; <span class="var">r</span></span></span>
+          <span style="font-size: 15px; color: #8A4225; margin-left: 14px;">for |<span class="var">r</span>| &lt; 1</span></div>
+        <div class="why"><strong style="color: #8A4225;">Divide &mdash; and here is the debt.</strong> The cancellation in step three quietly assumed the tail goes to zero. It only does when |<span class="mth" style="font-size: 14px;"><span class="var">r</span></span>| &lt; 1.</div>
+      </div>
+    </div>
+
+    <!-- THE EDGE -->
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B8873A; border-radius: 6px; padding: 20px 22px; margin-bottom: 20px;">
+      <div class="lbl" style="color: #B8873A; margin-bottom: 12px;">What the formula says if you ignore the condition</div>
+      <div class="mth" style="font-size: 19px; margin-bottom: 12px;">
+        1 + 2 + 4 + 8 + &hellip; = <span class="frac"><span class="frac__n">1</span><span class="frac__d">1 &minus; 2</span></span> = &minus;1
+      </div>
+      <div style="font-size: 14.5px; line-height: 1.68; color: #57504A;">
+        Every algebraic step above is valid, and the answer is absurd. The condition is not a footnote attached to the result &mdash;
+        it is the thing that made step three legal in the first place.
+      </div>
+    </div>
+
+    <div style="font-size: 15.5px; line-height: 1.7;">
+      Remember the move, not the fraction. If you can do the multiply-and-subtract you can rebuild the formula in ten seconds;
+      if you only memorised <span class="mth" style="font-size: 16px;"><span class="var">a</span>/(1&minus;<span class="var">r</span>)</span> you will use it on a series that diverges.
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">Every step carries its reason, or it is not a derivation</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        The right-hand column is the block's whole justification for existing. A stack of equations is something to copy;
+        equations with reasons is something to reconstruct. <span class="mono" style="font-size: 12px;">why</span> is a required field on every step, for the same reason
+        <span class="mono" style="font-size: 12px;">failure</span> is required on every cloze &mdash; a model that cannot write it has not understood the step it just emitted.
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">Real equations, not pictures of equations</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        KaTeX runs in the worker and stores HTML <em>plus</em> MathML, so the expression is selectable, scales with the reader's font size,
+        and is read aloud correctly. An image of an equation is unreadable to a screen reader and unusable at 200% zoom &mdash;
+        and this product is read by tired people on phones.
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .cel { padding: 13px 15px; border-top: 1px solid #E6E1DA; font-size: 13px; line-height: 1.55; color: #57504A; }
+    .cel strong { color: #2B2723; font-weight: 600; }
+    .hd { padding: 12px 15px; background: #F1EDE6; font-size: 12px; font-weight: 600; color: #57504A; }
+    .mth { font-family: "Newsreader", Georgia, serif; font-size: 19px; line-height: 1.5; }
+    .var { font-style: italic; }
+    .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 2px; }
+    .frac__n { padding: 0 6px 2px; } .frac__d { padding: 2px 6px 0; border-top: 1px solid currentColor; }
+    .sub { font-size: .62em; vertical-align: -.35em; } .sup { font-size: .62em; vertical-align: .5em; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 52px 60px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 38px;">
+    <div>
+      <div class="serif" style="font-size: 30px; font-weight: 500; letter-spacing: -0.015em;">Maths &mdash; zero new answer blocks</div>
+      <div style="font-size: 13.5px; color: #8A827A; margin-top: 5px;">Two new ways to show something. Nothing new to do. That is the whole result of this page.</div>
+    </div>
+    <div class="lbl">Category 3 of 5 &middot; math</div>
+  </div>
+
+  <!-- THE RESULT -->
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #4F7A5B; border-radius: 6px; padding: 24px 26px; margin-bottom: 40px;">
+    <div class="lbl" style="color: #4F7A5B; margin-bottom: 12px;">The abstraction held</div>
+    <div style="font-size: 15.5px; line-height: 1.72; color: #2B2723;">
+      A blank in <span class="mth" style="font-size: 17px;"><span class="var">S</span> = <span class="frac"><span class="frac__n"><span class="var">a</span></span><span class="frac__d">1 &minus; <span class="var">r</span></span></span></span>
+      and a blank in <span class="mono" style="font-size: 14px;">while (lo &lt;= hi)</span> are <strong>the same interaction, the same grader and the same fifteen seconds</strong>.
+      Only the typesetting differs.
+    </div>
+    <div style="font-size: 14.5px; line-height: 1.7; color: #57504A; margin-top: 14px;">
+      So this category adds no answer block at all &mdash; provided the code canvas ships
+      <span class="mono" style="font-size: 13px;">cloze</span> with a <span class="mono" style="font-size: 13px;">notation</span> field rather than a block called
+      <span class="mono" style="font-size: 13px;">clozeCode</span>. That rename is free today and a migration plus a forked renderer in six weeks.
+      It is the one decision on this page with a deadline.
+    </div>
+  </div>
+
+  <!-- WHAT MATHS ADDS -->
+  <div class="lbl" style="margin-bottom: 16px;">What maths adds</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: 190px 1fr 130px;">
+      <div class="hd">Block</div><div class="hd">What it is</div><div class="hd">Where it renders</div>
+
+      <div class="cel"><span class="mono" style="font-size: 12.5px; color: #2B2723;">math</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">context &middot; new</div></div>
+      <div class="cel">One expression, display or inline. The model emits LaTeX; the worker runs KaTeX and stores HTML plus MathML, so a screen reader gets a real equation rather than a picture of one.</div>
+      <div class="cel" style="color: #4F7A5B;">Worker</div>
+
+      <div class="cel"><span class="mono" style="font-size: 12.5px; color: #2B2723;">derivation</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">context &middot; new</div></div>
+      <div class="cel">Steps, each with the <em>reason</em> beside it. A list of <span class="mono" style="font-size: 12px;">math</span> blocks would lose exactly the thing worth learning &mdash; not what the next line is, but why it is allowed.</div>
+      <div class="cel" style="color: #4F7A5B;">Worker</div>
+
+      <div class="cel" style="background: #F5F8F6;"><span class="mono" style="font-size: 12.5px; color: #4F7A5B;">cloze</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer &middot; reused</div></div>
+      <div class="cel" style="background: #F5F8F6;"><strong>Already built.</strong> <span class="mono" style="font-size: 12px;">notation: 'latex'</span> and the hole lands in an equation instead of a line of code. Same grader, same <span class="mono" style="font-size: 12px;">accept</span> list, same touch fallback to chips.</div>
+      <div class="cel" style="background: #F5F8F6; color: #8A827A;">&mdash;</div>
+
+      <div class="cel" style="background: #F5F8F6;"><span class="mono" style="font-size: 12.5px; color: #4F7A5B;">numeric</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer &middot; reused</div></div>
+      <div class="cel" style="background: #F5F8F6;"><strong>Already built, by system design.</strong> Exact for &ldquo;evaluate this sum&rdquo;, tolerant for anything estimated. The unit chip row is usually null here.</div>
+      <div class="cel" style="background: #F5F8F6; color: #8A827A;">&mdash;</div>
+
+      <div class="cel" style="background: #F5F8F6;"><span class="mono" style="font-size: 12.5px; color: #4F7A5B;">orderLines</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer &middot; reused</div></div>
+      <div class="cel" style="background: #F5F8F6;"><strong>Already built.</strong> Proof steps instead of statements. A proof whose steps are shuffled is the cheapest honest question you can ask about a proof.</div>
+      <div class="cel" style="background: #F5F8F6; color: #8A827A;">&mdash;</div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 40px; line-height: 1.65; max-width: 900px;">
+    <span class="mono" style="font-size: 12px;">hotspot</span> ports too &mdash; &ldquo;click the step where the assumption was smuggled in&rdquo; is one of the better maths questions there is,
+    and it is the code hotspot with derivation steps as its targets.
+  </div>
+
+  <!-- FORMAT CHOICE -->
+  <div class="lbl" style="margin-bottom: 16px;">What the generator is told to pick, and when</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 40px;">
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>condition</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">
+        The result holds only when <span class="mth" style="font-size: 16px;">|<span class="var">r</span>| &lt; 1</span>. Convergence criteria, domains, when a rule may be applied at all.
+      </div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; cloze over the condition</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>manipulation</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Multiply through, substitute, integrate by parts. There is one step everyone forgets.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; cloze on that step</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>value</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Evaluate it. Nothing is being tested except whether the formula is actually available to you.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; numeric, tolerance 0</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>proof</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">The order is the argument. Get it wrong and you have assumed what you were proving.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; orderLines, 4&ndash;6 steps</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>fallacy</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">A derivation that reaches something false. Somewhere a step divided by zero and looked reasonable.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; hotspot on the step</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is an <em>intuition</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">&ldquo;Why does the sum stay finite when you add infinitely many things?&rdquo; No symbol answers that.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; explain, plain text</div>
+    </div>
+
+  </div>
+
+  <!-- COST -->
+  <div style="background: #F1EDE6; border-radius: 6px; padding: 22px 26px;">
+    <div class="lbl" style="margin-bottom: 12px;">Not in the pilot &mdash; which is the argument for building it last, not for building it badly</div>
+    <div style="font-size: 14.5px; line-height: 1.72; color: #57504A;">
+      None of the three pilot topics is a maths topic, so nothing here is measured in September. It is specified now for one reason:
+      the <span class="mono" style="font-size: 12.5px;">cloze</span> naming decision has to be made <em>before</em> the code renderer is written, and you cannot
+      make it sensibly without seeing what the second user of that block looks like. Everything else on this canvas can wait.
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

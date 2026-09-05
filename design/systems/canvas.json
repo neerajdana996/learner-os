@@ -1,0 +1,26 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",    "x": 0,    "y": 0,    "w": 1280, "h": 1560, "title": "System design — what's new" },
+    { "file": "Explain.dc.html", "x": 0,    "y": 1700, "w": 960,  "h": 1500, "title": "Explaining a systems concept" },
+    { "file": "Build.dc.html",   "x": 1050, "y": 1700, "w": 960,  "h": 2000, "title": "Fix the path" },
+    { "file": "Trace.dc.html",   "x": 2110, "y": 1700, "w": 900,  "h": 1780, "title": "The cheap ones" },
+    { "file": "Spec.dc.html",    "x": 0,    "y": 3840, "w": 1180, "h": 2050, "title": "Build spec — delta" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 1420,
+      "y": -240,
+      "w": 540,
+      "text": "System design — category 2\n\nConsistency in distributed systems is one of the three pilot topics, so this is the category a real learner will actually meet in September. Maths is not in the pilot at all.\n\nTwo genuinely new blocks out of nine: a graph as the answer, and a number with a tolerance. Everything else is the code category pointed at different pixels — which is the test of whether the block abstraction was worth building.\n\nStatic mockups, matching the learnos canvas."
+    },
+    {
+      "id": "cost",
+      "x": 1300,
+      "y": 3840,
+      "w": 470,
+      "text": "The honest cost\n\nCode and maths render in the generator worker and ship no library to the browser. This category breaks that: a diagram the learner drags nodes around has to be live, so React Flow ships.\n\nMitigated, not avoided — lazy, one screen, never in the extension, and a concept taught with graphBuild comes back on day 8 as a hotspot on a flat SVG. The heavy screen is where a concept is learned, not where it is kept."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

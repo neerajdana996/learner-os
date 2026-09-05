@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .nl { font-family: "IBM Plex Sans", sans-serif; font-size: 12px; font-weight: 500; fill: #E8E2DA; }
+    .el { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; fill: #948C84; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 40px; min-height: 100%;">
+
+  <div class="serif" style="font-size: 22px; font-weight: 500; margin-bottom: 5px;">The cheap ones &mdash; what carries the thirty days</div>
+  <div style="font-size: 13.5px; color: #8A827A; margin-bottom: 30px; line-height: 1.6;">
+    <span class="mono" style="font-size: 12.5px;">graphBuild</span> teaches a concept once. These two are what bring it back on days 2, 6, 14 and 29.
+  </div>
+
+  <!-- ===== NUMERIC, EXACT ===== -->
+  <div class="lbl" style="margin-bottom: 11px;">numeric &middot; an inequality with one right integer</div>
+  <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 22px 24px; margin-bottom: 12px;">
+    <div class="serif" style="font-size: 19px; line-height: 1.4; margin-bottom: 18px;">
+      Five replicas. Every write goes to three of them. What is the smallest read quorum that still guarantees you see the latest write?
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; background: #221F1C; border: 1px solid #453F39; border-bottom: 2px solid #B0552F; border-radius: 4px; padding: 0 14px; min-height: 48px;">
+        <span class="mono" style="font-size: 18px; color: #E8E2DA;">3</span>
+        <span style="display: inline-block; width: 1.5px; height: 20px; background: #B0552F; margin-left: 2px;"></span>
+      </div>
+      <div class="mono" style="font-size: 13px; color: #8F877F;">R =</div>
+      <div style="font-size: 13px; color: #A9A29B; line-height: 1.55; margin-left: 8px;">
+        Digits only. No unit is asked for, so none is accepted.
+      </div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 34px; line-height: 1.65; max-width: 660px;">
+    <span class="mono" style="font-size: 12px;">tolerance: 0</span> &mdash; <span class="mono" style="font-size: 12px;">R + W &gt; N</span> has exactly one smallest integer answer, and
+    &ldquo;about 3&rdquo; is not a thing. The reveal shows the inequality worked through, because the number is worthless without it.
+  </div>
+
+  <!-- ===== NUMERIC, TOLERANT ===== -->
+  <div class="lbl" style="margin-bottom: 11px;">numeric &middot; a scale, where the order of magnitude is the answer</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 22px 24px; margin-bottom: 12px;">
+    <div class="serif" style="font-size: 19px; line-height: 1.4; margin-bottom: 8px; color: #2B2723;">
+      One million writes a day, two kilobytes each, three replicas. Roughly how much leaves the primary daily?
+    </div>
+    <div style="font-size: 13.5px; color: #8A827A; line-height: 1.6; margin-bottom: 18px;">
+      Round numbers. If you are within a factor of two you have understood the thing being asked.
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid #C9C2B9; border-bottom: 2px solid #B0552F; border-radius: 4px; padding: 0 14px; min-height: 48px; min-width: 130px;">
+        <span class="mono" style="font-size: 17px; color: #2B2723;">6</span>
+      </div>
+      <div style="display: flex; gap: 7px;">
+        <div class="mono" style="border: 1px solid #C9C2B9; border-radius: 4px; padding: 0 15px; min-height: 44px; display: flex; align-items: center; font-size: 13px; background: #FFFFFF;">MB</div>
+        <div class="mono" style="border: 1.5px solid #B0552F; background: #F7EDE7; color: #8A4225; border-radius: 4px; padding: 0 15px; min-height: 44px; display: flex; align-items: center; font-size: 13px; font-weight: 500;">GB</div>
+        <div class="mono" style="border: 1px solid #C9C2B9; border-radius: 4px; padding: 0 15px; min-height: 44px; display: flex; align-items: center; font-size: 13px; background: #FFFFFF;">TB</div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 34px; line-height: 1.65; max-width: 700px;">
+    <span class="mono" style="font-size: 12px;">{ value: 6e9, tolerance: 0.5, unit: 'B' }</span> &mdash; the unit is a chip row and not free text, so
+    the grader never has to parse &ldquo;6 gigs&rdquo;, and the learner is never marked wrong for a spelling.
+    Answer and unit are graded together as one boolean: right number, wrong unit is wrong, which is the whole lesson of an estimate.
+  </div>
+
+  <!-- ===== HOTSPOT ON A SEQUENCE ===== -->
+  <div class="lbl" style="margin-bottom: 11px;">hotspot &middot; the same block as code, pointed at a message</div>
+  <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 22px 24px; margin-bottom: 12px;">
+    <div class="serif" style="font-size: 19px; line-height: 1.4; margin-bottom: 16px;">
+      Ada sees her old name. Which message is the one that could have prevented it, had it landed sooner?
+    </div>
+    <div style="background: #221F1C; border: 1px solid #453F39; border-radius: 5px; padding: 12px; overflow-x: auto;">
+      <svg width="500" height="150" viewBox="0 0 500 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="t-ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#948C84"/></marker>
+          <marker id="t-arh" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#D98A63"/></marker>
+        </defs>
+        <text class="nl" x="44" y="12" text-anchor="middle">App</text>
+        <text class="nl" x="256" y="12" text-anchor="middle">Primary</text>
+        <text class="nl" x="452" y="12" text-anchor="middle">Replica</text>
+        <path d="M44 22v122" stroke="#3F3A35" stroke-dasharray="3 4"/>
+        <path d="M256 22v122" stroke="#3F3A35" stroke-dasharray="3 4"/>
+        <path d="M452 22v122" stroke="#3F3A35" stroke-dasharray="3 4"/>
+
+        <path d="M44 44h206" stroke="#948C84" stroke-width="1.2" marker-end="url(#t-ar)"/>
+        <text class="el" x="52" y="38">write name=Ada</text>
+
+        <path d="M44 76h402" stroke="#948C84" stroke-width="1.2" marker-end="url(#t-ar)"/>
+        <text class="el" x="52" y="70">read</text>
+
+        <path d="M452 106h-402" stroke="#948C84" stroke-width="1.2" marker-end="url(#t-ar)"/>
+        <text class="el" x="240" y="100">name = Bob</text>
+
+        <!-- the hoverable / selected message -->
+        <rect x="248" y="122" width="212" height="22" rx="3" fill="#3A342F"/>
+        <path d="M256 138h190" stroke="#D98A63" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#t-arh)"/>
+        <text x="262" y="133" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#D98A63" font-weight="500">replicate name=Ada</text>
+      </svg>
+    </div>
+    <div style="font-size: 12.5px; color: #A9A29B; margin-top: 13px; line-height: 1.55;">
+      Each message is a 44px row across the full width of the lane area &mdash; a radio group, arrow keys and all, exactly as the code hotspot is.
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 34px; line-height: 1.65; max-width: 700px;">
+    Nothing new was built for this. <span class="mono" style="font-size: 12px;">hotspot</span> already takes a list of targets and a marked one;
+    a code listing supplies lines, a sequence supplies messages, and a diagram supplies nodes. That is the abstraction earning its keep.
+  </div>
+
+  <!-- ===== EXTENSION ===== -->
+  <div class="lbl" style="margin-bottom: 11px;">In the popup &middot; 380&times;300</div>
+  <div style="display: flex; gap: 22px; align-items: flex-start;">
+    <div style="width: 380px; background: #FFFFFF; border: 1px solid #D8D2CA; border-radius: 8px; box-shadow: 0 6px 22px rgba(43,39,35,.11); overflow: hidden; flex: 0 0 auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 11px 15px; border-bottom: 1px solid #E6E1DA;">
+        <div class="mono" style="font-size: 10px; letter-spacing: .08em; color: #8A827A;">LEARNOS &middot; 20 SECONDS</div>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#A9A29B" stroke-width="1.5"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+      </div>
+      <div style="padding: 16px 15px 15px;">
+        <div style="font-size: 15px; line-height: 1.45; margin-bottom: 14px; font-weight: 500;">N = 5, W = 3. Smallest R that still sees the latest write?</div>
+        <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid #C9C2B9; border-bottom: 2px solid #B0552F; border-radius: 4px; padding: 0 13px; min-height: 44px; margin-bottom: 13px;">
+          <span class="mono" style="font-size: 15px; color: #A9A29B;">&mdash;</span>
+        </div>
+        <div style="display: flex; gap: 7px;">
+          <div style="flex: 1; padding: 9px 0; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 12.5px; text-align: center; min-height: 40px; display: flex; align-items: center; justify-content: center;">Guessing</div>
+          <div style="flex: 1; padding: 9px 0; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 12.5px; text-align: center; min-height: 40px; display: flex; align-items: center; justify-content: center;">Fairly sure</div>
+          <div style="flex: 1; padding: 9px 0; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 12.5px; text-align: center; min-height: 40px; display: flex; align-items: center; justify-content: center;">Certain</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 13px;">
+      <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="color: #B0552F; margin-bottom: 9px;">A number is the best popup question there is</div>
+        <div style="font-size: 13px; line-height: 1.6; color: #57504A;">
+          No diagram to shrink, no code to elide, a numeric keyboard on a phone, and it grades to one boolean with no ambiguity.
+          For this category it is what <span class="mono" style="font-size: 12px;">clozeCode</span> is for code &mdash; the format that makes daily
+          retrieval actually cheap enough to happen.
+        </div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="margin-bottom: 9px;">What never pops</div>
+        <div style="font-size: 13px; line-height: 1.6; color: #57504A;">
+          <span class="mono" style="font-size: 12px;">graphBuild</span>, and any <span class="mono" style="font-size: 12px;">diagram</span> over five nodes or
+          <span class="mono" style="font-size: 12px;">sequence</span> over two lanes. Filtered at the repository on
+          <span class="mono" style="font-size: 12px;">items.answer_kind</span> (T-079), not hidden by the client.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

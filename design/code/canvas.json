@@ -1,15 +1,69 @@
 {
   "artboards": [
-    { "file": "Main.dc.html",      "x": 0,    "y": 0,    "w": 1280, "h": 2150, "title": "Code — the block system" },
-
-    { "file": "Explain.dc.html",   "x": 0,    "y": 2290, "w": 960,  "h": 1180, "title": "Explaining a concept" },
-    { "file": "FillIn.dc.html",    "x": 1050, "y": 2290, "w": 960,  "h": 1980, "title": "Missing code" },
-    { "file": "Write.dc.html",     "x": 2110, "y": 2290, "w": 960,  "h": 1960, "title": "Write the code" },
-
-    { "file": "Trace.dc.html",     "x": 0,    "y": 4410, "w": 900,  "h": 1520, "title": "The 20-second questions" },
-    { "file": "Entities.dc.html",  "x": 1000, "y": 4410, "w": 1180, "h": 2500, "title": "Entities & prompts" },
-
-    { "file": "Libraries.dc.html", "x": 0,    "y": 7050, "w": 1180, "h": 2200, "title": "Libraries" }
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 2150,
+      "title": "Code \u2014 the block system"
+    },
+    {
+      "file": "Explain.dc.html",
+      "x": 0,
+      "y": 2290,
+      "w": 960,
+      "h": 1180,
+      "title": "Explaining a concept"
+    },
+    {
+      "file": "FillIn.dc.html",
+      "x": 1050,
+      "y": 2290,
+      "w": 960,
+      "h": 1980,
+      "title": "Missing code"
+    },
+    {
+      "file": "Write.dc.html",
+      "x": 2110,
+      "y": 2290,
+      "w": 960,
+      "h": 1960,
+      "title": "Write the code"
+    },
+    {
+      "file": "Trace.dc.html",
+      "x": 0,
+      "y": 4410,
+      "w": 900,
+      "h": 1520,
+      "title": "The 20-second questions"
+    },
+    {
+      "file": "Entities.dc.html",
+      "x": 1000,
+      "y": 4410,
+      "w": 1180,
+      "h": 2500,
+      "title": "Entities & prompts"
+    },
+    {
+      "file": "Libraries.dc.html",
+      "x": 0,
+      "y": 7050,
+      "w": 1180,
+      "h": 2200,
+      "title": "Libraries"
+    },
+    {
+      "file": "Spec.dc.html",
+      "x": 1300,
+      "y": 7050,
+      "w": 1180,
+      "h": 2450,
+      "title": "Build spec \u2014 shared"
+    }
   ],
   "annotations": [
     {
@@ -17,7 +71,7 @@
       "x": 1420,
       "y": -230,
       "w": 540,
-      "text": "Code — the first category done properly\n\nToday every question is a prompt string and a textarea, whatever the subject. That is fine for \"why does a stoma close\" and useless for \"where is the off-by-one\".\n\nThis canvas takes one category all the way down: what a code question is made of, the three screens the learner actually sees, the shapes the database and the prompts need, and the four packages that make it render.\n\nStatic mockups, matching the existing learnos canvas — not a clickable prototype."
+      "text": "Code \u2014 the first category done properly\n\nToday every question is a prompt string and a textarea, whatever the subject. That is fine for \"why does a stoma close\" and useless for \"where is the off-by-one\".\n\nThis canvas takes one category all the way down: what a code question is made of, the three screens the learner actually sees, the shapes the database and the prompts need, and the four packages that make it render.\n\nStatic mockups, matching the existing learnos canvas \u2014 not a clickable prototype."
     },
     {
       "id": "not-covered",
@@ -28,11 +82,13 @@
     },
     {
       "id": "loop-md",
-      "x": 1300,
+      "x": 2560,
       "y": 7050,
       "w": 470,
-      "text": "The rule this bumps into\n\nloop.md §2: \"UI: plain React, inline styles or a single styles.css — no UI library for the pilot.\"\n\nThe stack on the left keeps three of four packages on the backend precisely to stay inside that. CodeMirror does not: it is a UI library, on the client, on one screen.\n\nThat is a founder call, not a call a task should make quietly. Written up as T-081 rather than assumed."
+      "text": "The rule this bumps into\n\nloop.md \u00a72: \"UI: plain React, inline styles or a single styles.css \u2014 no UI library for the pilot.\"\n\nThe stack on the left keeps three of four packages on the backend precisely to stay inside that. CodeMirror does not: it is a UI library, on the client, on one screen.\n\nThat is a founder call, not a call a task should make quietly. Written up as T-081 rather than assumed."
     }
   ],
-  "launch": { "view": "canvas" }
+  "launch": {
+    "view": "canvas"
+  }
 }

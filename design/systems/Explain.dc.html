@@ -1,0 +1,182 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .nl { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 500; fill: #2B2723; }
+    .el { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; fill: #8A827A; }
+    .el-warn { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; fill: #B8873A; font-weight: 500; }
+    .badge { display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center; font-size: 9.5px; font-weight: 500;
+             background: #B0552F; color: #FFF8F4; border-radius: 2px; font-family: "IBM Plex Mono", monospace; vertical-align: 1px; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 44px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div class="serif" style="font-size: 18px; font-weight: 600;">learnos</div>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div class="mono" style="font-size: 11.5px; color: #8A827A; letter-spacing: .05em;">CONCEPT 1 OF 2 &middot; THEN 5 REVIEWS</div>
+      <div style="display: flex; align-items: baseline; gap: 5px;">
+        <span class="mono" style="font-size: 16px; font-weight: 500;">54</span>
+        <span class="mono" style="font-size: 10.5px; color: #8A827A;">SCORE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 11px;">New concept &middot; Read-your-writes</div>
+
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 26px 28px; margin-bottom: 16px;">
+    <div class="lbl" style="margin-bottom: 14px;">How to hold it</div>
+
+    <div style="font-size: 16px; line-height: 1.72; margin-bottom: 22px;">
+      Read-your-writes is not a promise about the database. It is a promise about <strong>one session</strong>: whatever else is stale,
+      <em>you</em> never see a version of the world older than your own last write. Everyone else may.
+    </div>
+
+    <!-- ANNOTATED DIAGRAM -->
+    <div style="display: flex; gap: 0; border: 1px solid #E6E1DA; border-radius: 5px; overflow: hidden; margin-bottom: 22px;">
+      <div style="flex: 1 1 auto; background: #F4F0EA; padding: 16px; min-width: 0; overflow-x: auto;">
+        <svg width="540" height="212" viewBox="0 0 540 212" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+              <path d="M0 0l6 3-6 3z" fill="#8A827A"/>
+            </marker>
+            <marker id="ar-w" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+              <path d="M0 0l6 3-6 3z" fill="#B8873A"/>
+            </marker>
+          </defs>
+
+          <rect x="8" y="82" width="92" height="46" rx="4" fill="#FFFFFF" stroke="#C9C2B9"/>
+          <text class="nl" x="54" y="110" text-anchor="middle">Client</text>
+
+          <rect x="158" y="82" width="92" height="46" rx="4" fill="#FFFFFF" stroke="#C9C2B9"/>
+          <text class="nl" x="204" y="110" text-anchor="middle">App</text>
+
+          <rect x="330" y="14" width="104" height="46" rx="4" fill="#FFFFFF" stroke="#C9C2B9"/>
+          <text class="nl" x="382" y="42" text-anchor="middle">Primary</text>
+
+          <rect x="330" y="150" width="104" height="46" rx="4" fill="#FFFFFF" stroke="#C9C2B9"/>
+          <text class="nl" x="382" y="178" text-anchor="middle">Replica</text>
+
+          <path d="M100 105h50" stroke="#8A827A" stroke-width="1.3" fill="none" marker-end="url(#ar)"/>
+
+          <path d="M250 98 L322 46" stroke="#8A827A" stroke-width="1.3" fill="none" marker-end="url(#ar)"/>
+          <text class="el" x="272" y="66">write</text>
+
+          <path d="M250 112 L322 164" stroke="#B8873A" stroke-width="1.6" fill="none" marker-end="url(#ar-w)"/>
+          <text class="el-warn" x="272" y="152">read</text>
+
+          <path d="M382 60 L382 146" stroke="#8A827A" stroke-width="1.3" stroke-dasharray="4 3" fill="none" marker-end="url(#ar)"/>
+          <text class="el" x="392" y="100">replicate</text>
+          <text class="el" x="392" y="114">~200 ms</text>
+
+          <rect x="452" y="82" width="18" height="18" rx="2" fill="#B0552F"/>
+          <text x="461" y="95" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500" fill="#FFF8F4">A</text>
+          <rect x="452" y="150" width="18" height="18" rx="2" fill="#B0552F"/>
+          <text x="461" y="163" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="500" fill="#FFF8F4">B</text>
+        </svg>
+      </div>
+
+      <div style="flex: 0 0 250px; background: #FFFFFF; border-left: 1px solid #E6E1DA; padding: 16px 18px; display: flex; flex-direction: column; gap: 15px;">
+        <div style="display: flex; gap: 9px;">
+          <span class="badge" style="flex: 0 0 auto; margin-top: 2px;">A</span>
+          <div style="font-size: 12.5px; line-height: 1.55; color: #57504A;">Two hundred milliseconds is not the bug. The bug is that a human clicks Save and then Refresh in about four hundred.</div>
+        </div>
+        <div style="display: flex; gap: 9px;">
+          <span class="badge" style="flex: 0 0 auto; margin-top: 2px;">B</span>
+          <div style="font-size: 12.5px; line-height: 1.55; color: #57504A;">This is the only edge that has to change. Not the replication, not the database &mdash; the routing decision for <em>this session's</em> reads.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEQUENCE -->
+    <div class="lbl" style="margin-bottom: 11px;">What the learner is actually going to hit</div>
+    <div style="background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 16px; margin-bottom: 20px; overflow-x: auto;">
+      <svg width="620" height="248" viewBox="0 0 620 248" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="s-ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#8A827A"/></marker>
+          <marker id="s-arw" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#B8873A"/></marker>
+        </defs>
+
+        <text class="nl" x="52" y="14" text-anchor="middle">Client</text>
+        <text class="nl" x="228" y="14" text-anchor="middle">App</text>
+        <text class="nl" x="404" y="14" text-anchor="middle">Primary</text>
+        <text class="nl" x="568" y="14" text-anchor="middle">Replica</text>
+
+        <path d="M52 26v212" stroke="#D8D2CA" stroke-width="1" stroke-dasharray="3 4"/>
+        <path d="M228 26v212" stroke="#D8D2CA" stroke-width="1" stroke-dasharray="3 4"/>
+        <path d="M404 26v212" stroke="#D8D2CA" stroke-width="1" stroke-dasharray="3 4"/>
+        <path d="M568 26v212" stroke="#D8D2CA" stroke-width="1" stroke-dasharray="3 4"/>
+
+        <path d="M52 48h170" stroke="#8A827A" stroke-width="1.2" marker-end="url(#s-ar)"/>
+        <text class="el" x="60" y="42">POST /profile  name=Ada</text>
+
+        <path d="M228 76h170" stroke="#8A827A" stroke-width="1.2" marker-end="url(#s-ar)"/>
+        <text class="el" x="236" y="70">write</text>
+
+        <path d="M404 100h-170" stroke="#8A827A" stroke-width="1.2" marker-end="url(#s-ar)"/>
+        <text class="el" x="300" y="94">ok</text>
+
+        <path d="M228 124h-170" stroke="#8A827A" stroke-width="1.2" marker-end="url(#s-ar)"/>
+        <text class="el" x="120" y="118">200</text>
+
+        <path d="M52 158h170" stroke="#8A827A" stroke-width="1.2" marker-end="url(#s-ar)"/>
+        <text class="el" x="60" y="152">GET /profile</text>
+
+        <path d="M228 182h334" stroke="#B8873A" stroke-width="1.5" marker-end="url(#s-arw)"/>
+        <text class="el-warn" x="236" y="176">read</text>
+
+        <path d="M568 206h-334" stroke="#B8873A" stroke-width="1.5" marker-end="url(#s-arw)"/>
+        <text class="el-warn" x="330" y="200">name = Bob</text>
+
+        <path d="M404 232h158" stroke="#8A827A" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#s-ar)"/>
+        <text class="el" x="412" y="226">replicate  name=Ada  &mdash; too late</text>
+      </svg>
+    </div>
+
+    <div style="font-size: 15.5px; line-height: 1.7;">
+      The user saved their name, got a 200, refreshed, and the old name came back. Nothing failed. Nothing logged an error.
+      Every component behaved exactly as designed &mdash; which is why this is a design question and not a debugging one.
+    </div>
+
+    <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #B0552F; font-weight: 500; min-height: 44px; margin-top: 6px;">
+      The three ways to fix it
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">Why both pictures, and not one</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        The boxes say what exists; the lanes say what happened. This category's concepts are almost all about
+        <strong style="color: #2B2723;">an ordering</strong>, and an ordering is invisible in an architecture diagram &mdash; the topology above is
+        correct in every frame, including the one where the user sees the wrong name.
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">Both are SVG from the worker</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        Neither of these is interactive, so neither needs a graph library on the client. The model emits nodes, edges and messages as
+        JSON; the generator lays them out and stores SVG. React Flow only appears when the learner has to <em>move</em> something &mdash;
+        the next artboard.
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

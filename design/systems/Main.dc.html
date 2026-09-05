@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .cel { padding: 13px 15px; border-top: 1px solid #E6E1DA; font-size: 13px; line-height: 1.55; color: #57504A; }
+    .cel strong { color: #2B2723; font-weight: 600; }
+    .hd { padding: 12px 15px; background: #F1EDE6; font-size: 12px; font-weight: 600; color: #57504A; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 52px 60px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 38px;">
+    <div>
+      <div class="serif" style="font-size: 30px; font-weight: 500; letter-spacing: -0.015em;">System design &mdash; the answer is a shape</div>
+      <div style="font-size: 13.5px; color: #8A827A; margin-top: 5px;">Two of these blocks are genuinely new. The rest is the code category with different pixels.</div>
+    </div>
+    <div class="lbl">Category 2 of 5 &middot; systems</div>
+  </div>
+
+  <!-- WHY IT MATTERS NOW -->
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 22px 24px; margin-bottom: 40px;">
+    <div class="lbl" style="color: #B0552F; margin-bottom: 11px;">This one is in the pilot</div>
+    <div style="font-size: 15px; line-height: 1.72; color: #2B2723;">
+      Consistency in distributed systems is one of the three pilot topics (T-058). Maths is not in the pilot at all &mdash; so of the two
+      categories still to build, this is the one whose absence a real learner will feel in September.
+    </div>
+    <div style="font-size: 14px; line-height: 1.68; color: #57504A; margin-top: 12px;">
+      It is also the one that costs the most: the interactive diagram cannot be rendered in the worker the way code and equations can, so
+      <strong style="color: #2B2723;">this is the category where a library genuinely ships to the browser</strong>. That trade is argued on the spec page, not hidden in it.
+    </div>
+  </div>
+
+  <!-- WHAT'S NEW -->
+  <div class="lbl" style="margin-bottom: 16px;">What system design adds to the block union</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: 180px 1fr 118px 122px;">
+      <div class="hd">Block</div><div class="hd">What it is, and why nothing existing bends into it</div><div class="hd">Time</div><div class="hd">Extension</div>
+
+      <div class="cel"><span class="mono" style="font-size: 12.5px; color: #2B2723;">diagram</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">context &middot; new</div></div>
+      <div class="cel">Nodes and edges &mdash; a client, a load balancer, two replicas, the arrows between them. Rendered to <strong>SVG in the worker</strong>, because a diagram you only read does not need a graph library on the client.</div>
+      <div class="cel mono" style="color: #8A827A;">&mdash;</div>
+      <div class="cel"><span style="color: #4F7A5B;">Yes</span>, &le;5 nodes</div>
+
+      <div class="cel"><span class="mono" style="font-size: 12.5px; color: #2B2723;">sequence</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">context &middot; new</div></div>
+      <div class="cel">Lanes and messages down a time axis. Half of distributed systems <em>is</em> an interleaving &mdash; a stale read is not a picture of boxes, it is two orders of events. A box diagram cannot show the bug this category is mostly about.</div>
+      <div class="cel mono" style="color: #8A827A;">&mdash;</div>
+      <div class="cel"><span style="color: #4F7A5B;">Yes</span>, 2 lanes</div>
+
+      <div class="cel" style="background: #FDF9F6;"><span class="mono" style="font-size: 12.5px; color: #B0552F;">graphBuild</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer &middot; new</div></div>
+      <div class="cel" style="background: #FDF9F6;"><strong>Places a component, or draws an edge.</strong> The answer is a graph, not a string or an index &mdash; grading asks whether the read path goes through the primary, not whether two pieces of text match. Nothing in the union bends into this; it is the one genuinely new grader.</div>
+      <div class="cel mono" style="background: #FDF9F6; color: #57504A;">45&ndash;90s</div>
+      <div class="cel" style="background: #FDF9F6;"><span style="color: #B8873A;">No</span> &mdash; needs a canvas</div>
+
+      <div class="cel" style="background: #FDF9F6;"><span class="mono" style="font-size: 12.5px; color: #B0552F;">numeric</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer &middot; new, shared</div></div>
+      <div class="cel" style="background: #FDF9F6;"><strong>A number, with a tolerance.</strong> <span class="mono" style="font-size: 12px;">accept: string[]</span> cannot express this &mdash; <span class="mono" style="font-size: 12px;">6GB</span>, <span class="mono" style="font-size: 12px;">6e9</span> and <span class="mono" style="font-size: 12px;">6,000,000,000</span> are one answer with infinitely many spellings, and a capacity estimate wants an order of magnitude, not equality. <strong>Maths needs exactly this block</strong>, which is why it is specified once.</div>
+      <div class="cel" style="background: #FDF9F6; color: #57504A;" ><span class="mono">15&ndash;30s</span></div>
+      <div class="cel" style="background: #FDF9F6;"><span style="color: #4F7A5B;">Yes</span></div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 40px; line-height: 1.65; max-width: 900px;">
+    Everything else ports unchanged. <span class="mono" style="font-size: 12px;">hotspot</span> targets a node or an edge instead of a line;
+    <span class="mono" style="font-size: 12px;">orderLines</span> orders protocol steps instead of statements;
+    <span class="mono" style="font-size: 12px;">recognition</span>, <span class="mono" style="font-size: 12px;">explain</span> and the whole reveal slot are identical.
+    Two new blocks out of nine is the measure of whether the abstraction was right.
+  </div>
+
+  <!-- FORMAT CHOICE -->
+  <div class="lbl" style="margin-bottom: 16px;">What the generator is told to pick, and when</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 14px;">
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>placement</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Where the cache goes. Which side of the queue the retry lives on. Whether the read hits the primary.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; graphBuild</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is an <em>ordering</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">A stale read, a lost update, a write that overtook another. The bug is in the interleaving.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; sequence + hotspot on a message</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is an <em>inequality</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Quorum: <span class="mono" style="font-size: 12px;">R + W &gt; N</span>. Replication lag budgets. Anything with a threshold.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; numeric</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>scale</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">&ldquo;How much does 1M writes a day across 3 replicas actually move?&rdquo; The point is the order of magnitude.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; numeric, wide tolerance</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>trade-off</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Two designs that both work, for different prices. There is no shape to draw &mdash; the answer is a sentence.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; diagram as context, explain as answer</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>guarantee</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">What read-your-writes actually promises, and what it does not. A definition with a sharp edge.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; recognition, options as scenarios</div>
+    </div>
+
+  </div>
+
+  <!-- THE RULE THAT DOESN'T BEND -->
+  <div style="background: #F1EDE6; border-radius: 6px; padding: 22px 26px; margin-top: 30px;">
+    <div class="lbl" style="margin-bottom: 12px;">One answer block, even here</div>
+    <div style="font-size: 14.5px; line-height: 1.72; color: #57504A;">
+      &ldquo;Draw the architecture <em>and</em> justify the cache choice&rdquo; is the request this category will keep making, and the answer is no:
+      <span class="mono" style="font-size: 12.5px;">review_events.correct</span> is one boolean and the scheduler needs one grade per item.
+      Those become <strong style="color: #2B2723;">two items on the same concept</strong> &mdash; which is better retrieval practice anyway, so the constraint costs nothing.
+      The domain fragment has to say this outright, because a model handed &ldquo;design a system&rdquo; will emit one item with five answers every time.
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

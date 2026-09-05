@@ -1,0 +1,222 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .nl { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 500; fill: #E8E2DA; }
+    .nl-l { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 500; fill: #2B2723; }
+    .el { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; fill: #948C84; }
+    .chip { display: flex; align-items: center; gap: 8px; border: 1px solid #4E4740; background: #2F2B27; color: #E8E2DA;
+            border-radius: 4px; padding: 10px 12px; font-size: 13px; min-height: 44px; }
+    .k { color: #8A4225; } .p { color: #8A827A; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 44px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div class="serif" style="font-size: 18px; font-weight: 600;">learnos</div>
+    <div class="mono" style="font-size: 11.5px; color: #8A827A; letter-spacing: .05em;">CONCEPT 1 OF 2 &middot; ~90 SEC</div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 11px;">Read-your-writes &middot; fix the path</div>
+
+  <!-- ===== ASKING ===== -->
+  <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 24px 26px; margin-bottom: 14px;">
+    <div class="lbl" style="color: #A9A29B; margin-bottom: 13px;">Change one thing &middot; no notes</div>
+
+    <div class="serif" style="font-size: 21px; line-height: 1.4; margin-bottom: 6px;">
+      Ada saves her name and immediately sees the old one. Make this session read its own write.
+    </div>
+    <div style="font-size: 13.5px; color: #A9A29B; line-height: 1.6; margin-bottom: 18px;">
+      Drag a component in, or drag the red edge somewhere else. There is more than one right answer.
+    </div>
+
+    <div style="display: flex; gap: 16px; align-items: stretch;">
+
+      <!-- palette -->
+      <div style="flex: 0 0 186px; display: flex; flex-direction: column; gap: 8px;">
+        <div class="lbl" style="color: #8F877F; margin-bottom: 2px;">Available</div>
+        <div class="chip">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#A9A29B" stroke-width="1.4"><rect x="2.5" y="4" width="11" height="8" rx="1.5"/></svg>
+          Session pin
+        </div>
+        <div class="chip">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#A9A29B" stroke-width="1.4"><path d="M3 5.5c0-1.4 2.2-2.5 5-2.5s5 1.1 5 2.5v5c0 1.4-2.2 2.5-5 2.5s-5-1.1-5-2.5z"/><path d="M3 5.5c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5"/></svg>
+          Cache
+        </div>
+        <div class="chip">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#A9A29B" stroke-width="1.4"><path d="M8 2.5v11M3.5 6.5h9"/></svg>
+          Read replica
+        </div>
+        <div style="font-size: 11.5px; color: #8F877F; line-height: 1.5; margin-top: 6px;">
+          Two of these three are wrong for this concept. Choosing is the question.
+        </div>
+      </div>
+
+      <!-- canvas -->
+      <div style="flex: 1; background: #221F1C; border: 1px solid #453F39; border-radius: 5px; padding: 14px; overflow-x: auto;">
+        <svg width="470" height="208" viewBox="0 0 470 208" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="b-ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#948C84"/></marker>
+            <marker id="b-arw" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#D98A63"/></marker>
+            <pattern id="grid" width="18" height="18" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="0.9" fill="#332E2A"/>
+            </pattern>
+          </defs>
+          <rect x="0" y="0" width="470" height="208" fill="url(#grid)"/>
+
+          <rect x="6" y="80" width="86" height="44" rx="4" fill="#2F2B27" stroke="#5A534C"/>
+          <text class="nl" x="49" y="107" text-anchor="middle">Client</text>
+
+          <rect x="152" y="80" width="86" height="44" rx="4" fill="#2F2B27" stroke="#5A534C"/>
+          <text class="nl" x="195" y="107" text-anchor="middle">App</text>
+
+          <rect x="312" y="14" width="98" height="44" rx="4" fill="#2F2B27" stroke="#5A534C"/>
+          <text class="nl" x="361" y="41" text-anchor="middle">Primary</text>
+
+          <rect x="312" y="146" width="98" height="44" rx="4" fill="#2F2B27" stroke="#5A534C"/>
+          <text class="nl" x="361" y="173" text-anchor="middle">Replica</text>
+
+          <path d="M92 102h52" stroke="#948C84" stroke-width="1.3" marker-end="url(#b-ar)"/>
+          <path d="M238 95 L304 44" stroke="#948C84" stroke-width="1.3" marker-end="url(#b-ar)"/>
+          <text class="el" x="256" y="66">write</text>
+
+          <!-- the edge under question: selected -->
+          <path d="M238 110 L304 160" stroke="#D98A63" stroke-width="2" marker-end="url(#b-arw)"/>
+          <circle cx="238" cy="110" r="4" fill="#221F1C" stroke="#D98A63" stroke-width="1.6"/>
+          <circle cx="304" cy="160" r="4" fill="#221F1C" stroke="#D98A63" stroke-width="1.6"/>
+          <text x="252" y="150" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#D98A63" font-weight="500">read</text>
+
+          <path d="M361 58 L361 142" stroke="#948C84" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#b-ar)"/>
+          <text class="el" x="369" y="104">~200 ms</text>
+        </svg>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 16px;">
+      <div style="font-size: 13px; color: #A9A29B; line-height: 1.55;">Keyboard: Tab to a node, Enter to pick it up, arrows to move, Enter to drop.</div>
+      <div class="mono" style="font-size: 11.5px; color: #8F877F;">1 CHANGE MADE</div>
+    </div>
+  </div>
+
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 24px; margin-bottom: 40px;">
+    <div class="lbl" style="margin-bottom: 12px;">How sure are you?</div>
+    <div style="display: flex; gap: 9px; margin-bottom: 16px;">
+      <div style="padding: 11px 19px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Guessing</div>
+      <div style="padding: 11px 19px; border: 1.5px solid #B0552F; background: #F7EDE7; color: #8A4225; border-radius: 4px; font-size: 14px; font-weight: 500; min-height: 44px; display: flex; align-items: center;">Fairly sure</div>
+      <div style="padding: 11px 19px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Certain</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="background: #B0552F; color: #FFF8F4; padding: 13px 28px; border-radius: 4px; font-size: 15px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Check</div>
+      <div style="font-size: 14px; color: #8A827A;">Reset the diagram</div>
+    </div>
+  </div>
+
+  <!-- ===== GRADED ===== -->
+  <div style="border-top: 1px solid #E6E1DA; padding-top: 30px;">
+    <div class="lbl" style="margin-bottom: 16px;">After Check &mdash; graded on what the graph guarantees, not on matching a picture</div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #4F7A5B; border-radius: 6px; padding: 24px 26px; margin-bottom: 14px;">
+
+      <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 18px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#4F7A5B" stroke-width="1.8"><path d="M3.2 8.4l3 3 6.4-7"/></svg>
+        <div class="lbl" style="color: #4F7A5B;">Right &mdash; and not the answer we drew</div>
+      </div>
+
+      <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
+        <div style="flex: 0 0 auto; background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 12px;">
+          <svg width="256" height="132" viewBox="0 0 256 132" xmlns="http://www.w3.org/2000/svg">
+            <defs><marker id="g-ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#4F7A5B"/></marker>
+            <marker id="g-arg" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0l6 3-6 3z" fill="#8A827A"/></marker></defs>
+            <rect x="4" y="50" width="62" height="34" rx="4" fill="#FFFFFF" stroke="#C9C2B9"/>
+            <text class="nl-l" x="35" y="71" text-anchor="middle" font-size="11">App</text>
+            <rect x="168" y="6" width="76" height="34" rx="4" fill="#FFFFFF" stroke="#C9C2B9"/>
+            <text class="nl-l" x="206" y="27" text-anchor="middle" font-size="11">Primary</text>
+            <rect x="168" y="92" width="76" height="34" rx="4" fill="#FFFFFF" stroke="#C9C2B9"/>
+            <text class="nl-l" x="206" y="113" text-anchor="middle" font-size="11">Replica</text>
+            <path d="M66 60 L162 26" stroke="#8A827A" stroke-width="1.2" marker-end="url(#g-arg)"/>
+            <text x="80" y="42" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#8A827A">write</text>
+            <path d="M66 70 L162 30" stroke="#4F7A5B" stroke-width="1.8" marker-end="url(#g-ar)"/>
+            <text x="82" y="86" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="#4F7A5B" font-weight="500">read (moved)</text>
+          </svg>
+        </div>
+
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 9px;">
+          <div style="display: flex; align-items: center; gap: 10px; background: #F3F7F4; border: 1px solid #CFE0D5; border-radius: 4px; padding: 10px 13px;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#4F7A5B" stroke-width="1.8"><path d="M3.2 8.4l3 3 6.4-7"/></svg>
+            <div style="font-size: 13px; color: #3F6349;">A read after a write in this session reaches the primary</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; background: #F3F7F4; border: 1px solid #CFE0D5; border-radius: 4px; padding: 10px 13px;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#4F7A5B" stroke-width="1.8"><path d="M3.2 8.4l3 3 6.4-7"/></svg>
+            <div style="font-size: 13px; color: #3F6349;">The write path is unchanged</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 4px; padding: 10px 13px;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#A9A29B" stroke-width="1.5"><circle cx="8" cy="8" r="6"/></svg>
+            <div style="font-size: 13px; color: #8A827A;">Other sessions still read the replica &mdash; not required, but you kept it</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 15.5px; line-height: 1.7; color: #2B2723;">
+        You sent every read to the primary. That satisfies the guarantee and it is the answer most people give.
+        The version we drew pins <em>only this session's</em> reads for a few hundred milliseconds &mdash; same guarantee, and the replica keeps
+        carrying everyone else's traffic. Yours is correct and more expensive; knowing which one you chose is the point.
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div style="border-top: 1px solid #E6E1DA; margin-top: 36px; padding-top: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">Graded on assertions, never on isomorphism</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        There are three correct fixes here, so the answer key is not a graph &mdash; it is a list of properties the learner's graph must have
+        (<span class="mono" style="font-size: 12px;">pathExists(client &rarr; primary, after: write)</span>). Comparing shapes would fail two right answers,
+        and the pilot would record it as a lapse and reschedule a concept the learner already knows.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">The distractors are the question</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        A palette holding only the right component is a drag-and-drop with one legal move. Two of the three offered here are plausible and wrong &mdash;
+        a cache in front of the replica makes the staleness <em>worse</em>, which is the misconception this concept exists to catch.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">Keyboard-operable or it does not ship</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        Tab to a node, Enter to lift, arrows to move, Enter to drop; the same for re-targeting an edge. Drag-only would make one concept
+        in the pilot unanswerable for anyone who cannot use a mouse &mdash; and it is a concept the retention number is computed from.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">The one block that costs bundle</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        React Flow, lazily, on this screen only, never in the extension, and never in a review &mdash; a concept that was taught with
+        <span class="mono" style="font-size: 12px;">graphBuild</span> comes back on day 8 as a <span class="mono" style="font-size: 12px;">hotspot</span> on a
+        pre-rendered SVG. The heavy screen is where the concept is learned, not where it is kept.
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

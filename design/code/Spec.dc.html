@@ -1,0 +1,226 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .k { color: #8A4225; font-weight: 500; } .s { color: #4F7A5B; } .c { color: #A9A29B; font-style: italic; }
+    .n { color: #B8873A; } .p { color: #8A827A; }
+    .box { background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 15px 18px;
+           font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; line-height: 1.8; white-space: pre; overflow-x: auto; }
+    .cel { padding: 11px 14px; border-top: 1px solid #E6E1DA; font-size: 13px; line-height: 1.55; color: #57504A; }
+    .cel strong { color: #2B2723; font-weight: 600; }
+    .hd { padding: 11px 14px; background: #F1EDE6; font-size: 12px; font-weight: 600; color: #57504A; }
+    .cls { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: #2B2723; }
+    .sw { width: 24px; height: 24px; border-radius: 3px; border: 1px solid rgba(43,39,35,.12); flex: 0 0 auto; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 52px 58px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 36px;">
+    <div>
+      <div class="serif" style="font-size: 28px; font-weight: 500; letter-spacing: -0.015em;">Build spec &mdash; the names to actually type</div>
+      <div style="font-size: 13.5px; color: #8A827A; margin-top: 5px;">Tokens, classes, files and the rules the other categories inherit. Read against <span class="mono" style="font-size: 12.5px;">frontend/src/styles/</span>, not instead of it.</div>
+    </div>
+    <div class="lbl">Shared scaffolding</div>
+  </div>
+
+  <!-- ===== THE INVERSION PROBLEM ===== -->
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 22px 24px; margin-bottom: 40px;">
+    <div class="lbl" style="color: #B0552F; margin-bottom: 11px;">Read this first &mdash; syntax colour flips with the surface, not the theme</div>
+    <div style="font-size: 14.5px; line-height: 1.72; color: #2B2723;">
+      <span class="mono" style="font-size: 13px;">.teach__card--retrieval</span> already sets
+      <span class="mono" style="font-size: 13px;">background: var(--ink)</span>. In light mode that is
+      <span class="mono" style="font-size: 13px;">#2b2723</span> &mdash; dark. In dark mode <span class="mono" style="font-size: 13px;">--ink</span> is
+      <span class="mono" style="font-size: 13px;">#f5f1ec</span> &mdash; light. <strong>The retrieval card is always the opposite of the page.</strong>
+    </div>
+    <div style="font-size: 14px; line-height: 1.68; color: #57504A; margin-top: 12px;">
+      So a syntax palette keyed to <span class="mono" style="font-size: 12.5px;">prefers-color-scheme</span> is wrong half the time. Define the palette as
+      <strong style="color: #2B2723;">two mixins keyed to the surface</strong> and apply them by container. Getting this wrong produces dark-on-dark code in
+      dark mode, which no light-mode screenshot will ever show you.
+    </div>
+  </div>
+
+  <!-- ===== TOKENS ===== -->
+  <div class="lbl" style="margin-bottom: 14px;">1 &middot; New tokens &mdash; <span class="mono" style="text-transform: none; letter-spacing: 0; color: #2B2723;">src/styles/_code-palette.scss</span></div>
+  <div class="box" style="margin-bottom: 14px;"><span class="c">// Not in _themes.scss: these are surface-scoped, not theme-scoped.</span>
+<span class="c">// _themes.scss stays the file where the THEME is decided; this is the file</span>
+<span class="c">// where a code listing decides what it is sitting on.</span>
+
+<span class="k">@mixin</span> code-on-light <span class="p">{</span>
+  --code-surface<span class="p">:</span> #f4f0ea<span class="p">;</span>   --code-gutter<span class="p">:</span> #c6bab1<span class="p">;</span>
+  --code-line-hit<span class="p">:</span> #fbf3ec<span class="p">;</span>  --code-border<span class="p">:</span> #e6e1da<span class="p">;</span>
+  --code-fg<span class="p">:</span> #2b2723<span class="p">;</span>
+  --code-kw<span class="p">:</span> #8a4225<span class="p">;</span>   --code-str<span class="p">:</span> #4f7a5b<span class="p">;</span>
+  --code-num<span class="p">:</span> #b8873a<span class="p">;</span>  --code-com<span class="p">:</span> #a9a29b<span class="p">;</span>  --code-punc<span class="p">:</span> #8a827a<span class="p">;</span>
+  --diff-add<span class="p">:</span> #edf3ee<span class="p">;</span>  --diff-del<span class="p">:</span> #f6ecec<span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">@mixin</span> code-on-dark <span class="p">{</span>
+  --code-surface<span class="p">:</span> #221f1c<span class="p">;</span>   --code-gutter<span class="p">:</span> #6b645d<span class="p">;</span>
+  --code-line-hit<span class="p">:</span> #3a342f<span class="p">;</span>  --code-border<span class="p">:</span> #453f39<span class="p">;</span>
+  --code-fg<span class="p">:</span> #e8e2da<span class="p">;</span>
+  --code-kw<span class="p">:</span> #d98a63<span class="p">;</span>   --code-str<span class="p">:</span> #8fb79b<span class="p">;</span>
+  --code-num<span class="p">:</span> #d9b072<span class="p">;</span>  --code-com<span class="p">:</span> #7a736c<span class="p">;</span>  --code-punc<span class="p">:</span> #948c84<span class="p">;</span>
+  --diff-add<span class="p">:</span> #1e2a21<span class="p">;</span>  --diff-del<span class="p">:</span> #2e1f1d<span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c">// Applied by SURFACE. The page follows the theme; the retrieval card is</span>
+<span class="c">// always the opposite of whatever the page is.</span>
+<span class="p">:</span>root <span class="p">{</span> <span class="k">@include</span> code-on-light<span class="p">; }</span>
+<span class="k">@media</span> <span class="p">(</span>prefers-color-scheme<span class="p">:</span> dark<span class="p">) { :</span>root<span class="p">:</span>not<span class="p">([</span>data-theme<span class="p">=</span><span class="s">"light"</span><span class="p">]) { </span><span class="k">@include</span> code-on-dark<span class="p">; } }</span>
+<span class="p">:</span>root<span class="p">[</span>data-theme<span class="p">=</span><span class="s">"dark"</span><span class="p">] { </span><span class="k">@include</span> code-on-dark<span class="p">; }</span>
+<span class="p">:</span>root<span class="p">[</span>data-theme<span class="p">=</span><span class="s">"light"</span><span class="p">] { </span><span class="k">@include</span> code-on-light<span class="p">; }</span>
+
+<span class="c">// …and the inversion, which is the whole point of the file.</span>
+<span class="p">.</span>teach__card--retrieval <span class="p">{ </span><span class="k">@include</span> code-on-dark<span class="p">; }</span>
+<span class="p">:</span>root<span class="p">[</span>data-theme<span class="p">=</span><span class="s">"dark"</span><span class="p">] .</span>teach__card--retrieval <span class="p">{ </span><span class="k">@include</span> code-on-light<span class="p">; }</span></div>
+
+  <div style="display: flex; gap: 30px; align-items: flex-start; margin-bottom: 44px;">
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <div class="lbl">On light</div>
+      <div style="display: flex; gap: 7px;">
+        <div class="sw" style="background: #8a4225;"></div><div class="sw" style="background: #4f7a5b;"></div>
+        <div class="sw" style="background: #b8873a;"></div><div class="sw" style="background: #a9a29b;"></div>
+        <div class="sw" style="background: #8a827a;"></div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <div class="lbl">On dark</div>
+      <div style="display: flex; gap: 7px;">
+        <div class="sw" style="background: #d98a63;"></div><div class="sw" style="background: #8fb79b;"></div>
+        <div class="sw" style="background: #d9b072;"></div><div class="sw" style="background: #7a736c;"></div>
+        <div class="sw" style="background: #948c84;"></div>
+      </div>
+    </div>
+    <div style="flex: 1; font-size: 13px; line-height: 1.65; color: #57504A; border-left: 1px solid #E6E1DA; padding-left: 22px;">
+      Every value here already exists somewhere in <span class="mono" style="font-size: 12.5px;">_themes.scss</span> &mdash; the light row is
+      <span class="mono" style="font-size: 12.5px;">--clay-ink</span>, <span class="mono" style="font-size: 12.5px;">--sage</span>,
+      <span class="mono" style="font-size: 12.5px;">--ochre</span>, <span class="mono" style="font-size: 12.5px;">--stone</span>,
+      <span class="mono" style="font-size: 12.5px;">--muted</span>; the dark row is their dark-theme counterparts.
+      They are re-declared as literals rather than aliased because a code listing and a UI accent should be free to diverge later without one
+      dragging the other with it.
+    </div>
+  </div>
+
+  <!-- ===== FILES ===== -->
+  <div class="lbl" style="margin-bottom: 14px;">2 &middot; Files, and where they get registered</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 44px;">
+    <div class="box">frontend/src/styles/
+  _code-palette.scss        <span class="c">← new</span>
+  components/
+    _blocks.scss            <span class="c">← new</span>
+    _answer-code.scss       <span class="c">← new</span>
+
+<span class="c">// main.scss, in this order — the palette</span>
+<span class="c">// must land before anything reads it.</span>
+<span class="k">@use</span> <span class="s">"themes"</span><span class="p">;</span>
+<span class="k">@use</span> <span class="s">"code-palette"</span><span class="p">;</span>   <span class="c">← new, 2nd</span>
+<span class="k">@use</span> <span class="s">"base"</span><span class="p">;</span>
+  &hellip;
+<span class="k">@use</span> <span class="s">"components/session"</span><span class="p">;</span>
+<span class="k">@use</span> <span class="s">"components/blocks"</span><span class="p">;</span>       <span class="c">← new</span>
+<span class="k">@use</span> <span class="s">"components/answer-code"</span><span class="p">;</span>  <span class="c">← new</span></div>
+
+    <div class="box">frontend/src/components/blocks/
+  BlockList.tsx        <span class="c">the walker</span>
+  CodeBlock.tsx        <span class="c">context</span>
+  CodeDiffBlock.tsx    <span class="c">context</span>
+  TerminalBlock.tsx    <span class="c">context</span>
+  ClozeCode.tsx        <span class="c">answer</span>
+  HotspotLine.tsx      <span class="c">answer</span>
+  CodeEditor.tsx       <span class="c">answer, lazy</span>
+
+<span class="c">// QuestionCard.tsx keeps its role as the</span>
+<span class="c">// single switch every surface renders</span>
+<span class="c">// through. It gains ONE branch:</span>
+<span class="c">//   item.blocks ? &lt;BlockList/&gt; : (today's JSX)</span></div>
+  </div>
+
+  <!-- ===== CLASSES ===== -->
+  <div class="lbl" style="margin-bottom: 14px;">3 &middot; Class map &mdash; BEM, matching <span class="mono" style="text-transform: none; letter-spacing: 0; color: #2B2723;">.teach</span> / <span class="mono" style="text-transform: none; letter-spacing: 0; color: #2B2723;">.choice</span></div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: 250px 1fr 150px;">
+      <div class="hd">Class</div><div class="hd">What it is</div><div class="hd">Artboard</div>
+
+      <div class="cel"><span class="cls">.blocks</span><br><span class="cls" style="color: #8A827A;">.blocks__item</span></div>
+      <div class="cel">Flex column, <span class="mono" style="font-size: 12px;">gap: $s-4</span>. The walker's container &mdash; the only thing that knows an item is a list rather than a prompt.</div>
+      <div class="cel" style="color: #A9A29B;">all</div>
+
+      <div class="cel"><span class="cls">.code</span><br><span class="cls" style="color: #8A827A;">.code__scroll &middot; __grid<br>__gutter &middot; __line<br>__line--hit &middot; --dim<br>__notes &middot; __note &middot; __badge</span></div>
+      <div class="cel">A listing. <span class="mono" style="font-size: 12px;">__scroll</span> is the <span class="mono" style="font-size: 12px;">overflow-x: auto</span> box &mdash; wide code scrolls inside itself, the page never scrolls sideways.
+      <span class="mono" style="font-size: 12px;">__grid</span> is <span class="mono" style="font-size: 12px;">grid-template-columns: 36px 1fr</span> so a highlight spans the gutter too.
+      <strong>The notes rail collapses under <span class="mono" style="font-size: 12px;">$breakpoint-sm</span></strong> &mdash; notes move below the code rather than squashing it.</div>
+      <div class="cel" style="color: #A9A29B;">Explain</div>
+
+      <div class="cel"><span class="cls">.code-diff</span><br><span class="cls" style="color: #8A827A;">__row &middot; __row--add<br>__row--del &middot; __mark</span></div>
+      <div class="cel">Two-column grid, 26px mark + source. Colour is <span class="mono" style="font-size: 12px;">--diff-add</span> / <span class="mono" style="font-size: 12px;">--diff-del</span>, and the <span class="mono" style="font-size: 12px;">+</span>/<span class="mono" style="font-size: 12px;">&minus;</span> mark carries it too &mdash; never hue alone, same rule as the map.</div>
+      <div class="cel" style="color: #A9A29B;">Explain, Write</div>
+
+      <div class="cel"><span class="cls">.terminal</span><br><span class="cls" style="color: #8A827A;">__line &middot; __line--err</span></div>
+      <div class="cel">Always <span class="mono" style="font-size: 12px;">code-on-dark</span> regardless of surface &mdash; a terminal that follows the theme stops reading as a terminal.</div>
+      <div class="cel" style="color: #A9A29B;">Explain</div>
+
+      <div class="cel" style="background: #FDF9F6;"><span class="cls" style="color: #B0552F;">.cloze</span><br><span class="cls" style="color: #8A827A;">__hole &middot; __hole--right<br>__hole--wrong &middot; __bank<br>__chip &middot; __failure</span></div>
+      <div class="cel" style="background: #FDF9F6;"><span class="mono" style="font-size: 12px;">__hole</span> is a real <span class="mono" style="font-size: 12px;">&lt;input&gt;</span>, <span class="mono" style="font-size: 12px;">width: {hole.width}ch</span> inline &mdash; the one place a style value comes from data.
+      It does <strong>not</strong> use <span class="mono" style="font-size: 12px;">.field__input</span>: that is a 44px block control and this is an inline token.
+      <span class="mono" style="font-size: 12px;">__bank</span>/<span class="mono" style="font-size: 12px;">__chip</span> is the touch variant and <strong>reuses <span class="mono" style="font-size: 12px;">.choice--inline</span></strong>.</div>
+      <div class="cel" style="background: #FDF9F6; color: #A9A29B;">FillIn</div>
+
+      <div class="cel" style="background: #FDF9F6;"><span class="cls" style="color: #B0552F;">.hotspot</span><br><span class="cls" style="color: #8A827A;">__line &middot; __line--picked</span></div>
+      <div class="cel" style="background: #FDF9F6;">A radio group, not click handlers on divs. Each line is a <span class="mono" style="font-size: 12px;">&lt;label&gt;</span> wrapping a visually-hidden <span class="mono" style="font-size: 12px;">&lt;input type="radio"&gt;</span> &mdash;
+      <strong>exactly the <span class="mono" style="font-size: 12px;">.choice</span> pattern</strong>, so arrow keys work for free. <span class="mono" style="font-size: 12px;">min-height: $tap</span> per line.</div>
+      <div class="cel" style="background: #FDF9F6; color: #A9A29B;">Trace</div>
+
+      <div class="cel" style="background: #FDF9F6;"><span class="cls" style="color: #B0552F;">.code-editor</span><br><span class="cls" style="color: #8A827A;">__chrome &middot; __surface<br>__cases &middot; __case<br>__case--pass &middot; --fail<br>__got</span></div>
+      <div class="cel" style="background: #FDF9F6;">CodeMirror mounts into <span class="mono" style="font-size: 12px;">__surface</span>; everything around it is ours.
+      <span class="mono" style="font-size: 12px;">__case</span> carries a check or cross <em>and</em> a colour, and <span class="mono" style="font-size: 12px;">__got</span> is the actual-vs-expected line.
+      <span style="color: #B8873A;">Blocked on T-081.</span></div>
+      <div class="cel" style="background: #FDF9F6; color: #A9A29B;">Write</div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 44px; line-height: 1.65; max-width: 940px;">
+    Every one of these is a new BEM block, not a modifier on <span class="mono" style="font-size: 12px;">.teach</span>. They render inside a
+    <span class="mono" style="font-size: 12px;">.teach__card</span> today, and inside the diagnostic and the day-30 test tomorrow &mdash; nesting them under
+    <span class="mono" style="font-size: 12px;">.teach</span> would tie them to one surface they are explicitly meant to outlive.
+  </div>
+
+  <!-- ===== REUSE ===== -->
+  <div class="lbl" style="margin-bottom: 14px;">4 &middot; Reuse, do not reinvent</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 22px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; margin-bottom: 44px;">
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">@include card</span> &mdash; every context block that needs a container. Never re-type the border and radius.</div>
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">@include focus-ring</span> &mdash; on <span class="mono" style="font-size: 12px;">.cloze__hole</span> and every <span class="mono" style="font-size: 12px;">.hotspot__line</span>. It is defined once for a reason.</div>
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">@include control</span> &mdash; Run, Check, Show me the shape. They are <span class="mono" style="font-size: 12px;">.button</span>, not new buttons.</div>
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">@include visually-hidden</span> &mdash; the hotspot radios, and the &ldquo;blank 1 of 2&rdquo; label on each hole.</div>
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">$tap</span> &mdash; every line, chip and hole clears it. <span class="mono" style="font-size: 12px;">$s-*</span> for spacing, <span class="mono" style="font-size: 12px;">$font-mono</span> for every listing.</div>
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">.u-rise-in</span> &mdash; reveal blocks enter with it, exactly as <span class="mono" style="font-size: 12px;">.teach__card</span> does. No new keyframes.</div>
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">.choice / .choice--inline</span> &mdash; the token bank and the confidence tap. One control, three sizes, already built.</div>
+    <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;"><span class="cls">@include until($breakpoint-sm)</span> &mdash; where the notes rail collapses and the cloze switches to chips.</div>
+  </div>
+
+  <!-- ===== INHERITED ===== -->
+  <div style="background: #F1EDE6; border-radius: 6px; padding: 22px 26px;">
+    <div class="lbl" style="margin-bottom: 12px;">What maths and system design inherit from this page</div>
+    <div style="font-size: 14px; line-height: 1.7; color: #57504A;">
+      <span class="mono" style="font-size: 12.5px;">.blocks</span> / <span class="mono" style="font-size: 12.5px;">.blocks__item</span>, <span class="mono" style="font-size: 12.5px;">BlockList.tsx</span>,
+      the surface-scoped palette pattern, the BEM-block-not-modifier rule, and the reuse list above. Their own spec pages cover only what they <em>add</em> &mdash;
+      <span class="mono" style="font-size: 12.5px;">_answer-math.scss</span> and <span class="mono" style="font-size: 12.5px;">_answer-systems.scss</span> sit beside
+      <span class="mono" style="font-size: 12.5px;">_answer-code.scss</span> and nothing in this file is written twice.
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

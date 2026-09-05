@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .k { color: #8A4225; font-weight: 500; } .s { color: #4F7A5B; } .c { color: #A9A29B; font-style: italic; }
+    .n { color: #B8873A; } .p { color: #8A827A; } .f { color: #2B2723; font-weight: 500; }
+    .box { background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 15px 18px;
+           font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; line-height: 1.8; white-space: pre; overflow-x: auto; }
+    .cel { padding: 12px 14px; border-top: 1px solid #E6E1DA; font-size: 13px; line-height: 1.55; color: #57504A; }
+    .cel strong { color: #2B2723; font-weight: 600; }
+    .hd { padding: 11px 14px; background: #F1EDE6; font-size: 12px; font-weight: 600; color: #57504A; }
+    .cls { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: #2B2723; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 52px 58px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 34px;">
+    <div>
+      <div class="serif" style="font-size: 28px; font-weight: 500; letter-spacing: -0.015em;">Build spec &mdash; what systems adds</div>
+      <div style="font-size: 13.5px; color: #8A827A; margin-top: 5px;">Only the delta. Tokens, <span class="mono" style="font-size: 12.5px;">.blocks</span>, <span class="mono" style="font-size: 12.5px;">BlockList</span> and the reuse rules come from the code canvas&rsquo;s spec page.</div>
+    </div>
+    <div class="lbl">Delta over code</div>
+  </div>
+
+  <!-- TOKENS -->
+  <div class="lbl" style="margin-bottom: 14px;">1 &middot; Tokens &mdash; append to <span class="mono" style="text-transform: none; letter-spacing: 0; color: #2B2723;">src/styles/_code-palette.scss</span></div>
+  <div class="box" style="margin-bottom: 14px;"><span class="c">// Same file, same two mixins. A diagram sits on a card or on the retrieval</span>
+<span class="c">// card exactly as a listing does, so it inherits the surface flip for free.</span>
+
+<span class="k">@mixin</span> code-on-light <span class="p">{</span>
+  &hellip;
+  --node-fill<span class="p">:</span> #ffffff<span class="p">;</span>    --node-stroke<span class="p">:</span> #c9c2b9<span class="p">;</span>   --node-ink<span class="p">:</span> #2b2723<span class="p">;</span>
+  --edge<span class="p">:</span> #8a827a<span class="p">;</span>          --edge-focus<span class="p">:</span> #b8873a<span class="p">;</span>    --edge-ok<span class="p">:</span> #4f7a5b<span class="p">;</span>
+  --lane<span class="p">:</span> #d8d2ca<span class="p">;</span>          --canvas-dot<span class="p">:</span> #e6e1da<span class="p">;</span>
+<span class="p">}</span>
+<span class="k">@mixin</span> code-on-dark <span class="p">{</span>
+  &hellip;
+  --node-fill<span class="p">:</span> #2f2b27<span class="p">;</span>    --node-stroke<span class="p">:</span> #5a534c<span class="p">;</span>   --node-ink<span class="p">:</span> #e8e2da<span class="p">;</span>
+  --edge<span class="p">:</span> #948c84<span class="p">;</span>          --edge-focus<span class="p">:</span> #d98a63<span class="p">;</span>    --edge-ok<span class="p">:</span> #8fb79b<span class="p">;</span>
+  --lane<span class="p">:</span> #3f3a35<span class="p">;</span>          --canvas-dot<span class="p">:</span> #332e2a<span class="p">;</span>
+<span class="p">}</span></div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 40px; line-height: 1.65; max-width: 920px;">
+    <span class="mono" style="font-size: 12px;">--edge-focus</span> and <span class="mono" style="font-size: 12px;">--edge-ok</span> are <span class="mono" style="font-size: 12px;">--ochre</span> and
+    <span class="mono" style="font-size: 12px;">--sage</span> by value. They get their own names because an edge under the cursor and a passing assertion are not the same idea as
+    &ldquo;at risk&rdquo; and &ldquo;solid&rdquo; on the map, and one changing should not move the other.
+    <strong style="color: #2B2723;">The worker's SVG generator reads the same five names</strong>, so a diagram rendered at generation time and a diagram drawn live cannot drift.
+  </div>
+
+  <!-- FILES + CLASSES -->
+  <div class="lbl" style="margin-bottom: 14px;">2 &middot; Files</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px;">
+    <div class="box">frontend/src/styles/components/
+  _diagram.scss           <span class="c">← new, context</span>
+  _answer-systems.scss    <span class="c">← new, answer</span>
+
+<span class="c">// main.scss, after answer-code</span>
+<span class="k">@use</span> <span class="s">"components/diagram"</span><span class="p">;</span>
+<span class="k">@use</span> <span class="s">"components/answer-systems"</span><span class="p">;</span></div>
+    <div class="box">frontend/src/components/blocks/
+  DiagramBlock.tsx     <span class="c">context, SVG</span>
+  SequenceBlock.tsx    <span class="c">context, SVG</span>
+  GraphBuild.tsx       <span class="c">answer, LAZY</span>
+  NumericAnswer.tsx    <span class="c">answer, shared w/ maths</span>
+
+backend/src/generator/
+  renderDiagram.ts     <span class="c">nodes+edges → SVG</span>
+  renderSequence.ts    <span class="c">lanes+msgs → SVG</span></div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 14px;">3 &middot; Class map</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; margin-bottom: 40px;">
+    <div style="display: grid; grid-template-columns: 240px 1fr;">
+      <div class="hd">Class</div><div class="hd">Notes that matter at implementation time</div>
+
+      <div class="cel"><span class="cls">.diagram</span><br><span class="cls" style="color: #8A827A;">__scroll &middot; __svg<br>__notes &middot; __note &middot; __badge</span></div>
+      <div class="cel">Same anatomy as <span class="mono" style="font-size: 12px;">.code</span> &mdash; a scroll box, the content, an annotation rail that collapses under <span class="mono" style="font-size: 12px;">$breakpoint-sm</span>. Deliberately parallel so the two read as one component family.</div>
+
+      <div class="cel"><span class="cls">.sequence</span><br><span class="cls" style="color: #8A827A;">__scroll &middot; __svg &middot; __targets<br>__msg &middot; __msg--picked</span></div>
+      <div class="cel"><strong><span class="mono" style="font-size: 12px;">__targets</span> is an HTML overlay, not SVG.</strong> Absolutely-positioned <span class="mono" style="font-size: 12px;">&lt;label&gt;</span> rows over the drawing, each wrapping a hidden radio &mdash; the <span class="mono" style="font-size: 12px;">.choice</span> pattern again. Click handlers on SVG elements are not focusable, not arrow-keyable and not announced.</div>
+
+      <div class="cel" style="background: #FDF9F6;"><span class="cls" style="color: #B0552F;">.graph-build</span><br><span class="cls" style="color: #8A827A;">__palette &middot; __chip<br>__canvas &middot; __assertions<br>__assertion--pass &middot; --fail</span></div>
+      <div class="cel" style="background: #FDF9F6;"><span class="mono" style="font-size: 12px;">__canvas</span> is React Flow's mount point and the only element we do not fully own &mdash; its own CSS is imported inside <span class="mono" style="font-size: 12px;">GraphBuild.tsx</span>, never into <span class="mono" style="font-size: 12px;">main.scss</span>, so nothing it ships can leak onto a screen that never loads it. <span class="mono" style="font-size: 12px;">__chip</span> reuses <span class="mono" style="font-size: 12px;">.choice--inline</span>.</div>
+
+      <div class="cel" style="background: #FDF9F6;"><span class="cls" style="color: #B0552F;">.numeric</span><br><span class="cls" style="color: #8A827A;">__input &middot; __units<br>__unit &middot; __unit--picked<br>__worked</span></div>
+      <div class="cel" style="background: #FDF9F6;"><span class="mono" style="font-size: 12px;">inputMode="decimal"</span> so a phone gives a number pad. Units are a <span class="mono" style="font-size: 12px;">.choice-group--inline</span>, never free text &mdash; the grader must never parse &ldquo;6 gigs&rdquo;. <span class="mono" style="font-size: 12px;">font-variant-numeric: tabular-nums</span>, as everywhere numbers appear.</div>
+    </div>
+  </div>
+
+  <!-- ENTITIES -->
+  <div class="lbl" style="margin-bottom: 14px;">4 &middot; Blocks &mdash; appended to the union in <span class="mono" style="text-transform: none; letter-spacing: 0; color: #2B2723;">backend/src/shared/blocks.ts</span></div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+    <div class="box"><span class="k">const</span> <span class="f">NumericBlock</span> <span class="p">=</span> z<span class="p">.</span><span class="f">object</span><span class="p">({</span>
+  kind<span class="p">:</span> z<span class="p">.</span><span class="f">literal</span><span class="p">(</span><span class="s">'numeric'</span><span class="p">),</span>
+  value<span class="p">:</span> z<span class="p">.</span><span class="f">number</span><span class="p">(),</span>
+  <span class="c">// relative; 0 means exact</span>
+  tolerance<span class="p">:</span> z<span class="p">.</span><span class="f">number</span><span class="p">().</span><span class="f">min</span><span class="p">(</span><span class="n">0</span><span class="p">).</span><span class="f">max</span><span class="p">(</span><span class="n">1</span><span class="p">),</span>
+  <span class="c">// null = no unit asked for or accepted</span>
+  unit<span class="p">:</span> z<span class="p">.</span><span class="f">string</span><span class="p">().</span><span class="f">nullable</span><span class="p">(),</span>
+  units<span class="p">:</span> z<span class="p">.</span><span class="f">array</span><span class="p">(z.</span><span class="f">string</span><span class="p">()).</span><span class="f">max</span><span class="p">(</span><span class="n">4</span><span class="p">).</span><span class="f">nullable</span><span class="p">(),</span>
+  worked<span class="p">:</span> z<span class="p">.</span><span class="f">string</span><span class="p">().</span><span class="f">max</span><span class="p">(</span><span class="n">400</span><span class="p">),</span> <span class="c">// required</span>
+<span class="p">});</span>
+
+<span class="c">// Shared verbatim with maths. Specified here</span>
+<span class="c">// because systems ships first.</span></div>
+
+    <div class="box"><span class="k">const</span> <span class="f">GraphBuildBlock</span> <span class="p">=</span> z<span class="p">.</span><span class="f">object</span><span class="p">({</span>
+  kind<span class="p">:</span> z<span class="p">.</span><span class="f">literal</span><span class="p">(</span><span class="s">'graphBuild'</span><span class="p">),</span>
+  base<span class="p">:</span> <span class="f">GraphSchema</span><span class="p">,</span>       <span class="c">// nodes + edges</span>
+  palette<span class="p">:</span> z<span class="p">.</span><span class="f">array</span><span class="p">(</span><span class="f">PaletteItem</span><span class="p">).</span><span class="f">max</span><span class="p">(</span><span class="n">4</span><span class="p">),</span>
+  ops<span class="p">:</span> z<span class="p">.</span><span class="f">array</span><span class="p">(</span><span class="f">OpSchema</span><span class="p">).</span><span class="f">min</span><span class="p">(</span><span class="n">1</span><span class="p">),</span>
+  <span class="c">// ANY one set passing is correct — there</span>
+  <span class="c">// are three right ways to fix a stale read</span>
+  solutions<span class="p">:</span> z<span class="p">.</span><span class="f">array</span><span class="p">(z.</span><span class="f">array</span><span class="p">(</span><span class="f">Assertion</span><span class="p">))</span>
+             <span class="p">.</span><span class="f">min</span><span class="p">(</span><span class="n">1</span><span class="p">).</span><span class="f">max</span><span class="p">(</span><span class="n">3</span><span class="p">),</span>
+  failure<span class="p">:</span> z<span class="p">.</span><span class="f">string</span><span class="p">().</span><span class="f">max</span><span class="p">(</span><span class="n">240</span><span class="p">),</span>
+<span class="p">});</span></div>
+  </div>
+
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 20px 22px; margin-bottom: 40px;">
+    <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">The grader compares guarantees, not pictures</div>
+    <div style="font-size: 14px; line-height: 1.7; color: #57504A;">
+      <span class="mono" style="font-size: 12.5px;">Assertion</span> is <span class="mono" style="font-size: 12.5px;">pathExists</span> &middot;
+      <span class="mono" style="font-size: 12.5px;">edgeAbsent</span> &middot; <span class="mono" style="font-size: 12.5px;">nodePresent</span> &mdash; three predicates over the learner's graph, and
+      <span class="mono" style="font-size: 12.5px;">solutions</span> is an OR of AND-sets. Graph isomorphism would mark two correct answers wrong, and the scheduler would then
+      reschedule a concept the learner already had. <strong style="color: #2B2723;">A wrong answer reports the first failed assertion</strong>, which is why the predicate list is
+      short and readable rather than expressive.
+    </div>
+  </div>
+
+  <!-- ANSWER_KIND + PROMPT -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">No schema change &mdash; T-079 already covers it</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        <span class="mono" style="font-size: 12.5px;">concepts.domain</span> takes <span class="mono" style="font-size: 12.5px;">'systems'</span>, which is already in the enum.
+        <span class="mono" style="font-size: 12.5px;">items.answer_kind</span> takes <span class="mono" style="font-size: 12.5px;">'graphBuild'</span> and
+        <span class="mono" style="font-size: 12.5px;">'numeric'</span> &mdash; and being <span class="mono" style="font-size: 12.5px;">text</span> rather than an enum is
+        exactly why this category needs no migration. That call is now paying for itself.
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">One new prompt file</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        <span class="mono" style="font-size: 12.5px;">llm/prompts/items/domains/systems.md</span>, appended when the concept's domain is
+        <span class="mono" style="font-size: 12.5px;">systems</span>. It carries the format table from the first artboard, the node vocabulary the
+        renderer knows how to draw, and the sentence a model will otherwise ignore: <strong style="color: #2B2723;">one answer block, so &ldquo;draw it and justify it&rdquo; is two items.</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
