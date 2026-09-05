@@ -490,7 +490,7 @@
   - curl: `curl -XPOST -b cookies.txt localhost:3001/diagnostic/<topicId>/start` → `{"done":false,"conceptId":"…","item":{…},"progress":{"asked":0,"max":15}}`
 
 ### T-016 · Session planner
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-015, T-023, T-053
 - **files:** `backend/src/lib/planner.ts`, `backend/src/lib/__tests__/planner.test.ts`, `backend/src/modules/session/session.{routes,controller,service,repository}.ts`, `backend/src/modules/session/session.test.ts`, `backend/src/app.ts`
@@ -517,6 +517,15 @@
   - `complete` twice on the same day → one `session_days` row, second call succeeds (idempotent).
   - Zero untaught and zero due → `{newConcepts: [], dueReviews: [], completedToday}` rather than an error.
   - `remainingDays` of 0 or negative (past `endsAt`) → does not divide by zero; falls back to the cap.
+- **notes:** (2026-09-05) Built and verified. Backend suite 262 → 293 tests (12 pure + 19 route), lint clean. `/session` and `/map` were the last two endpoints the web tier was waiting on; only T-017 remains.
+  - **A test caught a real hole in my own implementation.** `completeSession` first checked submitted ids against *all* ready concepts rather than the ones today's plan actually offered — so with no prereqs in the map, every concept in the topic was postable and a client could mark the whole course taught while skipping the teaching, still counting toward the retention measurement. Both endpoints now go through one `buildPlan`, so `complete` verifies against exactly the slice `GET /session` returned. This is why the "not offered today" case was worth writing even though it looked redundant next to the ownership check.
+  - **The offer is recomputed, not stored.** The planner is deterministic for a given state, so there is no need to persist what was offered — and nothing to go stale if the learner opens the session in two tabs.
+  - `lib/planner.ts` is pure, like `heldOut`/`diagnostic`/`today`, so all twelve sizing cases are unit tests with no fixtures.
+  - **New concepts are allocated budget before reviews:** teaching is the thing with a deadline, whereas a review that doesn't fit today simply comes back tomorrow. A budget too small for either offers one item anyway — an empty plan reads as "you're done for today" and would quietly stall the course.
+  - `teachConcepts` upserts with `coalesce(cards.taught_at, excluded.taught_at)`, so re-completing never resets the FSRS schedule of a concept already under review. Tested.
+  - Prereq gating is enforced server-side, not advisory: a concept whose prerequisite is untaught is neither offered nor acceptable at `complete`. That is the mastery gating in plan.md §3.2.
+  - Added `SessionCompleteSchema` and exported `CorrectionSchema`/`MAX_NEW_CONCEPTS_PER_SESSION` from shared; ran `scripts/sync-shared.sh`.
+  - curl: `curl -b cookies.txt localhost:3001/session` → `{"newConcepts":[…],"dueReviews":[…],"completedToday":false}`
 
 ### T-023 · Timezone-correct "today" and daily completion
 - **status:** done
