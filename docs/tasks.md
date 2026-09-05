@@ -8,11 +8,11 @@
 
 ## Where things stand — 2026-09-05
 
-**43 of 76 tasks done.** Sprints 1 and most of 2 are shipped: backend **347 tests**, frontend **21**, all lint-clean.
+**44 of 76 tasks done.** Sprints 1 and most of 2 are shipped: backend **353 tests**, frontend **21**, all lint-clean.
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
-**Next task:** `T-026` (Sprint 2 integration test) — the last thing between here and the end of Sprint 2. `T-FIX-006` is also ready and can be done in any order.
+**Sprint 2 is closed.** Next up is Sprint 3 (`T-027`, the extension scaffold). `T-FIX-006` is still open and can be done any time.
 
 ### Run it
 
@@ -781,7 +781,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - Refuses a non-local `DATABASE_URL` unless `SEED_FORCE=1`, because seeding deletes rows.
 
 ### T-026 · Sprint 2 integration test
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-016, T-017, T-021, T-023, T-FIX-005
 - **files:** `backend/src/integration/sprint2.test.ts`
@@ -795,6 +795,13 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - The session respected `teach_mode` — both arms are present in the returned `newConcepts` across the topic.
   - `completedToday` is true immediately after completing and the second `complete` is idempotent.
   - Score is 0 before any teaching and > 0 after.
+- **notes:** (2026-09-05) Built. 6 tests in `src/integration/sprint2.test.ts`, 1.4s (Sprint 1's is 0.2s; the budget was ~10s). 353 backend tests total.
+  - **Real auth end to end, not `loginAs`.** Every request carries a cookie obtained by the full magic-link round trip: `POST /auth/magic` → read the link out of the captured mail → `GET /auth/verify` → keep the `Set-Cookie`. No `x-user-id` anywhere in the file, and a final case asserts `/me`, `/session`, `/due` and the map all 401 without it. The `NODE_ENV=production` rejection stays in `auth.test.ts`, which already rebuilds the module graph to test it — duplicating that here would only re-test env parsing.
+  - **Fixture is Sprint-2 shaped:** 12 concepts in a 2-level prereq DAG (everything past the first three depends on one of them), so the diagnostic has a graph to walk and the session has real prerequisites to gate on. `seededRng(11)` pins held-out selection and teach-mode assignment; both are asserted as preconditions, so if generation stops randomising `teach_mode` the test says so instead of quietly measuring nothing.
+  - **`gradeExplanation` is mocked** at the same boundary the unit tests use. Application and explain items route through a model (T-FIX-005) and the network is blocked in tests, so without it the walk cannot answer a free-text item.
+  - **Time travel moves the rows, not a clock.** `advanceOneDay` shifts the learner's cards and review events back a day in SQL, so the assertions still go through the routes a browser calls (the controllers construct their own `now`). The day-2 answer asserts `gapDaysSinceLast >= 1` — T-040's "did it stick" bucket.
+  - **Mutation-checked, because a green integration test that cannot fail is worse than none.** Returning held-out titles from the map, and removing `diagnostic` from `NON_SCHEDULING_SURFACES`, each fail the relevant test. Both mutations were reverted.
+  - Answers are shaped per item type (an option index for recognition, text otherwise) — the first draft sent text for everything and correctly failed on a multiple-choice review.
 
 ---
 
