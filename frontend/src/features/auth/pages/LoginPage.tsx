@@ -28,7 +28,7 @@ export default function LoginPage() {
   return (
     <main className="centred-page">
       <div className="centred-page__inner u-stack u-stack--loose">
-        <div className="brand">learnos</div>
+        <div className="brand">Js Ai Labs</div>
 
         {isSuccess ? (
           <div className="u-stack u-stack--tight">

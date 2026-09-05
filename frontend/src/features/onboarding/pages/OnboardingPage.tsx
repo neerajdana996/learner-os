@@ -6,7 +6,13 @@ import { Field } from '../../../components/Field';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { ActiveWindowsSchema } from '../../../shared';
 import { useUpdateMeMutation } from '../../users/usersApi';
-import { generationPollInterval, useCreateTopicMutation, useTopicQuery } from '../../topics/topicsApi';
+import {
+  FAST_POLL_WINDOW_MS,
+  generationPollInterval,
+  generationProgressLabel,
+  useCreateTopicMutation,
+  useTopicQuery,
+} from '../../topics/topicsApi';
 import { draftChanged, onboardingReset, selectDraft, stepChanged } from '../onboardingSlice';
 import { Step, Stepper } from '../Step';
 import { WindowsStep } from '../WindowsStep';
@@ -51,11 +57,23 @@ export default function OnboardingPage() {
   // rather than polling for the rest of the session. Deriving the interval from
   // the query's own data would be circular.
   const [settled, setSettled] = useState(false);
+  // Generation runs for minutes, so the poll backs off after the first
+  // half-minute (T-066). One timer flips the rate; RTK Query picks up the new
+  // interval on the re-render.
+  const [waitedLong, setWaitedLong] = useState(false);
   const { data: topicState } = useTopicQuery(draft.topicId ?? '', {
     skip: !draft.topicId,
-    pollingInterval: settled ? 0 : generationPollInterval('generating'),
+    pollingInterval: settled
+      ? 0
+      : generationPollInterval('generating', waitedLong ? FAST_POLL_WINDOW_MS : 0),
     skipPollingIfUnfocused: true,
   });
+
+  useEffect(() => {
+    if (!draft.topicId || settled) return;
+    const timer = setTimeout(() => setWaitedLong(true), FAST_POLL_WINDOW_MS);
+    return () => clearTimeout(timer);
+  }, [draft.topicId, settled]);
 
   const status = topicState?.status;
   useEffect(() => {
@@ -104,9 +122,20 @@ export default function OnboardingPage() {
             : 'Writing out every concept and the questions that go with them. This takes a few minutes — you can close the tab and come back.'}
         </p>
         {failed ? (
-          <Button onClick={() => { set({ topicId: null }); setSettled(false); }}>Try again</Button>
+          <Button
+            onClick={() => {
+              set({ topicId: null });
+              setSettled(false);
+              setWaitedLong(false);
+            }}
+          >
+            Try again
+          </Button>
         ) : (
-          <p className="stat">{topicState?.counts.concepts ?? 0} concepts so far</p>
+          // Real progress from the job, not `counts.concepts` — nothing is
+          // written until the final transaction, so that number read 0 for the
+          // whole six minutes and looked broken (T-064).
+          <p className="stat">{generationProgressLabel(topicState?.progress)}</p>
         )}
       </div>
     );
