@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   doublePrecision,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -30,6 +31,13 @@ export const topicStatusEnum = pgEnum('topic_status', [
   'failed',
 ]);
 export const conceptTeachModeEnum = pgEnum('concept_teach_mode', ['try_first', 'example_first']);
+// What KIND of thing a concept is, decided once during the concept-map pass
+// (T-082). It selects the prompt fragment the item generator appends and the
+// blocks it is allowed to emit — a code concept can be asked with a blank cut
+// into real source, a prose one cannot. Per concept and not per topic: "Big-O
+// of a hash lookup" and "write a hash function" live in one topic and want
+// different formats.
+export const conceptDomainEnum = pgEnum('concept_domain', ['code', 'math', 'systems', 'prose']);
 export const itemTypeEnum = pgEnum('item_type', ['recall', 'recognition', 'application', 'explain']);
 // Matches shared/schemas.ts SurfaceSchema — diagnostic (T-015) and test (T-038)
 // reviews are recorded here too, just without card scheduling.
@@ -90,6 +98,10 @@ export const concepts = pgTable(
     order: integer('order').notNull(),
     heldOut: boolean('held_out').default(false).notNull(),
     teachMode: conceptTeachModeEnum('teach_mode'),
+    // Nullable with NO default on purpose (T-079). An existing concept's domain
+    // is genuinely unknown, and defaulting to 'prose' would silently claim
+    // otherwise for every concept generated before T-082 shipped.
+    domain: conceptDomainEnum('domain'),
     // Teaching content (T-053), rendered by the session screen (T-021).
     // Nullable because held-out concepts are never taught and never get any.
     // `tryFirstPrompt` is the productive-failure question (plan.md §3.5);
@@ -116,15 +128,35 @@ export const conceptPrereqs = pgTable(
   }),
 );
 
-export const items = pgTable('items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  conceptId: uuid('concept_id').notNull().references(() => concepts.id),
-  type: itemTypeEnum('type').notNull(),
-  payload: jsonb('payload').notNull(),
-  isTransfer: boolean('is_transfer').default(false).notNull(),
-  flaggedBad: integer('flagged_bad').default(0).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+// `payload` holds the whole discriminated ItemPayloadSchema, including the
+// optional `blocks` array (T-080) — so rich formats need no column of their own.
+// `answerKind` is the one thing denormalised out of it, for the one query that
+// cannot read JSON: see below.
+export const items = pgTable(
+  'items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    conceptId: uuid('concept_id').notNull().references(() => concepts.id),
+    type: itemTypeEnum('type').notNull(),
+    payload: jsonb('payload').notNull(),
+    // The `kind` of this item's answer block, or NULL for a plain prompt — which
+    // is every item generated before T-080. It exists because the extension's
+    // due-item pick has to exclude formats that cannot render in a 380x300 popup
+    // (`codeEditor`, `orderLines`, T-089), and filtering on `payload->'blocks'`
+    // is neither indexable nor readable at the repository layer.
+    //
+    // `text` and not a pgEnum deliberately: block kinds will churn while the
+    // remaining categories land, and an enum makes every addition a migration
+    // for a column nothing joins on.
+    answerKind: text('answer_kind'),
+    isTransfer: boolean('is_transfer').default(false).notNull(),
+    flaggedBad: integer('flagged_bad').default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    answerKindIdx: index('items_answer_kind_idx').on(table.answerKind),
+  }),
+);
 
 export const cards = pgTable(
   'cards',
@@ -164,6 +196,12 @@ export const reviewEvents = pgTable(
   latencyMs: integer('latency_ms'),
   snoozed: boolean('snoozed').default(false).notNull(),
   dismissed: boolean('dismissed').default(false).notNull(),
+  // True when the learner took the skeleton hint on a `codeEditor` item (T-088).
+  // Without it a hinted pass and a cold pass are the same row, and the Day-30
+  // retention gain — the one number the pilot exists to produce — quietly
+  // inflates. The scheduler treats an assisted pass as a lapse regardless of
+  // whether the cases went green.
+  assisted: boolean('assisted').default(false).notNull(),
   surface: reviewSurfaceEnum('surface').default('web').notNull(),
   predictedRecall: doublePrecision('predicted_recall').notNull(),
   // Nullable on purpose: on a concept's first review there is no previous review

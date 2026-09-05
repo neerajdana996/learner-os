@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { eq, inArray, sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import { db } from '../client.js';
-import { authTokens, cards, concepts, sessionDays, sessions, topics, users } from '../schema.js';
+import { authTokens, cards, concepts, items, reviewEvents, sessionDays, sessions, topics, users } from '../schema.js';
 import { seedUser, truncateAll } from '../../test/db.js';
 
 const HOUR = 3_600_000;
@@ -153,6 +153,98 @@ describe('schema', () => {
     await truncateAll();
 
     for (const table of [authTokens, sessions, sessionDays]) {
+      const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(table);
+      expect(row?.count).toBe(0);
+    }
+  });
+  // T-079 — code blocks. All three changes are additive; the point of most of
+  // these tests is that nothing that exists today moved.
+  it('accepts every concept domain and rejects one that is not a domain', async () => {
+    const { topic } = await seedConcept();
+    for (const domain of ['code', 'math', 'systems', 'prose'] as const) {
+      await db.insert(concepts).values({ topicId: topic.id, slug: domain, title: domain, order: 2, domain });
+    }
+    const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
+    expect(rows.map((r) => r.domain).filter(Boolean).sort()).toEqual(['code', 'math', 'prose', 'systems']);
+
+    const client = postgres(DATABASE_URL, { max: 1 });
+    try {
+      await expect(
+        client`INSERT INTO concepts (topic_id, slug, title, "order", domain)
+               VALUES (${topic.id}, 'js', 'JS', 3, 'javascript')`,
+      ).rejects.toThrow();
+    } finally {
+      await client.end();
+    }
+  });
+
+  it('leaves a concept domain null rather than defaulting it', async () => {
+    // The absence of a default is the whole point: every concept generated
+    // before T-082 has a genuinely unknown domain, and 'prose' would be a lie
+    // the generator would then never revisit.
+    const { concept } = await seedConcept();
+    const [row] = await db.select().from(concepts).where(eq(concepts.id, concept.id));
+    expect(row?.domain).toBeNull();
+  });
+
+  it('still round-trips an item inserted the way the generator inserts one today', async () => {
+    const { concept } = await seedConcept();
+    const payload = { type: 'recall', prompt: 'What closes a stoma?', answer: 'guard cells' };
+    const [inserted] = await db
+      .insert(items)
+      .values({ conceptId: concept.id, type: 'recall', payload })
+      .returning({ id: items.id });
+    if (!inserted) throw new Error('item insert returned no row');
+
+    const [row] = await db.select().from(items).where(eq(items.id, inserted.id));
+    expect(row?.payload).toEqual(payload);
+    expect(row?.answerKind).toBeNull();
+  });
+
+  it('indexes items.answer_kind, because the extension pick filters on it', async () => {
+    const client = postgres(DATABASE_URL, { max: 1 });
+    try {
+      const rows = await client<{ indexname: string }[]>`
+        SELECT indexname FROM pg_indexes WHERE tablename = 'items';
+      `;
+      expect(rows.map((r) => r.indexname)).toContain('items_answer_kind_idx');
+    } finally {
+      await client.end();
+    }
+  });
+
+  it('defaults review_events.assisted to false and refuses an explicit null', async () => {
+    const { user, concept } = await seedConcept();
+    const [inserted] = await db
+      .insert(reviewEvents)
+      .values({ userId: user.id, conceptId: concept.id, correct: true, predictedRecall: 0.9 })
+      .returning({ id: reviewEvents.id });
+    if (!inserted) throw new Error('review_events insert returned no row');
+
+    const [row] = await db.select().from(reviewEvents).where(eq(reviewEvents.id, inserted.id));
+    expect(row?.assisted).toBe(false);
+
+    const client = postgres(DATABASE_URL, { max: 1 });
+    try {
+      await expect(
+        client`INSERT INTO review_events (user_id, concept_id, correct, surface, predicted_recall, assisted)
+               VALUES (${user.id}, ${concept.id}, true, 'web', 0.9, NULL)`,
+      ).rejects.toThrow();
+    } finally {
+      await client.end();
+    }
+  });
+
+  it('truncateAll empties the tables T-079 touched', async () => {
+    const { user, concept } = await seedConcept();
+    await db.insert(items).values({ conceptId: concept.id, type: 'recall', payload: {}, answerKind: 'clozeCode' });
+    await db
+      .insert(reviewEvents)
+      .values({ userId: user.id, conceptId: concept.id, correct: true, predictedRecall: 0.5, assisted: true });
+
+    await truncateAll();
+
+    for (const table of [items, reviewEvents, concepts]) {
       const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(table);
       expect(row?.count).toBe(0);
     }
