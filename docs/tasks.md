@@ -331,7 +331,7 @@
 > (one try-first, one example-first) → map updates → score visible.
 
 ### T-054 · Schema — Sprint 2 table set (schema task)
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **severity:** high — blocks every other Sprint 2 task
 - **depends_on:** T-049
@@ -351,7 +351,12 @@
   - `auth_tokens` insert with a non-existent `user_id` → throws (FK).
   - `truncateAll()` leaves all new tables at 0 rows.
   - Existing T-049 constraint tests still pass (regression).
-- **notes:** Follow T-049's lesson: seed a real user/topic/concept before testing a constraint. Its original tests "passed" only because a hardcoded FK violation fired first, so they never exercised the constraint they claimed to.
+- **notes:** (2026-09-05) Built and verified against real Postgres — `pnpm db:test:push` and `pnpm db:push` both applied cleanly with no prompts. Backend suite 122 → 129 tests, `pnpm lint` clean. All six groups landed as specified; `schema.ts` is untouched by every other Sprint 2 task from here.
+  - Followed T-049's lesson: every new constraint test seeds real parent rows first, so the constraint under test is what actually fires rather than an FK violation masking it. Added two **positive** cases alongside the negative ones (a user may hold both a `web` and an `extension` session; the same user may complete two different days) — a unique index that is too broad passes a "duplicate throws" test just as happily as a correct one, so the positive case is what pins the column list down.
+  - `session_days.day` is `date` with `mode: 'string'`, not a JS `Date`. T-023 computes the learner's local day as a `YYYY-MM-DD` string via `Intl`; round-tripping that through a `Date` would reintroduce exactly the UTC-vs-local bug the column exists to avoid.
+  - `auth_tokens.consumed_at` is nullable rather than the row being deleted on use, so a replayed link stays distinguishable from an unknown one — T-013's "token reused → 401" test needs that difference to be real.
+  - `users.active_windows` / `users.profile` are `.notNull()` with `[]` / `{}` defaults, so T-014 and T-028 never have to handle a null before onboarding. Asserted by a test rather than assumed.
+  - Deliberately not added: no `mastery` column on `concepts` or `cards`. T-015's original wording implies one, but T-017 defines mastery as `predictedRecall(card, now)` and a stored copy would immediately drift from it. T-015 seeds FSRS state instead — see its ⚠ note.
 
 ### T-013 · Magic-link auth
 - **status:** todo
