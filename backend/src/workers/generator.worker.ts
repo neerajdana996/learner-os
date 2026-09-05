@@ -11,6 +11,7 @@ import { generateTeaching } from '../generator/teaching.js';
 import { pickHeldOut, seededRng, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER } from '../lib/heldOut.js';
 import { env } from '../lib/env.js';
 import { collectUsage } from '../llm/usage.js';
+import { answerKindOf } from '../shared/index.js';
 
 export const GENERATION_QUEUE = 'generation';
 
@@ -171,6 +172,10 @@ export async function processGenerationJob(
           conceptId,
           type: item.payload.type,
           payload: item.payload,
+          // Denormalised out of the payload for the one query that cannot read
+          // JSON: the extension's due-item pick (T-079's column, T-089's
+          // filter). Null for a plain prompt, which is every item today.
+          answerKind: answerKindOf(item.payload.blocks),
           isTransfer: item.isTransfer,
         }));
       });

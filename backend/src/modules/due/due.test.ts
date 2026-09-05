@@ -239,4 +239,37 @@ describe('toPublicItem', () => {
   it('throws on a payload that does not match ItemPayload rather than serving it', () => {
     expect(() => toPublicItem({ ...ids, payload: { type: 'recall', prompt: 'Q' } })).toThrow();
   });
+
+  // T-080. The block-level projection is tested exhaustively in
+  // shared/__tests__/blocks.test.ts; this is the seam — that an item carrying
+  // blocks goes through it at all, and that one without is untouched.
+  it('carries blocks through the projection, stripped, with the reveal dropped', () => {
+    const publicItem = toPublicItem({
+      ...ids,
+      payload: {
+        type: 'application',
+        prompt: 'Fix the bound.',
+        answer: 'lo < hi',
+        blocks: [
+          {
+            kind: 'clozeCode',
+            slot: 'answer',
+            lang: 'javascript',
+            src: 'while (lo {{1}} hi) {',
+            holes: [{ id: 1, answer: 'LEAKEDANSWER', accept: ['LEAKEDACCEPT'], width: 2 }],
+            failure: 'search([4], 4) returns -1',
+          },
+          { kind: 'prose', slot: 'reveal', text: 'LEAKEDREVEAL' },
+        ],
+      },
+    });
+
+    expect(Object.keys(publicItem).sort()).toEqual(['blocks', 'conceptId', 'itemId', 'prompt', 'type']);
+    expect(publicItem.blocks).toHaveLength(1);
+    expect(JSON.stringify(publicItem)).not.toMatch(/LEAKED/);
+  });
+
+  it('omits blocks entirely for an item that has none', () => {
+    expect(toPublicItem({ ...ids, payload: recallPayload('Q') })).not.toHaveProperty('blocks');
+  });
 });

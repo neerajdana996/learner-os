@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
 import { ItemPayloadSchema, type ItemPayload } from '../shared/index.js';
+import { parseGeneratedItemBlocks } from './blocks.js';
 
 /** sprint.md's Sprint 1 demo expects 6–8 items per taught concept. */
 export const MIN_ITEMS = 6;
@@ -25,18 +26,28 @@ const RawItemsResponseSchema = z.object({
 });
 
 /**
- * Validates one raw item against the shared ItemPayload shape (loop.md: never
- * redefine a shared schema) and pulls out `isTransfer`, which lives alongside
- * `payload` on the `items` table row, not inside the jsonb payload itself.
+ * One raw item from the model → the row we store.
+ *
+ * Two schemas, not one (T-080). `ItemGenerationSchema` is what the model may
+ * return — strict blocks, line *quotes*, no field that isn't listed — and
+ * `parseGeneratedItemBlocks` resolves those quotes into indices. The result is
+ * then parsed again as an `ItemPayload`, which is not belt-and-braces: it is
+ * what catches a resolver that produced a note pointing past the end of a
+ * listing.
+ *
+ * `isTransfer` is pulled out separately because it lives alongside `payload` on
+ * the `items` row, not inside the jsonb payload itself.
  */
 function parseGeneratedItem(raw: unknown): GeneratedItem {
-  const result = ItemPayloadSchema.safeParse(raw);
+  const resolved = parseGeneratedItemBlocks(raw);
+
+  const result = ItemPayloadSchema.safeParse(resolved);
   if (!result.success) {
     const type = (raw as { type?: unknown } | null)?.type;
     const label = typeof type === 'string' ? type : 'item';
     throw new GenerationError(
       'invalid_shape',
-      `invalid ${label} payload: ${result.error.issues.map((i) => i.message).join('; ')}`,
+      `invalid ${label} payload after resolving blocks: ${result.error.issues.map((i) => i.message).join('; ')}`,
     );
   }
   const isTransfer = (raw as { isTransfer?: unknown } | null)?.isTransfer;

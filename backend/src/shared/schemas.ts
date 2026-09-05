@@ -4,6 +4,7 @@
 // Browser-safe: only `zod` may be imported here. No `node:*`, drizzle, postgres,
 // bullmq or ioredis (sync-shared.sh fails the build if it finds any).
 import { z } from 'zod';
+import { BlockSchema, BlockGenerationSchema, PublicBlockSchema } from './blocks.js';
 
 function daysBetween(from: Date, to: Date): number {
   return (to.getTime() - from.getTime()) / 86_400_000;
@@ -51,48 +52,106 @@ export const TopicCreateSchema = z
 // ---------- Items ----------
 // Full payload as generated/stored server-side (includes the answer key).
 // Never send this shape to a client directly — see PublicItemSchema.
-const RecallPayloadSchema = z.object({
-  type: z.literal('recall'),
-  prompt: z.string().min(1),
-  answer: z.string().min(1),
-  accept: z.array(z.string()).optional(),
-});
+//
+// `prompt` stays required on every variant even once an item carries blocks
+// (T-080). It is the accessible label, the extension's plain-text fallback, and
+// what every item generated before blocks existed already has — so nothing that
+// reads an item has to learn about blocks to keep working.
+const itemFields = {
+  recall: { type: z.literal('recall'), prompt: z.string().min(1), answer: z.string().min(1), accept: z.array(z.string()).optional() },
+  recognition: {
+    type: z.literal('recognition'),
+    prompt: z.string().min(1),
+    options: z.array(z.string()).length(4),
+    answerIndex: z.number().int().min(0).max(3),
+  },
+  application: { type: z.literal('application'), prompt: z.string().min(1), answer: z.string().min(1), accept: z.array(z.string()).optional() },
+  explain: { type: z.literal('explain'), prompt: z.string().min(1), rubric: z.string().min(1) },
+};
 
-const RecognitionPayloadSchema = z.object({
-  type: z.literal('recognition'),
-  prompt: z.string().min(1),
-  options: z.array(z.string()).length(4),
-  answerIndex: z.number().int().min(0).max(3),
-});
+/**
+ * Cross-block rules — the ones a single block cannot check about itself.
+ *
+ * Shared by the stored and the generation union, because a model that emits two
+ * answer blocks and a worker that stores two are the same bug arriving by
+ * different routes.
+ */
+function itemBlockRules(item: { type: string; blocks?: { kind: string; slot: string }[] }, ctx: z.RefinementCtx): void {
+  const blocks = item.blocks;
+  if (!blocks) return;
 
-const ApplicationPayloadSchema = z.object({
-  type: z.literal('application'),
-  prompt: z.string().min(1),
-  answer: z.string().min(1),
-  accept: z.array(z.string()).optional(),
-});
+  const count = (slot: string) => blocks.filter((b) => b.slot === slot).length;
 
-const ExplainPayloadSchema = z.object({
-  type: z.literal('explain'),
-  prompt: z.string().min(1),
-  rubric: z.string().min(1),
-});
+  // Two answer surfaces means two things graded as one boolean, and every
+  // pilot number sliced by `item.type` stops meaning anything.
+  if (count('answer') > 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['blocks'], message: 'an item may have at most one answer block' });
+  }
+  if (count('context') > 3) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['blocks'], message: 'at most 3 context blocks' });
+  }
+  if (count('reveal') > 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['blocks'], message: 'at most 2 reveal blocks' });
+  }
 
-export const ItemPayloadSchema = z.discriminatedUnion('type', [
-  RecallPayloadSchema,
-  RecognitionPayloadSchema,
-  ApplicationPayloadSchema,
-  ExplainPayloadSchema,
-]);
+  // `recognition` grades by index and `explain` grades against a rubric;
+  // neither can grade a hole or a clicked line. Their answer surface is the one
+  // they already have, so a code listing on a recognition item is *context* —
+  // which is exactly how "predict the output" is built.
+  if ((item.type === 'recognition' || item.type === 'explain') && count('answer') > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['blocks'],
+      message: `a ${item.type} item cannot carry an answer block — its answer surface is ${item.type === 'recognition' ? 'options' : 'the rubric'}`,
+    });
+  }
+}
+
+// Generic so each variant keeps its `type` literal — a `z.ZodRawShape`
+// parameter widens it to ZodTypeAny and discriminatedUnion loses its
+// discriminator.
+const payloadVariant = <T extends z.ZodRawShape>(fields: T) =>
+  z.object({ ...fields, blocks: z.array(BlockSchema).min(1).max(6).optional() });
+
+export const ItemPayloadSchema = z
+  .discriminatedUnion('type', [
+    payloadVariant(itemFields.recall),
+    payloadVariant(itemFields.recognition),
+    payloadVariant(itemFields.application),
+    payloadVariant(itemFields.explain),
+  ])
+  .superRefine(itemBlockRules);
+
+/**
+ * What the model may return, as opposed to what we store (T-080).
+ *
+ * Every difference lives in `BlockGenerationSchema`: no line numbers, no field
+ * that isn't listed. The worker derives the payload from this — see
+ * `src/generator/blocks.ts`.
+ */
+const generationVariant = <T extends z.ZodRawShape>(fields: T) =>
+  z.object({ ...fields, blocks: z.array(BlockGenerationSchema).min(1).max(6).optional() });
+
+export const ItemGenerationSchema = z
+  .discriminatedUnion('type', [
+    generationVariant(itemFields.recall),
+    generationVariant(itemFields.recognition),
+    generationVariant(itemFields.application),
+    generationVariant(itemFields.explain),
+  ])
+  .superRefine(itemBlockRules);
 
 // Client-facing view of an item: no answer/accept/answerIndex/rubric (plan.md §6,
-// T-010). `options` is present only for recognition items.
+// T-010). `options` is present only for recognition items; `blocks` only for
+// items that have them, already stripped of every answer key and with every
+// `reveal` block dropped (T-080).
 export const PublicItemSchema = z.object({
   itemId: z.string().uuid(),
   conceptId: z.string().uuid(),
   type: ItemTypeSchema,
   prompt: z.string(),
   options: z.array(z.string()).length(4).optional(),
+  blocks: z.array(PublicBlockSchema).optional(),
 });
 
 export const DueItemsResponseSchema = z.object({

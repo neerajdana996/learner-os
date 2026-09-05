@@ -11,7 +11,7 @@ vi.mock('openai', () => ({
 const { itemsJsonSchema, itemsPrompt } = await import('../items.js');
 const { conceptMapJsonSchema, ConceptMapSchema, conceptMapPrompt } = await import('../conceptMap.js');
 const { teachingJsonSchema, teachingPrompt } = await import('../teaching.js');
-const { ItemPayloadSchema } = await import('../../shared/index.js');
+const { ItemGenerationSchema } = await import('../../shared/index.js');
 
 type JsonSchema = {
   type?: string;
@@ -71,20 +71,48 @@ describe('JSON schemas do not drift from the Zod schemas', () => {
     expect([...(conceptJson?.required ?? [])].sort()).toEqual(zodKeys(conceptZod));
   });
 
-  it('every ItemPayload variant has a matching JSON schema variant', () => {
-    const variants = (ItemPayloadSchema as unknown as { options: z.ZodTypeAny[] }).options;
+  // Pinned against ItemGenerationSchema, not ItemPayloadSchema (T-080): this
+  // JSON schema is the contract for what the *model* emits, and after the split
+  // those are two different shapes. `.innerType()` unwraps the superRefine.
+  const generationVariants = () =>
+    (ItemGenerationSchema.innerType() as unknown as { options: z.ZodTypeAny[] }).options;
+
+  it('every ItemGeneration variant has a matching JSON schema variant', () => {
+    const variants = generationVariants();
     const jsonVariants = (itemsJsonSchema as unknown as JsonSchema).properties?.items?.items?.anyOf ?? [];
 
     expect(jsonVariants).toHaveLength(variants.length);
 
     for (const variant of variants) {
       // isTransfer is a sibling column on the items table, not part of the
-      // jsonb payload, so the model must emit it but ItemPayloadSchema does not
-      // declare it — hence the explicit addition here.
-      const expected = [...zodKeys(variant), 'isTransfer'].sort();
+      // jsonb payload, so the model must emit it but the payload schema does
+      // not declare it — hence the explicit addition here. `blocks` is excluded
+      // for the opposite reason: see the test below.
+      const expected = [...zodKeys(variant).filter((k) => k !== 'blocks'), 'isTransfer'].sort();
       const match = jsonVariants.find((v) => [...(v.required ?? [])].sort().join() === expected.join());
       expect(match, `no JSON variant matches Zod keys ${expected.join(',')}`).toBeDefined();
     }
+  });
+
+  /**
+   * The provider contract and the Zod generation schema must agree about
+   * `blocks`, in both directions.
+   *
+   * Strict mode sets `additionalProperties: false`, so **the model cannot emit
+   * a field this JSON schema omits**. `blocks` is deliberately absent here
+   * today: T-080 defines the shapes, and `T-083` is the task that asks the
+   * model for them. That means `domains/code.md` on its own would be inert —
+   * T-083 has to extend this schema in the same change, and this test is where
+   * it will notice.
+   */
+  it('agrees with the Zod schema about whether blocks are on offer', () => {
+    const jsonVariants = (itemsJsonSchema as unknown as JsonSchema).properties?.items?.items?.anyOf ?? [];
+    const inJson = jsonVariants.some((v) => 'blocks' in (v.properties ?? {}));
+    const inZod = generationVariants().some((v) => zodKeys(v).includes('blocks'));
+
+    expect(inZod, 'ItemGenerationSchema should declare blocks — that is T-080').toBe(true);
+    // Flip this to `true` in T-083, in the same commit as domains/code.md.
+    expect(inJson, 'blocks reach the provider only once T-083 asks for them').toBe(false);
   });
 
   it('every item variant requires isTransfer — the field that broke real generation', () => {
