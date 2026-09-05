@@ -56,7 +56,8 @@ describe('concept map generation', () => {
   });
 
   it('rejects a prereq slug that does not exist', async () => {
-    create.mockResolvedValueOnce(
+    // Domain failures retry once (T-FIX-013), so both attempts see the bad map.
+    create.mockResolvedValue(
       asText(JSON.stringify({ topic: 'X', concepts: [{ slug: 'state', title: 'S', summary: 's', prereqs: ['nope'] }] })),
     );
     await expect(generateConceptMap('X')).rejects.toMatchObject({
@@ -66,7 +67,8 @@ describe('concept map generation', () => {
   });
 
   it('rejects a prereq cycle', async () => {
-    create.mockResolvedValueOnce(
+    // Domain failures retry once (T-FIX-013), so both attempts see the bad map.
+    create.mockResolvedValue(
       asText(
         JSON.stringify({
           topic: 'X',
@@ -81,7 +83,8 @@ describe('concept map generation', () => {
   });
 
   it('rejects duplicate slugs before they hit the concepts unique index', async () => {
-    create.mockResolvedValueOnce(
+    // Domain failures retry once (T-FIX-013), so both attempts see the bad map.
+    create.mockResolvedValue(
       asText(
         JSON.stringify({
           topic: 'X',

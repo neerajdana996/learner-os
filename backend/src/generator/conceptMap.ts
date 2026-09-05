@@ -105,6 +105,7 @@ export const conceptMapPrompt = definePrompt({
     name: 'concept_map_response',
     schema: conceptMapJsonSchema as unknown as Record<string, unknown>,
   },
+  validate: (value) => void validateConceptMap(value),
 });
 
 /**
@@ -121,6 +122,9 @@ export async function generateConceptMap(topic: string): Promise<ConceptMap> {
   try {
     response = await runPrompt(conceptMapPrompt, { topic });
   } catch (error) {
+    // A GenerationError already carries the rule it broke — re-wrapping it
+    // would flatten every domain reason into `invalid_shape`.
+    if (error instanceof GenerationError) throw error;
     if (error instanceof LlmError) throw new GenerationError(error.reason, error.message);
     throw new GenerationError('invalid_shape', `concept map generation failed: ${String(error)}`);
   }

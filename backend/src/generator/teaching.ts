@@ -96,6 +96,7 @@ export const teachingPrompt = definePrompt({
   name: 'teaching',
   schema: TeachingResponseSchema,
   jsonSchema: { name: 'teaching_response', schema: teachingJsonSchema as unknown as Record<string, unknown> },
+  validate: (value) => void validateTeaching(value),
 });
 
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */
@@ -109,6 +110,9 @@ export async function generateTeaching(input: TeachingInput): Promise<GeneratedT
       teachMode: input.teachMode,
     });
   } catch (error) {
+    // A GenerationError already carries the rule it broke — re-wrapping it
+    // would flatten every domain reason into `invalid_shape`.
+    if (error instanceof GenerationError) throw error;
     if (error instanceof LlmError) throw new GenerationError(error.reason, error.message);
     throw new GenerationError('invalid_shape', `teaching generation failed: ${String(error)}`);
   }

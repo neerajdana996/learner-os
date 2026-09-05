@@ -36,6 +36,16 @@ export interface PromptDef<Vars extends Record<string, string>, Out> {
    * validators, so the two layers are complementary rather than duplicated.
    */
   jsonSchema?: { name: string; schema: Record<string, unknown> };
+  /**
+   * Domain rules the schema cannot express — exact array lengths, string
+   * limits, cross-item counts. Throw to reject the response.
+   *
+   * It runs *inside* the retry loop deliberately. Left outside, a single soft
+   * violation in one of ~175 generated items failed an entire 15-minute topic
+   * with no second attempt, while a malformed brace got two. Same class of
+   * failure, same treatment.
+   */
+  validate?: (value: Out) => void;
   /** Marker for the Vars type; never read at runtime. */
   readonly _vars?: Vars;
 }
@@ -73,6 +83,7 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
   const reasoningEffort = def.reasoningEffort ?? tier?.reasoningEffort ?? DEFAULT_REASONING_EFFORT;
 
   let lastRaw = '';
+  let lastDomainError: unknown = null;
   // Two attempts total: one retry for a model that returns malformed or
   // mis-shaped JSON. Errors thrown by complete() itself (truncation, missing
   // key, refusal, SDK failures after its own retries) propagate immediately —
@@ -93,9 +104,23 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
       continue; // malformed JSON — retry once, then fall through to throw
     }
     const result = def.schema.safeParse(parsed);
-    if (result.success) return result.data;
+    if (result.success) {
+      if (!def.validate) return result.data;
+      try {
+        def.validate(result.data);
+        return result.data;
+      } catch (error) {
+        // Last attempt: surface the domain error itself, which names the rule
+        // that was broken, rather than a generic shape complaint.
+        if (attempt === 1) throw error;
+        lastDomainError = error;
+        continue;
+      }
+    }
     // valid JSON but wrong shape — retry once, then throw
   }
+
+  if (lastDomainError) throw lastDomainError;
 
   // Second attempt still failed. Report why based on the last response.
   try {

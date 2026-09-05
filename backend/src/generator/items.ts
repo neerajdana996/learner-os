@@ -152,6 +152,9 @@ export const itemsPrompt = definePrompt({
   name: 'items',
   schema: RawItemsResponseSchema,
   jsonSchema: { name: 'items_response', schema: itemsJsonSchema as unknown as Record<string, unknown> },
+  // Inside the retry loop: a single over-long rubric should cost one more call,
+  // not the whole topic.
+  validate: (value) => void validateItems(value),
 });
 
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */
@@ -160,6 +163,9 @@ export async function generateItems(topic: string): Promise<GeneratedItems> {
   try {
     response = await runPrompt(itemsPrompt, { topic });
   } catch (error) {
+    // A GenerationError already carries the rule it broke — re-wrapping it
+    // would flatten every domain reason into `invalid_shape`.
+    if (error instanceof GenerationError) throw error;
     if (error instanceof LlmError) throw new GenerationError(error.reason, error.message);
     throw new GenerationError('invalid_shape', `item generation failed: ${String(error)}`);
   }

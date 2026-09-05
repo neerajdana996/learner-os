@@ -120,3 +120,41 @@ describe('runPrompt sends the schema to the provider', () => {
     expect(sent?.response_format?.json_schema?.strict).toBe(true);
   });
 });
+
+describe('domain validation is retried, not fatal on first offence', () => {
+  const asText = (text: string) => ({ choices: [{ message: { content: text }, finish_reason: 'stop' }] });
+
+  /** Six items, all four types, one transfer — valid unless a rule is broken. */
+  const itemSet = (rubric: string) => ({
+    topic: 'useState',
+    items: [
+      { type: 'recall', prompt: 'q', answer: 'a', accept: [], isTransfer: false },
+      { type: 'recognition', prompt: 'q', options: ['a', 'b', 'c', 'd'], answerIndex: 0, isTransfer: false },
+      { type: 'application', prompt: 'q', answer: 'a', accept: [], isTransfer: true },
+      { type: 'explain', prompt: 'q', rubric, isTransfer: false },
+      { type: 'recall', prompt: 'q2', answer: 'a', accept: [], isTransfer: false },
+      { type: 'recall', prompt: 'q3', answer: 'a', accept: [], isTransfer: false },
+    ],
+  });
+
+  it('retries once when a rubric is over length, then succeeds', async () => {
+    create.mockReset();
+    create
+      .mockResolvedValueOnce(asText(JSON.stringify(itemSet('x'.repeat(250)))))
+      .mockResolvedValueOnce(asText(JSON.stringify(itemSet('short rubric'))));
+
+    const { generateItems } = await import('../items.js');
+    await expect(generateItems('useState')).resolves.toMatchObject({ topic: 'useState' });
+    // One over-long rubric used to fail an entire 15-minute topic outright.
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports the domain rule by name when both attempts break it', async () => {
+    create.mockReset();
+    create.mockResolvedValue(asText(JSON.stringify(itemSet('x'.repeat(250)))));
+
+    const { generateItems } = await import('../items.js');
+    await expect(generateItems('useState')).rejects.toThrow(/rubric/);
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+});

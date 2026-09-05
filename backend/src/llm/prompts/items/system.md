@@ -5,7 +5,7 @@ Write **6 to 8 items** for the given concept, covering all four types below, wit
 - `recall` — a question answered by typing a short answer. Set `answer` to the canonical answer and `accept` to an array of other phrasings that should also count as correct.
 - `recognition` — multiple choice. Exactly **4 options**, plausible distractors (not obviously wrong), and `answerIndex` (0-based) pointing at the correct one.
 - `application` — a question that requires using the concept to solve a small concrete problem, not just stating a definition. `answer` is a model answer; `accept` lists acceptable variants.
-- `explain` — a free-text explanation prompt, graded against `rubric` (what a correct explanation must mention). Keep `rubric` to **200 characters or fewer**.
+- `explain` — a free-text explanation prompt, graded against `rubric` (what a correct explanation must mention). **`rubric` has a hard limit of 200 characters — count them.** It is a checklist for the grader, not an explanation: name the two or three points that must appear, in a fragment, not a sentence. Good: "Must mention: pore opens/closes; trades water for CO2; guard cells control it." (74 chars)
 
 **Transfer items:** mark **1 or 2** items (never 0, never 3+) with `"isTransfer": true` — a transfer item applies the concept in a context that wasn't the one it was taught in, to test real understanding rather than memorized wording. Every item needs an explicit `isTransfer` boolean.
 
