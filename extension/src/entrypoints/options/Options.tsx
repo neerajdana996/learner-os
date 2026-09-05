@@ -21,14 +21,6 @@ type State =
   | { kind: 'connected'; email: string }
   | { kind: 'error'; message: string };
 
-const styles = {
-  page: { maxWidth: 460, padding: 24, fontFamily: 'system-ui, sans-serif', color: '#1c1917' },
-  muted: { color: '#78716c', fontSize: 13, lineHeight: 1.5 },
-  input: { width: '100%', padding: 8, fontSize: 13, fontFamily: 'ui-monospace, monospace' },
-  button: { padding: '8px 14px', fontSize: 13, cursor: 'pointer' },
-  error: { color: '#b91c1c', fontSize: 13 },
-} as const;
-
 export function Options() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [token, setTokenInput] = useState('');
@@ -68,31 +60,31 @@ export function Options() {
   }
 
   return (
-    <main style={styles.page}>
-      <h1 style={{ fontSize: 18, marginTop: 0 }}>learnos</h1>
+    <main className="ext ext--options">
+      <h1 className="ext__title">learnos</h1>
 
       {state.kind === 'connected' ? (
         <>
-          <p style={styles.muted}>
+          <p className="ext__muted">
             Connected as <strong>{state.email}</strong>. Questions will appear during your active
             windows.
           </p>
-          <button type="button" style={styles.button} onClick={() => void disconnect()}>
+          <button type="button" className="ext__button" onClick={() => void disconnect()}>
             Disconnect
           </button>
         </>
       ) : (
         <>
-          <p style={styles.muted}>
+          <p className="ext__muted">
             Open the web app, go to <strong>Connect extension</strong>, and paste the token here.
             It stays on this device.
           </p>
-          <label htmlFor="token" style={styles.muted}>
+          <label htmlFor="token" className="ext__muted">
             Extension token
           </label>
           <input
             id="token"
-            style={styles.input}
+            className="ext__input"
             value={token}
             onChange={(event) => setTokenInput(event.target.value)}
             placeholder="paste the token"
@@ -102,18 +94,18 @@ export function Options() {
           <p>
             <button
               type="button"
-              style={styles.button}
+              className="ext__button"
               disabled={token.trim() === '' || state.kind === 'checking'}
               onClick={() => void connect()}
             >
               {state.kind === 'checking' ? 'Checking…' : 'Connect'}
             </button>
           </p>
-          {state.kind === 'error' && <p style={styles.error}>{state.message}</p>}
+          {state.kind === 'error' && <p className="ext__error">{state.message}</p>}
         </>
       )}
 
-      <p style={{ ...styles.muted, marginTop: 24 }}>Talking to {API_URL}</p>
+      <p className="ext__muted ext__endpoint">Talking to {API_URL}</p>
     </main>
   );
 }

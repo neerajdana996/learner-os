@@ -10,13 +10,6 @@ import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { getToken } from '../../lib/storage';
 
-const styles = {
-  main: { width: 280, padding: 16, fontFamily: 'system-ui, sans-serif', color: '#1c1917' },
-  title: { fontSize: 16, margin: 0 },
-  muted: { color: '#78716c', fontSize: 13, lineHeight: 1.5 },
-  button: { padding: '6px 12px', fontSize: 13, cursor: 'pointer' },
-} as const;
-
 export function Popup() {
   const [connected, setConnected] = useState<boolean | null>(null);
 
@@ -25,17 +18,17 @@ export function Popup() {
   }, []);
 
   return (
-    <main style={styles.main}>
-      <h1 style={styles.title}>learnos</h1>
+    <main className="ext ext--popup">
+      <h1 className="ext__title">learnos</h1>
       {connected === null ? null : connected ? (
         // T-029 replaces this with the question card.
-        <p style={styles.muted}>Nothing due right now. We’ll pop in when something is.</p>
+        <p className="ext__muted">Nothing due right now. We’ll pop in when something is.</p>
       ) : (
         <>
-          <p style={styles.muted}>
+          <p className="ext__muted">
             Not connected yet. Paste your extension token to start getting questions.
           </p>
-          <button type="button" style={styles.button} onClick={() => browser.runtime.openOptionsPage()}>
+          <button type="button" className="ext__button" onClick={() => browser.runtime.openOptionsPage()}>
             Connect
           </button>
         </>

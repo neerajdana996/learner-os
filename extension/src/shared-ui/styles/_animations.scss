@@ -1,0 +1,50 @@
+@use "variables" as *;
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/// Each teaching step appears as the learner works down the page.
+.u-rise-in {
+  animation: rise-in $duration $ease both;
+}
+
+.u-fade-in {
+  animation: fade-in $duration $ease both;
+}
+
+/// Delayed so it never flashes for a chunk that resolves in 30ms — a spinner
+/// that appears and vanishes reads as jank.
+.u-delayed-in {
+  opacity: 0;
+  animation: fade-in $duration $ease 400ms forwards;
+}
+
+// Honoured globally: motion here is decorative, and none of it carries meaning
+// that is lost when it is switched off.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

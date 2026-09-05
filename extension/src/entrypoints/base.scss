@@ -1,0 +1,64 @@
+// The extension's one stylesheet, imported by both entrypoints.
+//
+// It carries only what a popup and an options page need: the tokens, and the
+// handful of controls those two screens use. Everything visual comes from
+// `shared-ui` — synced from the repo root, never edited here — so a clay that
+// moves on the web moves in the popup on the next `scripts/sync-shared.sh`.
+//
+// The block components arrive with T-085 and bring their own partials; this
+// file deliberately does not anticipate them.
+@use "../shared-ui/styles/themes";
+@use "../shared-ui/styles/variables" as *;
+@use "../shared-ui/styles/mixins" as *;
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: $font-ui;
+  font-size: $text-sm;
+  line-height: 1.55;
+}
+
+.ext {
+  // The popup has a fixed width because Chrome gives it one; the options page
+  // is a real page and only needs a reading measure.
+  &--popup { width: 280px; padding: $s-4; }
+  &--options { max-width: 460px; padding: $s-6; }
+
+  &__title {
+    margin: 0 0 $s-2;
+    font-family: $font-display;
+    font-size: $text-md;
+    font-weight: $weight-semibold;
+  }
+
+  &__muted { color: var(--muted); font-size: $text-sm; line-height: 1.55; }
+
+  // Ochre, not red: a mis-pasted token is a normal thing to do once.
+  &__error { color: var(--ochre); font-size: $text-sm; }
+
+  // The API it is actually talking to — useful in dev, quiet in the layout.
+  &__endpoint { margin-top: $s-6; }
+
+  &__button {
+    @include control;
+    background: var(--clay);
+    color: var(--clay-on);
+    font-size: $text-sm;
+  }
+
+  &__input {
+    width: 100%;
+    font: inherit;
+    font-family: $font-mono;
+    font-size: $text-sm;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border-strong);
+    border-radius: $radius;
+    padding: $s-2 $s-3;
+    min-height: $tap;
+    @include focus-ring;
+  }
+}
