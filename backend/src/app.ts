@@ -6,6 +6,7 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
 import { diagnosticRouter } from './modules/diagnostic/diagnostic.routes.js';
 import { sessionRouter } from './modules/session/session.routes.js';
+import { mapRouter } from './modules/map/map.routes.js';
 import { topicsRouter } from './modules/topics/topics.routes.js';
 import { reviewsRouter } from './modules/reviews/reviews.routes.js';
 import { dueRouter } from './modules/due/due.routes.js';
@@ -29,6 +30,8 @@ export function createApp(): Express {
   app.use(usersRouter);
   app.use(diagnosticRouter);
   app.use(sessionRouter);
+  // Ahead of topicsRouter so /topics/:id/map isn't shadowed by /topics/:id.
+  app.use(mapRouter);
   app.use(topicsRouter);
   app.use(reviewsRouter);
   app.use(dueRouter);
