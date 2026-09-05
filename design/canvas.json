@@ -1,0 +1,38 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1280, "h": 2680, "title": "Landing page" },
+    { "file": "Login.dc.html", "x": 1400, "y": 0, "w": 560, "h": 900, "title": "Sign in" },
+    { "file": "DesignSystem.dc.html", "x": 2060, "y": 0, "w": 1080, "h": 1780, "title": "Design system" },
+
+    { "file": "Onboarding.dc.html", "x": 0, "y": 2820, "w": 1180, "h": 940, "title": "Onboarding · step 2" },
+    { "file": "Diagnostic.dc.html", "x": 1280, "y": 2820, "w": 860, "h": 1180, "title": "Diagnostic" },
+    { "file": "Session.dc.html", "x": 2240, "y": 2820, "w": 900, "h": 1420, "title": "Today's session" },
+
+    { "file": "Map.dc.html", "x": 0, "y": 4380, "w": 1240, "h": 900, "title": "Map & score" },
+    { "file": "ExtensionCard.dc.html", "x": 1340, "y": 4380, "w": 1300, "h": 780, "title": "Extension card" }
+  ],
+  "annotations": [
+    {
+      "id": "positioning",
+      "x": 0,
+      "y": -210,
+      "w": 520,
+      "text": "learnos — one falsifiable promise\n\nEvery competitor promises learning. This promises retention, measured: a surprise test on day 30 you might fail.\n\nThat single fact drives the whole system. Warm paper and one clay accent so 30 days of daily use never grates; numbers set in mono so digits don't shift as they change; no streaks, badges or confetti anywhere."
+    },
+    {
+      "id": "held-out",
+      "x": 1340,
+      "y": 5220,
+      "w": 460,
+      "text": "The hardest thing to design\n\nWe deliberately never teach ~10% of concepts — the control group. Users see them as dashed '?' nodes on their own map.\n\nUnexplained that looks broken, so the map states it plainly: the gap between taught and held-back scores on day 30 is the only honest evidence the teaching worked."
+    },
+    {
+      "id": "colorblind",
+      "x": 2060,
+      "y": 1850,
+      "w": 440,
+      "text": "Green and yellow is the worst possible pair\n\nThe map leans on exactly the two hues that ~8% of men cannot separate. So state is carried three ways at once: hue, fill level (full / half / hollow / dashed) and a written label. The dot is shorthand, never the only signal."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

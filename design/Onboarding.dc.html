@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .field { background: #FFFFFF; border: 1px solid #C9C2B9; border-radius: 4px; padding: 13px 14px; min-height: 48px; display: flex; align-items: center; font-size: 15px; }
+    .lab { display: block; font-size: 13px; font-weight: 500; margin-bottom: 7px; }
+    .hint { font-size: 12.5px; line-height: 1.55; color: #8A827A; margin-top: 7px; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 48px 56px; min-height: 100%;">
+
+  <!-- PROGRESS -->
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 44px;">
+    <div class="serif" style="font-size: 19px; font-weight: 600; margin-right: 12px;">learnos</div>
+    <div style="height: 3px; width: 56px; background: #B0552F; border-radius: 2px;"></div>
+    <div style="height: 3px; width: 56px; background: #B0552F; border-radius: 2px;"></div>
+    <div style="height: 3px; width: 56px; background: #E6E1DA; border-radius: 2px;"></div>
+    <div class="mono" style="font-size: 11px; color: #8A827A; letter-spacing: .06em;">STEP 2 OF 3</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: start;">
+
+    <!-- LEFT: step 2 -->
+    <div>
+      <h1 class="serif" style="font-size: 36px; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 10px;">
+        Which one for the next thirty days?
+      </h1>
+      <p style="font-size: 15px; line-height: 1.6; color: #57504A; margin: 0 0 26px;">
+        Two topics in this pilot, five people on each. Every question in both has been read by hand
+        before it reaches you.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+        <div style="background: #FFFFFF; border: 1.5px solid #B0552F; border-radius: 5px; padding: 17px 19px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+            <div class="serif" style="font-size: 20px; font-weight: 500;">React hooks</div>
+            <div class="mono" style="font-size: 11px; color: #8A4225;">SELECTED</div>
+          </div>
+          <div style="font-size: 13.5px; line-height: 1.55; color: #57504A;">From what a hook is through to stale closures and custom hooks.</div>
+          <div class="mono" style="font-size: 11px; color: #8A827A; margin-top: 9px;">40 CONCEPTS &middot; 3 PLACES LEFT</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #C9C2B9; border-radius: 5px; padding: 17px 19px;">
+          <div class="serif" style="font-size: 20px; font-weight: 500; margin-bottom: 6px;">[SECOND TOPIC]</div>
+          <div style="font-size: 13.5px; line-height: 1.55; color: #57504A;">[ONE LINE ON WHAT IT COVERS.]</div>
+          <div class="mono" style="font-size: 11px; color: #8A827A; margin-top: 9px;">[N] CONCEPTS &middot; 5 PLACES LEFT</div>
+        </div>
+      </div>
+      <div class="hint" style="margin-bottom: 24px;">Only these two for now — each one takes an hour to check by hand, and unchecked questions would make the results meaningless.</div>
+
+      <div style="margin-bottom: 24px;">
+        <label class="lab">Why this, why now?</label>
+        <div class="field" style="min-height: 84px; align-items: flex-start; padding-top: 13px; color: #A9A29B; line-height: 1.55;">I re-read the docs every time and it never sticks.</div>
+        <div class="hint">Only you see this. We show it back on the days you don&rsquo;t feel like starting.</div>
+      </div>
+
+      <div style="margin-bottom: 24px;">
+        <label class="lab">How long</label>
+        <div style="display: flex; align-items: center; gap: 12px; background: #F1EDE6; border-radius: 4px; padding: 13px 15px; min-height: 48px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#8A827A" stroke-width="1.4"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 2v2M10.5 2v2"/></svg>
+          <div style="font-size: 15px;">30 days of teaching, then a test on day 30 and day 45</div>
+        </div>
+        <div class="hint">Fixed for the pilot — the same schedule for all ten of us is what makes the results comparable.</div>
+      </div>
+
+      <div style="margin-bottom: 34px;">
+        <label class="lab">Minutes a day</label>
+        <div style="display: flex; gap: 9px;">
+          <div style="padding: 12px 18px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">5</div>
+          <div style="padding: 12px 18px; border: 1.5px solid #B0552F; background: #F7EDE7; color: #8A4225; border-radius: 4px; font-size: 14px; font-weight: 500; min-height: 44px; display: flex; align-items: center;">10</div>
+          <div style="padding: 12px 18px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">15</div>
+          <div style="padding: 12px 18px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">20</div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <div style="background: #B0552F; color: #FFF8F4; padding: 14px 26px; border-radius: 4px; font-size: 15px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Build my map</div>
+        <div style="font-size: 14px; color: #8A827A; padding: 14px 6px; min-height: 48px; display: flex; align-items: center;">Back</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: step 1 recap + windows -->
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 30px 32px;">
+      <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A827A; margin-bottom: 20px;">Step 1 &middot; done</div>
+
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 15px; border-bottom: 1px solid #E6E1DA; margin-bottom: 15px;">
+        <div style="font-size: 14px; color: #57504A;">Name</div>
+        <div style="font-size: 14px; font-weight: 500;">Neeraj</div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 20px; border-bottom: 1px solid #E6E1DA; margin-bottom: 22px;">
+        <div style="font-size: 14px; color: #57504A;">Timezone</div>
+        <div style="font-size: 14px; font-weight: 500;">Asia/Kolkata</div>
+      </div>
+
+      <div style="font-weight: 600; font-size: 15px; margin-bottom: 6px;">When may we interrupt?</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #57504A; margin-bottom: 18px;">
+        The twenty-second questions only appear inside these hours, and never more than twelve a day.
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 9px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="field" style="flex-grow: 1; min-height: 44px; padding: 11px 13px;">09:00</div>
+          <div style="font-size: 13px; color: #8A827A;">to</div>
+          <div class="field" style="flex-grow: 1; min-height: 44px; padding: 11px 13px;">12:00</div>
+          <div style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #8A827A;">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="field" style="flex-grow: 1; min-height: 44px; padding: 11px 13px;">14:00</div>
+          <div style="font-size: 13px; color: #8A827A;">to</div>
+          <div class="field" style="flex-grow: 1; min-height: 44px; padding: 11px 13px;">18:00</div>
+          <div style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #8A827A;">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: #B0552F; font-weight: 500; min-height: 44px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
+        Add a window
+      </div>
+
+      <div style="border-top: 1px solid #E6E1DA; margin-top: 12px; padding-top: 16px; font-size: 12.5px; line-height: 1.6; color: #8A827A;">
+        Three at most, and none crossing midnight — split a late session into two.
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8A827A; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723;">
+
+  <!-- NAV -->
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 22px 72px; border-bottom: 1px solid #E6E1DA;">
+    <div class="serif" style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em;">learnos</div>
+    <div style="display: flex; gap: 30px; align-items: center;">
+      <a href="#ask" style="font-size: 14px; color: #57504A;">What it takes</a>
+      <a href="#measure" style="font-size: 14px; color: #57504A;">What we measure</a>
+      <a href="#signin" style="font-size: 14px; font-weight: 500;">Sign in</a>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div style="padding: 100px 72px 80px; max-width: 1000px;">
+    <div class="eyebrow" style="margin-bottom: 26px;">A 45-day pilot &middot; ten people</div>
+    <h1 class="serif" style="font-size: 74px; font-weight: 500; line-height: 1.04; letter-spacing: -0.03em; margin: 0 0 30px; max-width: 880px; text-wrap: pretty;">
+      Learn something for 30&nbsp;days. Then let me test you on it.
+    </h1>
+    <p style="font-size: 21px; line-height: 1.55; color: #57504A; max-width: 660px; margin: 0 0 22px; text-wrap: pretty;">
+      Spaced repetition and retrieval practice have decades of evidence behind them.
+      Whether I&rsquo;ve built them into something you&rsquo;ll actually keep using for thirty days
+      is the open question &mdash; and you&rsquo;d be one of ten people answering it.
+    </p>
+    <p style="font-size: 17px; line-height: 1.6; color: #8A827A; max-width: 620px; margin: 0 0 40px;">
+      On day 30 there&rsquo;s a test you won&rsquo;t see coming. It might show this worked. It might
+      show it didn&rsquo;t. Either way you&rsquo;ll get the number, and so will I.
+    </p>
+    <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+      <div style="background: #B0552F; color: #FFF8F4; padding: 15px 28px; border-radius: 4px; font-size: 16px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Take one of the ten places</div>
+      <div style="font-size: 14px; color: #8A827A;">No cost &middot; starts [PILOT START DATE]</div>
+    </div>
+  </div>
+
+  <!-- THE ASK -->
+  <div id="ask" style="background: #FFFFFF; border-top: 1px solid #E6E1DA; border-bottom: 1px solid #E6E1DA; padding: 76px 72px;">
+    <div class="eyebrow" style="margin-bottom: 18px;">Before you say yes</div>
+    <h2 class="serif" style="font-size: 38px; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; max-width: 640px;">
+      What I&rsquo;m actually asking of you.
+    </h2>
+    <p style="font-size: 16px; line-height: 1.65; color: #57504A; max-width: 620px; margin: 0 0 42px;">
+      This is a real commitment and I&rsquo;d rather you turn it down now than drop out on day nine.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px;">
+      <div style="background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px;">
+        <div class="mono" style="font-size: 22px; font-weight: 500; margin-bottom: 12px;">10 min</div>
+        <div style="font-weight: 600; font-size: 15px; margin-bottom: 8px;">a day, most days</div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">Two or three new ideas, then a few reviews. Miss a day and nothing breaks &mdash; miss ten and the measurement is worthless.</div>
+      </div>
+      <div style="background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px;">
+        <div class="mono" style="font-size: 22px; font-weight: 500; margin-bottom: 12px;">Chrome</div>
+        <div style="font-weight: 600; font-size: 15px; margin-bottom: 8px;">extension, installed by hand</div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">It isn&rsquo;t in the Web Store yet, so you&rsquo;ll load an unpacked folder in developer mode. I&rsquo;ll walk you through it &mdash; it takes about two minutes.</div>
+      </div>
+      <div style="background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px;">
+        <div class="mono" style="font-size: 22px; font-weight: 500; margin-bottom: 12px;">~12/day</div>
+        <div style="font-weight: 600; font-size: 15px; margin-bottom: 8px;">interruptions, in hours you pick</div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">A card, one question, twenty seconds. Only inside windows you set. Wave three away and it stops until tomorrow.</div>
+      </div>
+      <div style="background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px;">
+        <div class="mono" style="font-size: 22px; font-weight: 500; margin-bottom: 12px;">2 tests</div>
+        <div style="font-weight: 600; font-size: 15px; margin-bottom: 8px;">unannounced, day 30 and 45</div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">Twenty-five to thirty questions, about fifteen minutes each. You won&rsquo;t be told in advance, because a test you revised for measures revision.</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 30px; font-size: 14px; line-height: 1.65; color: #8A827A; max-width: 700px;">
+      There is also one fifteen-minute call around day 14, so I can hear what&rsquo;s annoying you while
+      there&rsquo;s still time to fix it.
+    </div>
+  </div>
+
+  <!-- TOPICS -->
+  <div style="padding: 80px 72px;">
+    <div class="eyebrow" style="margin-bottom: 18px;">Step one</div>
+    <h2 class="serif" style="font-size: 38px; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px;">
+      Pick one of three.
+    </h2>
+    <p style="font-size: 16px; line-height: 1.65; color: #57504A; max-width: 660px; margin: 0 0 34px;">
+      Three, not thirty, because I read every question in all of them by hand before anyone sees
+      it. Each one is something engineers openly admit to learning twice.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+      <div style="background: #FFFFFF; border: 1px solid #C9C2B9; border-radius: 6px; padding: 26px 28px; display: flex; flex-direction: column;">
+        <div class="serif" style="font-size: 24px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 10px;">Sliding window</div>
+        <div style="font-size: 14.5px; line-height: 1.6; color: #57504A; margin-bottom: 18px; flex-grow: 1;">
+          The pattern behind most &ldquo;longest substring&rdquo; problems &mdash; when the window grows, when it
+          must shrink, and what invariant you&rsquo;re actually holding.
+        </div>
+        <div class="mono" style="font-size: 12px; color: #8A827A;">[N] CONCEPTS</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #C9C2B9; border-radius: 6px; padding: 26px 28px; display: flex; flex-direction: column;">
+        <div class="serif" style="font-size: 24px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 10px;">Dynamic programming</div>
+        <div style="font-size: 14.5px; line-height: 1.6; color: #57504A; margin-bottom: 18px; flex-grow: 1;">
+          Memoisation, tabulation, and the part everyone actually gets stuck on: choosing the
+          state. Understood in the video, gone by Friday.
+        </div>
+        <div class="mono" style="font-size: 12px; color: #8A827A;">[N] CONCEPTS</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #C9C2B9; border-radius: 6px; padding: 26px 28px; display: flex; flex-direction: column;">
+        <div class="serif" style="font-size: 24px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 10px;">Consistency in distributed systems</div>
+        <div style="font-size: 14.5px; line-height: 1.6; color: #57504A; margin-bottom: 18px; flex-grow: 1;">
+          Everyone can recite CAP. Far fewer can say what it rules out on a Tuesday afternoon &mdash;
+          partitions, quorums, linearizability, PACELC.
+        </div>
+        <div class="mono" style="font-size: 12px; color: #8A827A;">[N] CONCEPTS</div>
+      </div>
+    </div>
+
+    <div style="font-size: 13.5px; color: #8A827A; margin-top: 20px; max-width: 660px; line-height: 1.6;">
+      Wanted something else? Tell me anyway &mdash; if this works, choosing your own topic is the next thing I build.
+    </div>
+  </div>
+
+  <!-- WHAT WE MEASURE -->
+  <div id="measure" style="background: #FFFFFF; border-top: 1px solid #E6E1DA; border-bottom: 1px solid #E6E1DA; padding: 76px 72px;">
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 76px; align-items: center;">
+      <div>
+        <div class="eyebrow" style="margin-bottom: 18px;">The honest part</div>
+        <h2 class="serif" style="font-size: 38px; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 22px;">
+          I deliberately won&rsquo;t teach you everything.
+        </h2>
+        <p style="font-size: 16px; line-height: 1.68; color: #57504A; margin: 0 0 18px;">
+          About one concept in ten is held back. You never see it, never review it &mdash; it just sits
+          on your map as a question mark for thirty days.
+        </p>
+        <p style="font-size: 16px; line-height: 1.68; color: #57504A; margin: 0 0 18px;">
+          The day-30 test covers both. If the taught concepts score far higher, the teaching did
+          that. If the two come out level, it didn&rsquo;t work, and I&rsquo;d rather find that out with ten
+          people than with a thousand.
+        </p>
+        <p style="font-size: 16px; line-height: 1.68; color: #57504A; margin: 0;">
+          Almost no learning product collects this comparison, because it is the one number that
+          can say the product is useless.
+        </p>
+      </div>
+
+      <div style="background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px; padding: 32px 34px;">
+        <div class="eyebrow" style="margin-bottom: 26px;">What day 30 could look like</div>
+        <div style="display: flex; align-items: flex-end; gap: 34px; height: 200px; padding-left: 4px;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; flex-grow: 1;">
+            <div class="mono" style="font-size: 25px; font-weight: 500; color: #4F7A5B;">?</div>
+            <div style="width: 100%; height: 148px; background: #4F7A5B; border-radius: 3px 3px 0 0;"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; flex-grow: 1;">
+            <div class="mono" style="font-size: 25px; font-weight: 500; color: #A9A29B;">?</div>
+            <div style="width: 100%; height: 46px; background: transparent; border: 1.5px dashed #A9A29B; border-bottom: none; border-radius: 3px 3px 0 0;"></div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 34px; border-top: 1px solid #E6E1DA; padding-top: 12px;">
+          <div style="flex-grow: 1; text-align: center; font-size: 12px; color: #57504A;">What I taught</div>
+          <div style="flex-grow: 1; text-align: center; font-size: 12px; color: #57504A;">What I held back</div>
+        </div>
+        <div style="font-size: 12px; color: #8A827A; margin-top: 18px; line-height: 1.55;">
+          The shape I&rsquo;m hoping for &mdash; not a result. The numbers stay blank until your own test fills them in.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 45 -->
+  <div style="padding: 80px 72px;">
+    <div style="display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 70px; align-items: start;">
+      <div>
+        <div class="eyebrow" style="margin-bottom: 18px;">And then the harder test</div>
+        <h2 class="serif" style="font-size: 38px; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 20px;">
+          Day 31 to 45, everything goes quiet.
+        </h2>
+        <p style="font-size: 16.5px; line-height: 1.68; color: #57504A; margin: 0 0 18px;">
+          No cards, no sessions, no reminders. Then one more test, unannounced, on day 45.
+        </p>
+        <p style="font-size: 16.5px; line-height: 1.68; color: #57504A; margin: 0;">
+          This is the one I actually care about. Remembering something on day 30 while you&rsquo;re still
+          practising it proves far less than you&rsquo;d think. Remembering it after a fortnight of
+          silence is the thing everyone claims and nobody checks.
+        </p>
+      </div>
+      <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 30px 32px;">
+        <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #A9A29B; margin-bottom: 20px;">The timeline</div>
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+          <div style="display: flex; gap: 16px; align-items: baseline;"><div class="mono" style="font-size: 12px; color: #B0552F; min-width: 62px;">DAY 0</div><div style="font-size: 14.5px; line-height: 1.5;">Fifteen questions, before any teaching</div></div>
+          <div style="display: flex; gap: 16px; align-items: baseline;"><div class="mono" style="font-size: 12px; color: #B0552F; min-width: 62px;">1&ndash;29</div><div style="font-size: 14.5px; line-height: 1.5;">Ten minutes a day, plus the cards</div></div>
+          <div style="display: flex; gap: 16px; align-items: baseline;"><div class="mono" style="font-size: 12px; color: #B0552F; min-width: 62px;">DAY 14</div><div style="font-size: 14.5px; line-height: 1.5;">A fifteen-minute call with me</div></div>
+          <div style="display: flex; gap: 16px; align-items: baseline;"><div class="mono" style="font-size: 12px; color: #B0552F; min-width: 62px;">DAY 30</div><div style="font-size: 14.5px; line-height: 1.5;">First test, unannounced</div></div>
+          <div style="display: flex; gap: 16px; align-items: baseline;"><div class="mono" style="font-size: 12px; color: #8A827A; min-width: 62px;">31&ndash;44</div><div style="font-size: 14.5px; line-height: 1.5; color: #A9A29B;">Nothing at all</div></div>
+          <div style="display: flex; gap: 16px; align-items: baseline;"><div class="mono" style="font-size: 12px; color: #B0552F; min-width: 62px;">DAY 45</div><div style="font-size: 14.5px; line-height: 1.5;">Second test, then your results</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHAT WE WON'T DO -->
+  <div style="background: #2B2723; color: #FAF8F5; padding: 80px 72px;">
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 76px;">
+      <div>
+        <div class="eyebrow" style="color: #A9A29B; margin-bottom: 18px;">What you won&rsquo;t find in it</div>
+        <h2 class="serif" style="font-size: 38px; font-weight: 500; line-height: 1.15; letter-spacing: -0.02em; margin: 0;">
+          No streaks. No badges. No one asking how you like to learn.
+        </h2>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 24px; padding-top: 6px;">
+        <div style="border-bottom: 1px solid #443E38; padding-bottom: 22px;">
+          <div style="font-weight: 600; font-size: 15px; margin-bottom: 7px;">Learning styles aren&rsquo;t real</div>
+          <div style="font-size: 14.5px; line-height: 1.65; color: #C4BCB3;">Matching teaching to &ldquo;visual&rdquo; or &ldquo;auditory&rdquo; learners has failed every controlled test it has been given. You will never be asked. What you actually remember is the only signal used.</div>
+        </div>
+        <div style="border-bottom: 1px solid #443E38; padding-bottom: 22px;">
+          <div style="font-weight: 600; font-size: 15px; margin-bottom: 7px;">Points you can&rsquo;t farm</div>
+          <div style="font-size: 14.5px; line-height: 1.65; color: #C4BCB3;">Your score moves only when you recall something correctly at least a day later. Showing up earns nothing, because showing up isn&rsquo;t what&rsquo;s being measured.</div>
+        </div>
+        <div>
+          <div style="font-weight: 600; font-size: 15px; margin-bottom: 7px;">Confidence is data, not truth</div>
+          <div style="font-size: 14.5px; line-height: 1.65; color: #C4BCB3;">You&rsquo;ll rate how sure you are before each answer, then see how often &ldquo;certain&rdquo; was wrong. Feeling like you know something is the most reliable illusion in learning, and it is worth seeing your own.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLOSE -->
+  <div style="padding: 90px 72px 96px; text-align: center;">
+    <h2 class="serif" style="font-size: 44px; font-weight: 500; line-height: 1.12; letter-spacing: -0.025em; margin: 0 auto 22px; max-width: 720px; text-wrap: pretty;">
+      Forty-five days, and you&rsquo;ll know whether it stuck.
+    </h2>
+    <p style="font-size: 17px; line-height: 1.6; color: #57504A; max-width: 520px; margin: 0 auto 34px;">
+      With a number rather than a feeling &mdash; which is more than I can say for anything else
+      either of us has tried.
+    </p>
+    <div style="display: inline-flex; background: #B0552F; color: #FFF8F4; padding: 15px 30px; border-radius: 4px; font-size: 16px; font-weight: 500; min-height: 48px; align-items: center;">Take one of the ten places</div>
+    <div style="font-size: 13px; color: #8A827A; margin-top: 18px;">Starts [PILOT START DATE] &middot; three topics &middot; no cost, no card</div>
+  </div>
+
+  <div style="border-top: 1px solid #E6E1DA; padding: 26px 72px; display: flex; justify-content: space-between; font-size: 13px; color: #8A827A;">
+    <div>learnos</div>
+    <div style="display: flex; gap: 26px;"><a href="#privacy" style="color: #8A827A;">What I log, and why</a><a href="#contact" style="color: #8A827A;">Ask me anything first</a></div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

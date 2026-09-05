@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .row { display: flex; align-items: center; gap: 13px; padding: 11px 14px; border-radius: 4px; background: #FFFFFF; border: 1px solid #E6E1DA; }
+    .nm { font-size: 14.5px; flex-grow: 1; }
+    .val { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: #57504A; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 40px 56px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 36px;">
+    <div class="serif" style="font-size: 19px; font-weight: 600;">learnos</div>
+    <div style="display: flex; gap: 26px; align-items: center;">
+      <a href="#session" style="font-size: 14px; color: #57504A;">Today&rsquo;s session</a>
+      <a href="#map" style="font-size: 14px; font-weight: 500;">Map</a>
+    </div>
+  </div>
+
+  <!-- SCORE -->
+  <div style="display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: end; margin-bottom: 38px;">
+    <div>
+      <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A827A; margin-bottom: 10px;">React hooks &middot; day 12 of 30</div>
+      <div style="display: flex; align-items: baseline; gap: 14px;">
+        <div class="mono" style="font-size: 62px; font-weight: 500; letter-spacing: -0.03em; line-height: 1;">67</div>
+        <div>
+          <div class="mono" style="font-size: 14px; color: #4F7A5B;">&#9650; 4 this week</div>
+          <div style="font-size: 13px; color: #8A827A; margin-top: 3px;">of what we&rsquo;ve taught, you&rsquo;d still recall today</div>
+        </div>
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B8873A; border-radius: 5px; padding: 17px 20px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 5px;">Three are slipping</div>
+      <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">
+        Dependency arrays, cleanup functions and stale closures. Today&rsquo;s session puts all three in front of you.
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div style="display: flex; gap: 22px; align-items: center; padding-bottom: 18px; border-bottom: 1px solid #E6E1DA; margin-bottom: 22px; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 7px;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span style="font-size: 13px; color: #57504A;">Solid &middot; 14</span></div>
+    <div style="display: flex; align-items: center; gap: 7px;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg><span style="font-size: 13px; color: #57504A;">Slipping &middot; 3</span></div>
+    <div style="display: flex; align-items: center; gap: 7px;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg><span style="font-size: 13px; color: #57504A;">Not taught yet &middot; 4</span></div>
+    <div style="display: flex; align-items: center; gap: 7px;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5" stroke-dasharray="2.5 2.5"/></svg><span style="font-size: 13px; color: #57504A;">Held back &middot; 2</span></div>
+  </div>
+
+  <!-- LAYERS -->
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px;">
+
+    <div>
+      <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A827A; margin-bottom: 12px;">Foundations</div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div class="row"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span class="nm">What a hook is</span><span class="val">0.96</span></div>
+        <div class="row"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span class="nm">useState</span><span class="val">0.94</span></div>
+        <div class="row"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span class="nm">Rules of hooks</span><span class="val">0.88</span></div>
+        <div class="row"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span class="nm">Re-render triggers</span><span class="val">0.85</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A827A; margin-bottom: 12px;">Effects</div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div class="row"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span class="nm">useEffect</span><span class="val">0.81</span></div>
+        <div class="row" style="border-color: #E3CFA8;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg><span class="nm">Dependency arrays</span><span class="val" style="color: #B8873A;">0.52</span></div>
+        <div class="row" style="border-color: #E3CFA8;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg><span class="nm">Cleanup functions</span><span class="val" style="color: #B8873A;">0.48</span></div>
+        <div class="row" style="border-color: #E3CFA8;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg><span class="nm">Stale closures</span><span class="val" style="color: #B8873A;">0.41</span></div>
+        <div class="row" style="background: #F7F5F1;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5" stroke-dasharray="2.5 2.5"/></svg><span class="nm" style="color: #A9A29B;">Held back until day 30</span><span class="val" style="color: #A9A29B;">?</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A827A; margin-bottom: 12px;">Still ahead</div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <div class="row" style="background: #F7F5F1;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg><span class="nm" style="color: #57504A;">useMemo</span><span class="val" style="color: #A9A29B;">&mdash;</span></div>
+        <div class="row" style="background: #F7F5F1;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg><span class="nm" style="color: #57504A;">useCallback</span><span class="val" style="color: #A9A29B;">&mdash;</span></div>
+        <div class="row" style="background: #F7F5F1;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg><span class="nm" style="color: #57504A;">Custom hooks</span><span class="val" style="color: #A9A29B;">&mdash;</span></div>
+        <div class="row" style="background: #F7F5F1;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5" stroke-dasharray="2.5 2.5"/></svg><span class="nm" style="color: #A9A29B;">Held back until day 30</span><span class="val" style="color: #A9A29B;">?</span></div>
+      </div>
+
+      <div style="background: #F1EDE6; border-radius: 5px; padding: 15px 17px; margin-top: 16px; font-size: 12.5px; line-height: 1.6; color: #57504A;">
+        <strong style="font-weight: 600;">Why two are hidden.</strong> We never teach these, and on day 30 you&rsquo;ll be
+        tested on them alongside everything else. The difference between the two scores is how we know the teaching
+        did anything at all.
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top: 34px; display: flex; align-items: center; gap: 16px;">
+    <div style="background: #B0552F; color: #FFF8F4; padding: 14px 28px; border-radius: 4px; font-size: 15px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Start today&rsquo;s session</div>
+    <div style="font-size: 14px; color: #8A827A;">2 new concepts &middot; 6 reviews &middot; about 9 minutes</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

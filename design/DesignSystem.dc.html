@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; } a:hover { color: #8A4225; }
+    .sw { height: 56px; border-radius: 3px; border: 1px solid rgba(43,39,35,.09); }
+    .lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8A827A; }
+    .hex { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #57504A; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 56px 64px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 44px;">
+    <div>
+      <div style="font-family: 'Newsreader', serif; font-size: 30px; font-weight: 500; letter-spacing: -0.015em;">learnos design system</div>
+      <div style="font-size: 13px; color: #8A827A; margin-top: 4px;">Warm paper, one clay accent, evidence over ornament.</div>
+    </div>
+    <div class="lbl">v1 · 2026</div>
+  </div>
+
+  <!-- PRINCIPLES -->
+  <div class="lbl" style="margin-bottom: 14px;">Principles</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-bottom: 48px;">
+    <div style="border-left: 2px solid #B0552F; padding: 2px 0 2px 14px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 5px;">Proof, not praise</div>
+      <div style="font-size: 13px; line-height: 1.55; color: #57504A;">No streaks, badges or confetti. The only number that moves is one the learner earned by remembering something a day later.</div>
+    </div>
+    <div style="border-left: 2px solid #B0552F; padding: 2px 0 2px 14px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 5px;">Interruption is a favour</div>
+      <div style="font-size: 13px; line-height: 1.55; color: #57504A;">The extension takes twenty seconds and then leaves. Never a nag, never a guilt trip, always one tap to stop.</div>
+    </div>
+    <div style="border-left: 2px solid #B0552F; padding: 2px 0 2px 14px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 5px;">Say the real number</div>
+      <div style="font-size: 13px; line-height: 1.55; color: #57504A;">"67, down 4 this week" beats "Great progress!". The product is measurement; the copy should sound like it.</div>
+    </div>
+  </div>
+
+  <!-- COLOR -->
+  <div class="lbl" style="margin-bottom: 14px;">Surface &amp; ink</div>
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 32px;">
+    <div><div class="sw" style="background: #FAF8F5;"></div><div class="lbl" style="margin-top: 7px;">paper</div><div class="hex">#FAF8F5</div></div>
+    <div><div class="sw" style="background: #FFFFFF;"></div><div class="lbl" style="margin-top: 7px;">surface</div><div class="hex">#FFFFFF</div></div>
+    <div><div class="sw" style="background: #F1EDE6;"></div><div class="lbl" style="margin-top: 7px;">sunken</div><div class="hex">#F1EDE6</div></div>
+    <div><div class="sw" style="background: #E6E1DA;"></div><div class="lbl" style="margin-top: 7px;">border</div><div class="hex">#E6E1DA</div></div>
+    <div><div class="sw" style="background: #2B2723;"></div><div class="lbl" style="margin-top: 7px;">ink</div><div class="hex">#2B2723</div></div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 14px;">Accent &amp; signal</div>
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 12px;">
+    <div><div class="sw" style="background: #B0552F;"></div><div class="lbl" style="margin-top: 7px;">clay · action</div><div class="hex">#B0552F</div></div>
+    <div><div class="sw" style="background: #4F7A5B;"></div><div class="lbl" style="margin-top: 7px;">sage · solid</div><div class="hex">#4F7A5B</div></div>
+    <div><div class="sw" style="background: #B8873A;"></div><div class="lbl" style="margin-top: 7px;">ochre · at risk</div><div class="hex">#B8873A</div></div>
+    <div><div class="sw" style="background: #A9A29B;"></div><div class="lbl" style="margin-top: 7px;">stone · untaught</div><div class="hex">#A9A29B</div></div>
+    <div><div class="sw" style="background: #57504A;"></div><div class="lbl" style="margin-top: 7px;">ink-2 · body</div><div class="hex">#57504A</div></div>
+  </div>
+  <div style="font-size: 12px; color: #8A827A; line-height: 1.6; max-width: 620px; margin-bottom: 48px;">
+    All five accents sit near the same lightness and chroma, so none shouts over another. Clay is reserved for
+    <em>things you can act on</em> — never decoration.
+  </div>
+
+  <!-- COLORBLIND -->
+  <div class="lbl" style="margin-bottom: 14px;">Concept state — never hue alone</div>
+  <div style="display: flex; gap: 26px; align-items: flex-start; background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px; margin-bottom: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 11px;">
+      <div style="display: flex; align-items: center; gap: 9px;"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span style="font-size: 13px;">Solid</span></div>
+      <div style="display: flex; align-items: center; gap: 9px;"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg><span style="font-size: 13px;">At risk</span></div>
+      <div style="display: flex; align-items: center; gap: 9px;"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg><span style="font-size: 13px;">Not taught yet</span></div>
+      <div style="display: flex; align-items: center; gap: 9px;"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5" stroke-dasharray="2.5 2.5"/></svg><span style="font-size: 13px;">Held back</span></div>
+    </div>
+    <div style="font-size: 12px; color: #57504A; line-height: 1.65; max-width: 400px; border-left: 1px solid #E6E1DA; padding-left: 22px;">
+      Fill level carries the same information as hue — full, half, empty, dashed — so the map still reads for the
+      ~8% of men with a colour vision deficiency. Every state also carries a written label; the dot is a shorthand,
+      never the only signal.
+    </div>
+  </div>
+  <div style="font-size: 12px; color: #8A827A; margin-bottom: 48px;">Green and yellow are the hardest pair to distinguish, and they are exactly the pair this product leans on.</div>
+
+  <!-- TYPE -->
+  <div class="lbl" style="margin-bottom: 14px;">Type</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 26px 28px; margin-bottom: 12px;">
+    <div style="font-family: 'Newsreader', serif; font-size: 44px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.1;">You&rsquo;ll remember this</div>
+    <div class="hex" style="margin-top: 5px;">Newsreader 500 · 44/48 · −0.02em — display &amp; headlines</div>
+    <div style="height: 1px; background: #E6E1DA; margin: 22px 0;"></div>
+    <div style="font-size: 15px; line-height: 1.65; max-width: 560px;">A learner reads for about ten minutes a day, often tired, often on a phone. Body copy is sized for that, not for a screenshot.</div>
+    <div class="hex" style="margin-top: 5px;">IBM Plex Sans 400 · 15/25 — body</div>
+    <div style="height: 1px; background: #E6E1DA; margin: 22px 0;"></div>
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 40px; font-weight: 500; letter-spacing: -0.02em;">67</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #4F7A5B;">▲ 4</span>
+    </div>
+    <div class="hex" style="margin-top: 5px;">IBM Plex Mono 500 — every number, so digits never shift width as they change</div>
+  </div>
+  <div style="font-size: 12px; color: #8A827A; margin-bottom: 48px;">A serif for voice, a humanist sans for reading, a mono for data. Three faces, no more.</div>
+
+  <!-- COMPONENTS -->
+  <div class="lbl" style="margin-bottom: 14px;">Controls</div>
+  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px;">
+    <div style="background: #B0552F; color: #FFF8F4; padding: 13px 22px; border-radius: 4px; font-size: 14px; font-weight: 500; min-height: 44px; display: flex; align-items: center;">Start today&rsquo;s session</div>
+    <div style="background: transparent; color: #2B2723; padding: 12px 21px; border-radius: 4px; border: 1px solid #C9C2B9; font-size: 14px; font-weight: 500; min-height: 44px; display: flex; align-items: center;">See the map</div>
+    <div style="background: transparent; color: #8A827A; padding: 13px 6px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Not now</div>
+    <div style="background: #F1EDE6; color: #A9A29B; padding: 13px 22px; border-radius: 4px; font-size: 14px; font-weight: 500; min-height: 44px; display: flex; align-items: center;">Done for today</div>
+  </div>
+  <div style="font-size: 12px; color: #8A827A; margin-bottom: 32px;">One clay button per screen. Every hit target is at least 44px, including the quiet ones.</div>
+
+  <div class="lbl" style="margin-bottom: 14px;">Confidence tap — required before every answer</div>
+  <div style="display: flex; gap: 9px; margin-bottom: 12px;">
+    <div style="padding: 12px 20px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Guessing</div>
+    <div style="padding: 12px 20px; border: 1.5px solid #B0552F; background: #F7EDE7; color: #8A4225; border-radius: 4px; font-size: 14px; font-weight: 500; min-height: 44px; display: flex; align-items: center;">Fairly sure</div>
+    <div style="padding: 12px 20px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Certain</div>
+  </div>
+  <div style="font-size: 12px; color: #8A827A; max-width: 620px; line-height: 1.6;">
+    Never pre-selected. An untapped default would silently become data, and calibration — how often &ldquo;certain&rdquo; was actually right — is one of the numbers the pilot exists to measure.
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

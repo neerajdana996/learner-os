@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 40px 56px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 36px;">
+    <div class="serif" style="font-size: 19px; font-weight: 600;">learnos</div>
+    <div style="display: flex; align-items: center; gap: 22px;">
+      <div class="mono" style="font-size: 12px; color: #8A827A; letter-spacing: .05em;">CONCEPT 1 OF 2 &middot; THEN 6 REVIEWS</div>
+      <div style="display: flex; align-items: baseline; gap: 6px;">
+        <span class="mono" style="font-size: 17px; font-weight: 500;">67</span>
+        <span class="mono" style="font-size: 11px; color: #8A827A;">SCORE</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width: 660px; margin: 0 auto;">
+
+    <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A827A; margin-bottom: 12px;">New concept &middot; The dependency array</div>
+
+    <!-- STEP 1: TRY FIRST (answered) -->
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 26px 28px; margin-bottom: 14px;">
+      <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 14px;">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#8A827A" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 8.2l1.8 1.8 3.2-3.6"/></svg>
+        <div class="mono" style="font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: #8A827A;">Your attempt</div>
+      </div>
+      <div class="serif" style="font-size: 21px; line-height: 1.4; margin-bottom: 16px; color: #57504A;">
+        An effect fetches a user by id. What do you think happens if you leave the dependency array out entirely?
+      </div>
+      <div style="background: #F1EDE6; border-radius: 4px; padding: 14px 16px; font-size: 15px; line-height: 1.6;">
+        It probably runs once when the component loads.
+      </div>
+    </div>
+
+    <!-- STEP 2: CORRECTION -->
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B8873A; border-radius: 6px; padding: 24px 28px; margin-bottom: 14px;">
+      <div class="mono" style="font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: #B8873A; margin-bottom: 11px;">A common way to read it</div>
+      <div style="font-size: 15.5px; line-height: 1.65; color: #2B2723;">
+        That&rsquo;s the intuition almost everyone starts with, and it&rsquo;s the opposite of what happens.
+        No array at all means <em>run after every render</em> — so the fetch sets state, the state
+        causes a render, the render fires the effect again. It&rsquo;s an infinite loop, not a one-off.
+      </div>
+    </div>
+
+    <!-- STEP 3: EXPLANATION -->
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 26px 28px; margin-bottom: 14px;">
+      <div class="mono" style="font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: #8A827A; margin-bottom: 13px;">How to hold it</div>
+      <div style="font-size: 16px; line-height: 1.7; margin-bottom: 16px;">
+        The second argument answers one question: <strong>since the last render, did anything I care
+        about change?</strong> Omit it and the answer is always yes. Pass <code class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 14px;">[]</code>
+        and the answer is always no. Pass <code class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 14px;">[userId]</code>
+        and it re-runs exactly when that id changes — which is what you almost always meant.
+      </div>
+      <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #B0552F; font-weight: 500; min-height: 44px;">
+        Read more
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg>
+      </div>
+    </div>
+
+    <!-- STEP 4: RETRIEVAL -->
+    <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 26px 28px; margin-bottom: 26px;">
+      <div class="mono" style="font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: #A9A29B; margin-bottom: 13px;">Now without looking</div>
+      <div class="serif" style="font-size: 22px; line-height: 1.35; margin-bottom: 20px;">
+        You want an effect to re-run only when <span class="mono" style="font-size: 19px;">roomId</span> changes. What goes in the array?
+      </div>
+      <div style="background: #3A342F; border: 1px solid #4E4740; border-radius: 4px; padding: 14px 16px; min-height: 50px; display: flex; align-items: center; font-size: 15px; color: #8F877F;">
+        Type your answer
+      </div>
+      <div style="font-size: 13px; color: #A9A29B; margin-top: 13px; line-height: 1.55;">
+        Retrieving it now, from memory, is what makes it survive to day 30. Reading it again would not.
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <div style="background: #B0552F; color: #FFF8F4; padding: 14px 28px; border-radius: 4px; font-size: 15px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Check</div>
+        <div style="font-size: 14px; color: #8A827A; padding: 14px 6px; min-height: 48px; display: flex; align-items: center;">Skip this one</div>
+      </div>
+      <div class="mono" style="font-size: 12px; color: #8A827A;">~4 MIN LEFT</div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
