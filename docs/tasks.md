@@ -876,12 +876,19 @@
 - **tests:** Renders held-out vs taught comparison from scores.
 
 ### T-043 · Email transport (real)
-- **status:** todo
+- **status:** in_progress
 - **sprint:** 4
 - **depends_on:** T-013, T-039
-- **files:** `backend/src/lib/mail.ts`
+- **files:** `backend/src/lib/mail.ts`, `backend/src/lib/env.ts`, `backend/src/index.ts`, `backend/.env.example`
 - **description:** Resend (or SMTP) transport behind the existing interface. Templates: magic link, test-ready, day-14 check-in.
 - **tests:** Transport selected by env; templates render without missing variables.
+- **notes:** (2026-09-05) **Transport pulled forward out of Sprint 4** — Neeraj supplied Mailgun SMTP credentials, so magic links can send for real during Sprint 2 testing rather than waiting for Sprint 4. Only the magic-link path is done; the **test-ready and day-14 check-in templates remain open** because they depend on T-039's lifecycle, which doesn't exist yet. Status stays `in_progress`, not `done`.
+  - Added `nodemailer` (one new dependency). Reason: Mailgun's HTTP API needs an API key, which is a different credential from the SMTP password we have, so SMTP is the path this account actually supports.
+  - **Real mail is opt-in twice over**: `configureMailTransport()` selects SMTP only when `SMTP_HOST` is set *and* `NODE_ENV !== 'test'`. A suite that forgets to stub the transport therefore cannot mail a learner — the same fail-closed reasoning as `toPublicItem`. Called once from `index.ts`, never at import time.
+  - The SMTP client is built lazily on first send, so importing `lib/mail.ts` never opens a connection (same reason `workers/queue.ts` constructs its BullMQ queue lazily).
+  - Verified by running nodemailer's `verify()` against Mailgun — it completes the SMTP handshake and authenticates **without sending anything**, so the credentials are confirmed with no test email delivered. A live send has not been attempted.
+  - Env added: `SMTP_HOST`, `SMTP_PORT` (465), `SMTP_SECURE` (true), `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`. `.env.example` carries empty placeholders; real values live only in `backend/.env`, which is gitignored and untracked (verified before committing).
+  - **⚠ The Mailgun SMTP password was pasted into a chat transcript and should be rotated.** It authenticates as `profract-admin@mail.profract.com` and can send mail as that domain. Rotating it is a Mailgun dashboard action plus one line in `backend/.env` — no code change.
 
 ### T-044 · Dry-run checklist + annoyance log
 - **status:** todo
