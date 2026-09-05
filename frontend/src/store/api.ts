@@ -1,19 +1,19 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { HealthResponse } from '../shared';
 
 /**
- * The ONE RTK Query API for the web app (loop.md §2). Every backend call is an
- * endpoint here; components use the generated hooks and never call fetch.
+ * The one RTK Query API for the web app (loop.md §2). Every backend call is an
+ * endpoint, and components use the generated hooks — never `fetch` directly.
  *
- * Later tasks inject endpoints with `api.injectEndpoints(...)` from feature
- * files (e.g. `features/topics/topicsApi.ts`) so this file stays small.
+ * This file stays small and endpoint-free on purpose: each feature injects its
+ * own endpoints from `features/<name>/<name>Api.ts`, so a feature's data layer
+ * lives beside its screens and can be code-split with them.
  */
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
     baseUrl: import.meta.env.VITE_API_URL ?? '/api',
-    // The magic-link session is an httpOnly cookie (T-013), so it rides along
-    // automatically and there is no token for JS to hold.
+    // The magic-link/OAuth session is an httpOnly cookie, so it rides along on
+    // its own and there is no token for JS to hold (T-013, T-055).
     credentials: 'include',
     prepareHeaders: (headers) => {
       // Dev-only escape hatch so `pnpm seed`'s user can be driven without a mail
@@ -23,10 +23,9 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Topic', 'Map', 'Session', 'Due', 'User'],
-  endpoints: (build) => ({
-    health: build.query<HealthResponse, void>({ query: () => '/health' }),
-  }),
+  tagTypes: ['Me', 'Topic', 'Map', 'Session', 'Due', 'Diagnostic'],
+  // Declared empty; features add to it. `overrideExisting` stays false so a
+  // duplicate endpoint name is a loud dev-time warning rather than a silent
+  // replacement.
+  endpoints: () => ({}),
 });
-
-export const { useHealthQuery } = api;
