@@ -10,7 +10,7 @@ You are working on **learnos**. Before doing anything:
 Rules that override everything else:
 - Three plain projects (`backend/`, `frontend/`, `extension/`), NOT a monorepo. TypeScript, ESM, pnpm per project.
 - Backend is **Express + ws** (not Hono). Frontend uses **Redux Toolkit + RTK Query** for all API calls and state (not TanStack Query).
-- `backend/src/shared/` is the only source of shared schemas/types. After editing it, run `scripts/sync-shared.sh`. Never hand-edit the synced copies.
+- `backend/src/shared/` is the only source of shared schemas/types, and `shared-ui/` the only source of shared style tokens and mixins. After editing either, run `scripts/sync-shared.sh`. Never hand-edit the synced copies.
 - No new dependencies without a one-line reason in the commit.
 - Every task's listed test cases must be implemented and passing before it is `done`.
 - Never remove a test to go green. Never edit `schema.ts` outside a schema task.

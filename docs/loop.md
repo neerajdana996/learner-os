@@ -7,7 +7,7 @@
 2. Read `sprint.md` to find the current sprint.
 3. Open `tasks.md`. Find the **first task with status `todo` whose `depends_on` are all `done`**. That is your task. Do not pick a later one because it looks more interesting.
 4. In the project(s) the task touches, run `pnpm install && pnpm lint`. If it fails, fixing it is your task now (log it as a new task `T-FIX-xxx`).
-5. If the task touches `backend/src/shared/`, you must run `scripts/sync-shared.sh` before finishing and commit the synced copies.
+5. If the task touches `backend/src/shared/` or `shared-ui/`, you must run `scripts/sync-shared.sh` before finishing and commit the synced copies.
 
 ## 1. Before writing code
 - Read the task's **Description, Acceptance criteria, Test cases, Files** in full.
@@ -22,7 +22,8 @@
 - Every API route validates input with the `validate()` middleware (`backend/src/lib/validate.ts`) and a schema from `src/shared`. WebSocket messages are validated the same way.
 - Every write to `review_events` must set `predicted_recall` and `gap_days_since_last` (see plan §6).
 - Never call the model API from the web app or extension. Only `backend/src/generator`, only from a BullMQ worker.
-- UI: plain React, inline styles or a single `styles.css` — no UI library for the pilot.
+- UI: plain React. **Zero inline styles** — SCSS classes under `frontend/src/styles/`, components take `className`. Colour tokens, the spacing/type scale and the shared mixins live in `shared-ui/styles/` and arrive in both clients through `scripts/sync-shared.sh`; never re-declare a colour or a spacing value in a component partial.
+- No UI library for the pilot. ⚠ **Open:** the `codeEditor` question format (T-088) needs CodeMirror in the browser, which is a UI library by any reading. Argued both ways in **T-081**; until that is decided, do not add one.
 - Frontend data: **all** API calls go through RTK Query (`frontend/src/store/api.ts`); all client state lives in Redux Toolkit slices. No `fetch`/`axios` in components.
 
 ## 3. Testing (mandatory, not optional)
@@ -37,7 +38,8 @@
 - [ ] All acceptance criteria met — check each one explicitly, don't assume.
 - [ ] All listed test cases implemented and passing.
 - [ ] `pnpm lint` and `pnpm test` pass in every project you touched.
-- [ ] If you changed `backend/src/shared/`, `scripts/sync-shared.sh` was run and the copies are identical (`diff -r` is empty).
+- [ ] If you changed `backend/src/shared/` or `shared-ui/`, `scripts/sync-shared.sh` was run and the copies are identical (`diff -r` is empty).
+- [ ] If you touched a stylesheet, `pnpm build` passed in that project — `pnpm lint` is `tsc --noEmit` and never compiles SCSS, so a broken `@use` path passes lint (T-090).
 - [ ] If the task adds a route: it's in `backend/src/index.ts` and there is a `curl` example in the task's `notes`.
 - [ ] If the task adds a page: it's in `frontend/src/App.tsx` routes.
 - [ ] No TODO left in the code without a task ID next to it (`// TODO(T-031): ...`).

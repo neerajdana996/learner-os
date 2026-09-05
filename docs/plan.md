@@ -43,7 +43,8 @@ learnos/
 ├── docker-compose.yml    postgres, redis, backend, frontend (extension is built, not served)
 ├── CLAUDE.md
 ├── docs/                 plan.md, loop.md, sprint.md, tasks.md, api.md, ...
-├── scripts/sync-shared.sh  copies backend/src/shared → frontend/src/shared + extension/src/shared
+├── scripts/sync-shared.sh  copies backend/src/shared and shared-ui/ into frontend/ + extension/
+├── shared-ui/            styles/ — colour tokens, scale, mixins (SOURCE OF TRUTH for both clients)
 ├── backend/              Express + ws (WebSocket) + Drizzle (Postgres) + BullMQ (Redis). Port 3001.
 │   ├── Dockerfile
 │   ├── src/db/           schema.ts (SOURCE OF TRUTH), client.ts
@@ -61,7 +62,7 @@ learnos/
     └── src/shared/       SYNCED COPY — never edit by hand
 ```
 - **TypeScript everywhere. ESM. pnpm in each project (plain, no workspaces).**
-- **Shared code rule:** `backend/src/shared/` is the only place shared schemas/types are written. Run `scripts/sync-shared.sh` after changing it; frontend and extension commit the synced copy. The synced folder must contain **only** Zod + types (no Node imports) so it compiles in the browser.
+- **Shared code rule:** `backend/src/shared/` is the only place shared schemas/types are written; `shared-ui/` is the only place shared presentation is written (T-090). Run `scripts/sync-shared.sh` after changing either; frontend and extension commit the synced copies. Both synced folders must be browser-safe (no Node imports), and a `shared-ui` file must be self-contained — it may not reach outside its own folder or name a consuming project, because it lands at a different depth in each one. **A copy, not a workspace:** a package would buy per-project version pinning, and drift between the web app and the extension is the failure this prevents rather than a freedom worth having.
 - **No Qdrant, no LangChain/LangGraph.** Generation is prompt → JSON → Zod → DB.
 - **Postgres tables:** users, topics, concepts, concept_prereqs, items, cards (FSRS state per user×concept), review_events (every answer), tests, daily_pulse. Schema lives at `backend/src/db/schema.ts`.
 - **Auth for pilot:** magic link (email). `x-user-id` header is a dev shortcut only.
