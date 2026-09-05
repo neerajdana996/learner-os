@@ -3,7 +3,7 @@ import request from 'supertest';
 import { and, eq, lte } from 'drizzle-orm';
 import { createApp } from '../../app.js';
 import { db } from '../../db/client.js';
-import { cards, concepts, topics, users } from '../../db/schema.js';
+import { cards, concepts, items, topics, users } from '../../db/schema.js';
 import { truncateAll } from '../../test/db.js';
 import { isLocalDatabase, seed } from '../seed.js';
 
@@ -27,6 +27,36 @@ describe('isLocalDatabase', () => {
 });
 
 describe('seed', () => {
+  it('can be re-run after the app has actually been used', async () => {
+    const first = await seed();
+
+    // A learner answers something: this is the row that used to make the
+    // second run fail, because review_events references the item it answered.
+    const [item] = await db
+      .select({ id: items.id, conceptId: items.conceptId })
+      .from(items)
+      .innerJoin(concepts, eq(concepts.id, items.conceptId))
+      .where(eq(concepts.topicId, first.topicId))
+      .limit(1);
+    if (!item) throw new Error('seed produced no items');
+
+    const res = await request(app)
+      .post('/reviews')
+      .set('x-user-id', first.userId)
+      .send({ itemId: item.id, response: 'anything', confidence: 'think', surface: 'web' });
+    expect(res.status).toBe(200);
+
+    await request(app)
+      .post('/session/complete')
+      .set('x-user-id', first.userId)
+      .send({ conceptIds: [] });
+
+    // Resetting after a session is the whole reason anyone runs this twice.
+    await expect(seed()).resolves.toBeDefined();
+    expect(await db.select().from(topics)).toHaveLength(1);
+  });
+
+
   it('produces a topic that is ready to work on', async () => {
     const result = await seed();
 

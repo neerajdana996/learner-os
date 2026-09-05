@@ -12,9 +12,19 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db, pg } from '../db/client.js';
-import { cards, conceptPrereqs, concepts, items, topics, users } from '../db/schema.js';
+import {
+  cards,
+  conceptPrereqs,
+  concepts,
+  items,
+  reviewEvents,
+  sessionDays,
+  tests,
+  topics,
+  users,
+} from '../db/schema.js';
 import { validateConceptMap } from '../generator/conceptMap.js';
 import { validateItems } from '../generator/items.js';
 import { validateTeaching } from '../generator/teaching.js';
@@ -72,16 +82,31 @@ export async function seed(): Promise<SeedResult> {
   }
   if (!user) throw new Error('seed: could not create the dev user');
 
+  // Deleted in foreign-key order, children first (T-078).
+  //
+  // The first version cleared items, prereqs and cards but not the rows that
+  // point *at* them, so re-seeding worked on a fresh database and failed the
+  // moment anyone had actually used the app: a `review_events` row references
+  // the item it was an answer to, and `session_days` and `tests` reference the
+  // topic. Since resetting after a session is exactly why anyone runs this
+  // twice, the failure landed precisely when the script was most needed.
   const existing = await db.select({ id: topics.id }).from(topics).where(eq(topics.userId, user.id));
   for (const topic of existing) {
     const conceptIds = (
       await db.select({ id: concepts.id }).from(concepts).where(eq(concepts.topicId, topic.id))
     ).map((row) => row.id);
-    for (const id of conceptIds) {
-      await db.delete(items).where(eq(items.conceptId, id));
-      await db.delete(conceptPrereqs).where(eq(conceptPrereqs.conceptId, id));
-      await db.delete(cards).where(and(eq(cards.userId, user.id), eq(cards.conceptId, id)));
+
+    if (conceptIds.length > 0) {
+      // Not scoped to this user: an item belongs to the topic, and a stray
+      // event from another account would block the delete just the same.
+      await db.delete(reviewEvents).where(inArray(reviewEvents.conceptId, conceptIds));
+      await db.delete(cards).where(inArray(cards.conceptId, conceptIds));
+      await db.delete(items).where(inArray(items.conceptId, conceptIds));
+      await db.delete(conceptPrereqs).where(inArray(conceptPrereqs.conceptId, conceptIds));
     }
+
+    await db.delete(sessionDays).where(eq(sessionDays.topicId, topic.id));
+    await db.delete(tests).where(eq(tests.topicId, topic.id));
     await db.delete(concepts).where(eq(concepts.topicId, topic.id));
     await db.delete(topics).where(eq(topics.id, topic.id));
   }
