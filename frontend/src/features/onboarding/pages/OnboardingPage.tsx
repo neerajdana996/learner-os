@@ -11,22 +11,31 @@ import { draftChanged, onboardingReset, selectDraft, stepChanged } from '../onbo
 import { Step, Stepper } from '../Step';
 import { WindowsStep } from '../WindowsStep';
 
-/** The pilot runs two hand-checked topics, five people each (sprint.md). */
-const TOPICS = [
-  { title: 'React hooks', blurb: 'From what a hook is through to stale closures and custom hooks.' },
-  { title: '[SECOND TOPIC]', blurb: '[ONE LINE ON WHAT IT COVERS.]' },
-] as const;
+import { PILOT_TOPICS, recommendTopic, type Role } from '../topics';
+
+const ROLES: { value: Role; label: string }[] = [
+  { value: 'developer', label: 'I write software' },
+  { value: 'student', label: 'I’m studying' },
+  { value: 'designer', label: 'I design' },
+  { value: 'other', label: 'Something else' },
+];
 
 const BUDGETS = [5, 10, 15, 20];
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 const DAYS = 30;
 
 /**
- * Onboarding as four beats rather than one form: motivation, commitment,
- * consent, contract. Each step says what the answer is used for, because every
- * question here exists to feed something specific downstream — the windows
- * decide when the extension may interrupt, the budget sizes every session, and
- * the "why" is read back on the days the learner doesn't feel like starting.
+ * Onboarding as five beats rather than one form: who you are, what you want to
+ * hold on to, what you can give it, when we may interrupt, and what happens
+ * next. Each step says what the answer is used for, because every question here
+ * feeds something specific — the windows gate the extension, the budget sizes
+ * every session, and the "why" is read back on the days the learner doesn't
+ * feel like starting.
+ *
+ * What the role does *not* do is change how anything is taught. plan.md §3.1
+ * rules that out, and the diagnostic — fifteen adaptive questions measuring
+ * actual recall — is a far stronger signal than any self-report. The role only
+ * steers which topic is suggested first.
  */
 export default function OnboardingPage() {
   const draft = useAppSelector(selectDraft);
@@ -101,6 +110,7 @@ export default function OnboardingPage() {
   }
 
   const windowsValid = ActiveWindowsSchema.safeParse(draft.activeWindows).success;
+  const recommended = recommendTopic(draft.role);
 
   return (
     <>
@@ -109,46 +119,91 @@ export default function OnboardingPage() {
       {draft.step === 0 ? (
         <Step
           kicker="First"
-          title="What do you keep forgetting?"
-          lede="Two topics in this pilot, five people on each. Every question in both has been read by hand before it reaches you."
-          because="Your reason comes back to you on the mornings you don’t feel like starting. Nobody else sees it."
+          title="Who’s learning?"
+          lede="Two questions, then we’ll get to the actual thing you want to remember."
+          because="This only decides which topic we suggest first — both stay open. It never changes how anything is taught: what you remember is the only signal used for that."
           onNext={() => go(1)}
-          nextDisabled={!draft.topic}
+          nextDisabled={!draft.role}
         >
-          <fieldset>
-            <legend className="u-sr-only">Choose a topic</legend>
+          <Field
+            label="What should we call you?"
+            placeholder="Neeraj"
+            autoComplete="given-name"
+            value={draft.name}
+            onChange={(e) => set({ name: e.target.value })}
+          />
+
+          <fieldset className="u-stack u-stack--tight">
+            <legend className="field__label">What do you do?</legend>
             <div className="choice-group">
-              {TOPICS.map((t) => (
+              {ROLES.map((role) => (
                 <Choice
-                  key={t.title}
-                  name="topic"
-                  checked={draft.topic === t.title}
-                  onSelect={() => set({ topic: t.title })}
+                  key={role.value}
+                  name="role"
+                  checked={draft.role === role.value}
+                  onSelect={() => set({ role: role.value })}
                 >
-                  <span className="choice__title">{t.title}</span>
-                  <span className="choice__body">{t.blurb}</span>
+                  {role.label}
                 </Choice>
               ))}
             </div>
           </fieldset>
-
-          <Field
-            label="Why this, why now?"
-            placeholder="I re-read the docs every time and it never sticks."
-            value={draft.why}
-            onChange={(e) => set({ why: e.target.value })}
-          />
         </Step>
       ) : null}
 
       {draft.step === 1 ? (
         <Step
           kicker="Second"
+          title="What do you keep forgetting?"
+          lede="Two topics in this pilot, five people on each. Every question in both has been read by hand before it reaches you."
+          because="Your reason comes back to you on the mornings you don’t feel like starting. Nobody else sees it."
+          onNext={() => go(2)}
+          onBack={() => go(0)}
+          nextDisabled={!draft.topic}
+        >
+          <fieldset>
+            <legend className="u-sr-only">Choose a topic</legend>
+            <div className="choice-group">
+              {PILOT_TOPICS.map((t) => {
+                const isPick = recommended?.title === t.title;
+                return (
+                  <Choice
+                    key={t.title}
+                    name="topic"
+                    checked={draft.topic === t.title}
+                    onSelect={() => set({ topic: t.title })}
+                  >
+                    {isPick && draft.role ? (
+                      <span className="recommendation">
+                        <span className="recommendation__tag">Suggested</span>
+                        <span>{t.fit[draft.role] ?? 'The closer fit for what you do.'}</span>
+                      </span>
+                    ) : null}
+                    <span className="choice__title">{t.title}</span>
+                    <span className="choice__body">{t.blurb}</span>
+                  </Choice>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <Field
+            label="Why this, why now?"
+            placeholder="I re-learn it before every interview and lose it again."
+            value={draft.why}
+            onChange={(e) => set({ why: e.target.value })}
+          />
+        </Step>
+      ) : null}
+
+      {draft.step === 2 ? (
+        <Step
+          kicker="Third"
           title="How much time, honestly?"
           lede="Be realistic rather than ambitious. Over-promising on day one is the most common way thirty days turns into nine."
           because="This sizes every session. Pick ten minutes and you’ll get two new ideas plus reviews; pick five and you’ll get one."
-          onNext={() => go(2)}
-          onBack={() => go(0)}
+          onNext={() => go(3)}
+          onBack={() => go(1)}
         >
           <div className="u-stack u-stack--tight">
             <span className="field__label">Minutes a day</span>
@@ -166,25 +221,17 @@ export default function OnboardingPage() {
               ))}
             </div>
           </div>
-
-          <Field
-            label="What should we call you?"
-            placeholder="Neeraj"
-            autoComplete="given-name"
-            value={draft.name}
-            onChange={(e) => set({ name: e.target.value })}
-          />
         </Step>
       ) : null}
 
-      {draft.step === 2 ? (
+      {draft.step === 3 ? (
         <Step
-          kicker="Third"
+          kicker="Fourth"
           title="When may we interrupt you?"
           lede="A small card, one question, about twenty seconds — and only inside the hours you set here."
           because="Recall works because it happens with a gap, away from the lesson. This is the only way the extension knows when you’re at your desk, and it never appears outside these hours."
-          onNext={() => go(3)}
-          onBack={() => go(1)}
+          onNext={() => go(4)}
+          onBack={() => go(2)}
           nextDisabled={!windowsValid}
         >
           <WindowsStep
@@ -195,14 +242,14 @@ export default function OnboardingPage() {
         </Step>
       ) : null}
 
-      {draft.step === 3 ? (
+      {draft.step === 4 ? (
         <Step
           kicker="Before you start"
           title="Here’s exactly what happens next."
           lede="No surprises except the one that’s the whole point."
           because="You can stop at any time and I’ll still share whatever the numbers show by then."
           onNext={build}
-          onBack={() => go(2)}
+          onBack={() => go(3)}
           nextLabel={creating ? 'Building…' : 'Build my map'}
           nextDisabled={creating}
         >

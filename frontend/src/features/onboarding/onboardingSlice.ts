@@ -1,11 +1,15 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { ActiveWindow } from '../../shared';
+import type { Role } from './topics';
 
 const STORAGE_KEY = 'learnos.onboarding';
 
 export interface OnboardingDraft {
   step: number;
   name: string;
+  /** Routes the topic recommendation. Never used to decide *how* to teach —
+   *  plan.md §3.1 rules that out, and the diagnostic is the real signal. */
+  role: Role | null;
   timezone: string;
   activeWindows: ActiveWindow[];
   dailyCap: number;
@@ -28,6 +32,7 @@ export interface OnboardingDraft {
 const emptyDraft: OnboardingDraft = {
   step: 0,
   name: '',
+  role: null,
   timezone: 'UTC',
   activeWindows: [
     { start: '09:00', end: '12:00' },

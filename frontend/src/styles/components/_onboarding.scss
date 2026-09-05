@@ -154,3 +154,24 @@
     }
   }
 }
+
+.recommendation {
+  display: flex;
+  align-items: baseline;
+  gap: $s-2;
+  font-size: 13px;
+  color: var(--clay-ink);
+  margin-bottom: $s-2;
+
+  &__tag {
+    font-family: $font-mono;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--clay-wash);
+    color: var(--clay-ink);
+    padding: 2px 7px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+}
