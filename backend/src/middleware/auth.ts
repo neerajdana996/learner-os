@@ -36,6 +36,10 @@ export const requireUser: RequestHandler = async (req: Request, res: Response, n
   const raw = readCookie(req.get('cookie'), SESSION_COOKIE) ?? bearer(req);
 
   if (raw) {
+    // A thrown error here is infrastructure, not a bad credential. Express 5
+    // forwards the rejection to the error handler as a 500 rather than letting
+    // it fall through to 401, which is what we want — an unreachable database
+    // must not look like a wrong password.
     const resolved = await resolveSession(raw);
     if (!resolved) {
       res.status(401).json({ error: 'unauthorized' });
