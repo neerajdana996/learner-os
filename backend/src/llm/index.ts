@@ -27,6 +27,15 @@ export interface PromptDef<Vars extends Record<string, string>, Out> {
   model?: string;
   reasoningEffort?: ReasoningEffort;
   maxTokens?: number;
+  /**
+   * JSON Schema handed to the provider so the reply is structurally guaranteed.
+   *
+   * This covers *presence and shape* — a required field cannot be dropped.
+   * Constraints the provider ignores under strict mode (exact array lengths,
+   * string limits, cross-field rules) stay in the Zod schema and the domain
+   * validators, so the two layers are complementary rather than duplicated.
+   */
+  jsonSchema?: { name: string; schema: Record<string, unknown> };
   /** Marker for the Vars type; never read at runtime. */
   readonly _vars?: Vars;
 }
@@ -69,7 +78,14 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
   // key, refusal, SDK failures after its own retries) propagate immediately —
   // retrying those would just repeat the same failure.
   for (let attempt = 0; attempt < 2; attempt++) {
-    lastRaw = await complete({ system, user, model, reasoningEffort, maxTokens: def.maxTokens });
+    lastRaw = await complete({
+      system,
+      user,
+      model,
+      reasoningEffort,
+      maxTokens: def.maxTokens,
+      jsonSchema: def.jsonSchema,
+    });
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripFences(lastRaw));

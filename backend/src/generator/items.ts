@@ -80,9 +80,78 @@ export function validateItems(data: unknown): GeneratedItems {
   return { topic, items };
 }
 
+/**
+ * The structural contract handed to the provider (T-FIX-011).
+ *
+ * Written out rather than derived from Zod: `zod/v4`'s converter cannot read
+ * the v3 schema instances this project uses, and the two contracts are not the
+ * same thing anyway. This one describes what the *model* must emit — every
+ * field present, nothing extra — while `ItemPayloadSchema` keeps the
+ * constraints strict mode ignores (exactly 4 options, 200-char rubric).
+ * `itemsSchemaMatchesZod` in the tests pins them together.
+ *
+ * `isTransfer` sits on every variant because a model omitting it is exactly the
+ * failure that broke real generation: it dropped the field on the `explain`
+ * item, twice, through the retry.
+ */
+const textVariant = (type: 'recall' | 'application') => ({
+  type: 'object',
+  additionalProperties: false,
+  required: ['type', 'prompt', 'answer', 'accept', 'isTransfer'],
+  properties: {
+    type: { type: 'string', enum: [type] },
+    prompt: { type: 'string' },
+    answer: { type: 'string' },
+    accept: { type: 'array', items: { type: 'string' } },
+    isTransfer: { type: 'boolean' },
+  },
+});
+
+export const itemsJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['topic', 'items'],
+  properties: {
+    topic: { type: 'string' },
+    items: {
+      type: 'array',
+      items: {
+        anyOf: [
+          textVariant('recall'),
+          textVariant('application'),
+          {
+            type: 'object',
+            additionalProperties: false,
+            required: ['type', 'prompt', 'options', 'answerIndex', 'isTransfer'],
+            properties: {
+              type: { type: 'string', enum: ['recognition'] },
+              prompt: { type: 'string' },
+              options: { type: 'array', items: { type: 'string' } },
+              answerIndex: { type: 'integer' },
+              isTransfer: { type: 'boolean' },
+            },
+          },
+          {
+            type: 'object',
+            additionalProperties: false,
+            required: ['type', 'prompt', 'rubric', 'isTransfer'],
+            properties: {
+              type: { type: 'string', enum: ['explain'] },
+              prompt: { type: 'string' },
+              rubric: { type: 'string' },
+              isTransfer: { type: 'boolean' },
+            },
+          },
+        ],
+      },
+    },
+  },
+} as const satisfies Record<string, unknown>;
+
 export const itemsPrompt = definePrompt({
   name: 'items',
   schema: RawItemsResponseSchema,
+  jsonSchema: { name: 'items_response', schema: itemsJsonSchema as unknown as Record<string, unknown> },
 });
 
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */

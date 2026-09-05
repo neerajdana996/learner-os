@@ -73,9 +73,38 @@ export function validateConceptMap(data: unknown): ConceptMap {
   return parsed;
 }
 
+/** Structural contract for the provider (T-FIX-011). Counts and DAG validity
+ *  are not expressible here — they stay in `validateConceptMap`. */
+export const conceptMapJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['topic', 'concepts'],
+  properties: {
+    topic: { type: 'string' },
+    concepts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['slug', 'title', 'summary', 'prereqs'],
+        properties: {
+          slug: { type: 'string' },
+          title: { type: 'string' },
+          summary: { type: 'string' },
+          prereqs: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+  },
+} as const satisfies Record<string, unknown>;
+
 export const conceptMapPrompt = definePrompt({
   name: 'conceptMap',
   schema: ConceptMapSchema,
+  jsonSchema: {
+    name: 'concept_map_response',
+    schema: conceptMapJsonSchema as unknown as Record<string, unknown>,
+  },
 });
 
 /**

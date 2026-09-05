@@ -70,9 +70,32 @@ export function parseTeachingResponse(raw: string): GeneratedTeaching {
   return validateTeaching(JSON.parse(stripFences(raw)));
 }
 
+/** Structural contract for the provider (T-FIX-011). The 2–4 correction count
+ *  and the short-vs-long length rule stay in `validateTeaching`. */
+export const teachingJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['tryFirstPrompt', 'explanationShort', 'explanationLong', 'corrections'],
+  properties: {
+    tryFirstPrompt: { type: 'string' },
+    explanationShort: { type: 'string' },
+    explanationLong: { type: 'string' },
+    corrections: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['wrong', 'why'],
+        properties: { wrong: { type: 'string' }, why: { type: 'string' } },
+      },
+    },
+  },
+} as const satisfies Record<string, unknown>;
+
 export const teachingPrompt = definePrompt({
   name: 'teaching',
   schema: TeachingResponseSchema,
+  jsonSchema: { name: 'teaching_response', schema: teachingJsonSchema as unknown as Record<string, unknown> },
 });
 
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */
