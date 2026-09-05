@@ -22,6 +22,14 @@ done
 step "synced copies contain no Node-only imports"
 ! grep -rEn "from ['\"](node:|drizzle|postgres|bullmq|ioredis|express|ws)['\"/]" frontend/src/shared extension/src/shared
 
+# The suite mocks the model SDK, never reads .env and only touches the test
+# database, so a green suite has repeatedly coexisted with an app that would
+# not start. Preflight is the part that talks to the real environment; without
+# it, schema drift between schema.ts and a live database goes unnoticed until
+# it surfaces as an unrelated 500 at runtime.
+step "backend preflight (live env: schema drift, redis, mail, model)"
+( cd backend && pnpm preflight )
+
 if [ "$NO_DOCKER" = 1 ]; then echo; echo "✅ all project checks passed (docker skipped)"; exit 0; fi
 
 step "docker compose up --build"

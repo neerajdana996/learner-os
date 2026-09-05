@@ -1074,6 +1074,31 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** One `GenerationError` class exists; `instanceof` holds for errors thrown by any generator.
 - **tests:** Existing concept-map and items suites pass unchanged (they import via the re-export); the new teaching suite asserts `instanceof GenerationError` on errors from a third module.
 
+### T-FIX-012 · `pnpm preflight` — verify the real environment, not the mocked one
+- **status:** done
+- **sprint:** 2
+- **severity:** high — six separate outages today were all invisible to a green test suite
+- **depends_on:** T-056
+- **files:** `backend/src/scripts/preflight.ts`, `backend/package.json`, `scripts/verify.sh`, `backend/src/middleware/auth.ts`
+- **description:** Six failures in one session, all the same shape — **green suite, broken app**:
+  1. `.env` never loaded (tests do not need it)
+  2. LLM client constructed at import, crashing boot (tests mock `openai`)
+  3. NVIDIA at 164s per call (tests mock the API)
+  4. Model dropped `isTransfer` (tests use hand-written fixtures)
+  5. Dev database silently behind `schema.ts` after a container restart (tests use `learnos_test`)
+  6. `POST /auth/magic` 500ing on the missing column, which cascaded into a confusing `401` three steps later
+  One root cause: **260 tests all mock the exact boundary that breaks**, and nothing ever checked the live system. Patching a seventh symptom would not have helped.
+- **what it checks**, against the real environment: `.env` actually loaded (presence and length only, never any of the value); both databases reachable; **schema drift** — every table and column in `schema.ts` compared against `information_schema`, on dev *and* test; Redis reachable; which OAuth providers are configured; SMTP authenticated via `verify()`, which never sends; and a real model round trip with its latency.
+- **acceptance:** Each of the six failures above is caught by `pnpm preflight` with a message naming the fix. Wired into `scripts/verify.sh`.
+- **notes:** (2026-09-05)
+  - **Named `preflight`, not `doctor`** — `pnpm doctor` is one of pnpm's own commands and silently shadowed the script, which ran pnpm's environment check and reported "All checks passed" for something else entirely. Worth knowing before adding any other script named after a pnpm builtin.
+  - **Schema drift is the check that would have saved the most time today.** `drizzle-kit push` printing "Changes applied" is not proof the schema is live: a container restarting onto a fresh volume takes the migrations with it, and the next symptom is a 500 from an unrelated route. Preflight compares `getTableConfig` output against `information_schema` for both databases.
+  - Tables are found with drizzle's `is(value, PgTable)` rather than a duck-typed check, because `schema.ts` also exports pgEnums which a looser filter mistakes for tables.
+  - **Secrets are masked to presence and length only.** A prefix is tempting for telling two keys apart, but preflight output gets pasted into chats and issues, and a partial credential is still a credential. Length catches the realistic mistake, which is a truncated paste.
+  - The model check is a real round trip, not a key-presence check — "the key is set" was never the failure. It warns above 10s because grading runs in the request path with a learner waiting, so slow there is a product problem rather than a build annoyance.
+  - SMTP uses `verify()`, which authenticates without sending, so running preflight never mails anyone.
+  - **Corrected while investigating:** I first believed `requireUser` was masking a 500 as a 401. It was not — the failing query was `findUserByEmail` in `POST /auth/magic`, so no magic link was ever issued and the later 401 was correct. Express 5 already forwards async rejections to the error handler. Only a clarifying comment was added; no behaviour changed.
+
 ### T-FIX-011 · Generation fails on real content: model omits `isTransfer`
 - **status:** done
 - **sprint:** 2
