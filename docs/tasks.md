@@ -395,7 +395,7 @@
   - curl: see the new Auth section in `docs/api.md` for the full four-step flow.
 
 ### T-FIX-007 · `POST /auth/magic` has no rate limit
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **severity:** medium — unauthenticated endpoint that writes rows and sends mail
 - **depends_on:** T-013
@@ -407,6 +407,13 @@
   - Requests for different emails from the same IP are limited independently of the per-email counter.
   - The window expiring lets the next request through (inject the clock).
   - A 429 creates no `auth_tokens` row.
+- **notes:** (2026-09-05) Built and verified. Backend suite 226 → 237 tests (5 limiter + 6 route), lint clean. Priority was raised the moment T-043's SMTP transport landed: until then an unthrottled call printed to a console, after it the same call **mails a stranger**.
+  - Fixed window, in memory, keyed on **both** normalised email (3 per 15 min) and client IP (20 per 15 min). Either limit refuses with 429 and no mail, no user row and no token row. The IP allowance is deliberately much higher — a household, office or carrier NAT legitimately shares one address across learners, so a tight IP limit would lock out real people while barely inconveniencing a script.
+  - **The limiter runs after `validate(MagicLinkSchema)`, not before.** Validation normalises the address first, so `SPAM@example.com`, `  spam@EXAMPLE.com  ` and `spam@example.com` all spend the same bucket. Ordering them the other way would have made the limit trivially bypassable by varying case, which is why there's a test for exactly that.
+  - The 429 body is identical for a registered and an unregistered address, so the route stays consistent with T-013's "not an account-existence oracle" property. Refusing only known addresses would have quietly reintroduced the oracle through the back door.
+  - **Second half of the fix: a new link invalidates the previous one.** `consumePriorAuthTokens` spends every outstanding token for the user before issuing a new one, so repeated requests replace rather than accumulate a growing set of live links. That also matches what "send it again" implies to a learner.
+  - Expired entries are swept on each check so a stream of distinct keys — exactly what walking an email list produces — can't grow the map without bound. Tested with 500 distinct keys.
+  - **Known limit, deliberately not built:** in memory means per-replica. Run the API with more than one instance and the effective limit multiplies by the replica count. Redis is already a dependency and would fix it, but building that now would be building ahead of the sprint (loop.md §7) for a 10-person single-process pilot. Written into `lib/rateLimit.ts` so whoever scales it sees it.
 
 ### T-014 · Users API + onboarding profile
 - **status:** done
