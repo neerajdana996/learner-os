@@ -57,6 +57,8 @@ export function isLocalDatabase(url: string): boolean {
 export interface SeedResult {
   userId: string;
   topicId: string;
+  /** Topics cleared to make room, so the caller can say what it destroyed. */
+  removed: { title: string; concepts: number }[];
   concepts: number;
   heldOut: number;
   items: number;
@@ -90,11 +92,17 @@ export async function seed(): Promise<SeedResult> {
   // the item it was an answer to, and `session_days` and `tests` reference the
   // topic. Since resetting after a session is exactly why anyone runs this
   // twice, the failure landed precisely when the script was most needed.
-  const existing = await db.select({ id: topics.id }).from(topics).where(eq(topics.userId, user.id));
+  const existing = await db
+    .select({ id: topics.id, title: topics.title })
+    .from(topics)
+    .where(eq(topics.userId, user.id));
+  const removed: { title: string; concepts: number }[] = [];
   for (const topic of existing) {
     const conceptIds = (
       await db.select({ id: concepts.id }).from(concepts).where(eq(concepts.topicId, topic.id))
     ).map((row) => row.id);
+
+    removed.push({ title: topic.title, concepts: conceptIds.length });
 
     if (conceptIds.length > 0) {
       // Not scoped to this user: an item belongs to the topic, and a stray
@@ -218,6 +226,7 @@ export async function seed(): Promise<SeedResult> {
   return {
     userId: user.id,
     topicId: topic.id,
+    removed,
     concepts: inserted.length,
     heldOut: inserted.length - teachable.length,
     items: teachable.length * itemSet.items.length,
@@ -236,12 +245,25 @@ async function main() {
 
   const result = await seed();
   const overdue = 4;
+
+  // Said out loud, because it is easy to forget that a "reset" throws away a
+  // *generated* topic too — one costs about $0.46 and nine minutes, and it has
+  // already happened once in development.
+  const generated = result.removed.filter((t) => t.concepts > 0);
+  if (generated.length > 0) {
+    console.log(
+      `\n  removed ${generated.length} existing topic(s) for this user: ` +
+        generated.map((t) => `${t.title} (${t.concepts} concepts)`).join(', '),
+    );
+  }
+
   console.log(`
 seeded the dev dataset
 
-  user            ${DEV_EMAIL}
+  user            ${DEV_EMAIL}   (this is the account the dev sign-in button uses)
   user id         ${result.userId}
   topic id        ${result.topicId}
+  topic           ${'React Hooks'} — from backend/fixtures, not a pilot topic
   concepts        ${result.concepts} (${result.heldOut} held out)
   items           ${result.items}
   taught          ${result.taught}, ${overdue} due now
