@@ -78,7 +78,10 @@ export async function teachConcepts(
       target: [cards.userId, cards.conceptId],
       // Only fills a blank: re-completing a session must not reset the FSRS
       // schedule of a concept already being reviewed.
-      set: { taughtAt: sql`coalesce(${cards.taughtAt}, excluded.taught_at)` },
+      set: {
+        due: sql`excluded.due`,
+        taughtAt: sql`coalesce(${cards.taughtAt}, excluded.taught_at)`,
+      },
     });
 }
 

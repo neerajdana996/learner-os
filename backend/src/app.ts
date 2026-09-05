@@ -10,6 +10,7 @@ import { mapRouter } from './modules/map/map.routes.js';
 import { topicsRouter } from './modules/topics/topics.routes.js';
 import { reviewsRouter } from './modules/reviews/reviews.routes.js';
 import { dueRouter } from './modules/due/due.routes.js';
+import { devRouter } from './modules/dev/dev.routes.js';
 
 /**
  * Builds the Express app without binding a port, so tests can mount it with
@@ -35,6 +36,8 @@ export function createApp(): Express {
   app.use(topicsRouter);
   app.use(reviewsRouter);
   app.use(dueRouter);
+  // Empty in production: the router registers no routes when isProd.
+  app.use(devRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'not_found' });

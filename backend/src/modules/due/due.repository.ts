@@ -6,8 +6,8 @@ import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
 export const RECENT_WINDOW = 3;
 
 export async function findDueCards(userId: string, now: Date, limit: number) {
-  return db
-    .select({ conceptId: cards.conceptId, due: cards.due })
+  const rows = await db
+    .select({ conceptId: cards.conceptId, due: cards.due, taughtAt: cards.taughtAt, heldOut: concepts.heldOut, topicStatus: topics.status })
     .from(cards)
     .innerJoin(concepts, eq(cards.conceptId, concepts.id))
     .innerJoin(topics, eq(concepts.topicId, topics.id))
@@ -22,6 +22,15 @@ export async function findDueCards(userId: string, now: Date, limit: number) {
     )
     .orderBy(asc(cards.due))
     .limit(limit);
+
+  console.log('[findDueCards] query result', {
+    userId,
+    now: now.toISOString(),
+    limit,
+    rows,
+  });
+
+  return rows.map((row) => ({ conceptId: row.conceptId, due: row.due }));
 }
 
 /** Retired items (T-024's `pnpm qa:retire`, and the backlog's auto-retire) are

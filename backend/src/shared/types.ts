@@ -34,6 +34,7 @@ import type {
   VerifyQuerySchema,
   MagicLinkResponseSchema,
   DevLoginSchema,
+  DevResetSchema,
   ExtensionTokenResponseSchema,
   WsClientMessageSchema,
   WsServerMessageSchema,
@@ -83,6 +84,7 @@ export type MagicLink = z.infer<typeof MagicLinkSchema>;
 export type VerifyQuery = z.infer<typeof VerifyQuerySchema>;
 export type MagicLinkResponse = z.infer<typeof MagicLinkResponseSchema>;
 export type DevLogin = z.infer<typeof DevLoginSchema>;
+export type DevReset = z.infer<typeof DevResetSchema>;
 export type ExtensionTokenResponse = z.infer<typeof ExtensionTokenResponseSchema>;
 
 export type WsClientMessage = z.infer<typeof WsClientMessageSchema>;

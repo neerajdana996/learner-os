@@ -10,6 +10,7 @@ import {
   findUserByEmail,
   insertAuthToken,
   insertSession,
+  revokeSession,
 } from './auth.repository.js';
 
 const MIN_MS = 60_000;
@@ -70,6 +71,18 @@ export async function createSession(
   const expiresAt = new Date(now.getTime() + env.SESSION_TTL_DAYS * DAY_MS);
   await insertSession({ userId, token: hash, kind, expiresAt });
   return { token: raw, expiresAt };
+}
+
+/**
+ * Ends one session (T-080).
+ *
+ * Only the credential presented is revoked, never every session for the user:
+ * signing out of a browser must not silently disconnect the learner's
+ * extension, which holds a separate token by design (T-013).
+ */
+export async function endSession(raw: string, now: Date = new Date()): Promise<boolean> {
+  const revoked = await revokeSession(hashToken(raw), now);
+  return revoked.length > 0;
 }
 
 /** Resolves a raw cookie/bearer value to a user id, or null. */

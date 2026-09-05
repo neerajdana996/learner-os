@@ -315,6 +315,15 @@ export const MagicLinkSchema = z.object({
 export const VerifyQuerySchema = z.object({ token: z.string().min(1).max(512) });
 
 /**
+ * Dev-only reset (T-079). `progress` keeps the generated course and throws away
+ * what the learner did; `topics` deletes the course too and puts you back at
+ * onboarding, which costs a real generation to undo.
+ */
+export const DevResetSchema = z.object({
+  scope: z.enum(['progress', 'topics']),
+});
+
+/**
  * Dev-only password sign-in (T-070). The route that accepts this is not mounted
  * under `NODE_ENV=production` — it exists so a developer can reach the app
  * without a mail round trip, and it is the only place in the product where a

@@ -3,7 +3,7 @@ import { isProd } from '../../lib/env.js';
 import { validate } from '../../lib/validate.js';
 import { requireUser } from '../../middleware/auth.js';
 import { DevLoginSchema, MagicLinkSchema, VerifyQuerySchema } from '../../shared/index.js';
-import { getVerify, postDevLogin, postExtensionToken, postMagic } from './auth.controller.js';
+import { getVerify, postDevLogin, postExtensionToken, postLogout, postMagic } from './auth.controller.js';
 import { limitMagicLink } from './auth.rateLimit.js';
 import { getOAuthCallback, getOAuthStart } from './oauth.controller.js';
 
@@ -14,6 +14,8 @@ export const authRouter = Router();
 authRouter.post('/auth/magic', validate(MagicLinkSchema), limitMagicLink, postMagic);
 authRouter.get('/auth/verify', validate(VerifyQuerySchema, 'query'), getVerify);
 authRouter.post('/auth/extension-token', requireUser, postExtensionToken);
+// No requireUser: signing out with an expired cookie must still clear it.
+authRouter.post('/auth/logout', postLogout);
 
 /**
  * Dev-only password sign-in (T-070), so a developer can get in without a mail

@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { env, isProd } from '../../lib/env.js';
 import { userId } from '../../middleware/auth.js';
-import { SESSION_COOKIE } from './cookie.js';
-import { createSession, devLogin, requestMagicLink, verifyMagicLink } from './auth.service.js';
+import { readCookie, SESSION_COOKIE } from './cookie.js';
+import { createSession, devLogin, endSession, requestMagicLink, verifyMagicLink } from './auth.service.js';
 
 export async function postMagic(req: Request, res: Response) {
   const { email } = req.body as { email: string };
@@ -52,6 +52,19 @@ export async function postDevLogin(req: Request, res: Response) {
     path: '/',
     expires: session.expiresAt,
   });
+  res.status(200).json({ ok: true });
+}
+
+/**
+ * Sign out (T-080). Answers 200 whether or not there was a live session: the
+ * caller wants to end up signed out, and a 401 here would leave a stale cookie
+ * in the browser with nothing the UI could do about it.
+ */
+export async function postLogout(req: Request, res: Response) {
+  const raw = readCookie(req.get('cookie'), SESSION_COOKIE);
+  if (raw) await endSession(raw);
+
+  res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', secure: isProd, path: '/' });
   res.status(200).json({ ok: true });
 }
 

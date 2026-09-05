@@ -22,6 +22,7 @@ export async function getSessionHandler(req: Request, res: Response) {
 
 export async function postCompleteHandler(req: Request, res: Response) {
   const { conceptIds } = req.body as { conceptIds: string[] };
+  console.log('conceptIds',conceptIds)
   try {
     res.json(await completeSession(userId(req), conceptIds));
   } catch (error) {

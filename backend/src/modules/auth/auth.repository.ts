@@ -70,3 +70,14 @@ export async function hasExtensionSession(userId: string) {
     .where(and(eq(sessions.userId, userId), eq(sessions.kind, 'extension'), isNull(sessions.revokedAt)));
   return row !== undefined;
 }
+
+/** Marks one session revoked. Sign-out sets this rather than deleting the row,
+ *  for the same reason a consumed magic link is kept: a revoked credential must
+ *  stay distinguishable from one that never existed. */
+export async function revokeSession(hash: string, now: Date) {
+  return db
+    .update(sessions)
+    .set({ revokedAt: now })
+    .where(and(eq(sessions.token, hash), isNull(sessions.revokedAt)))
+    .returning({ id: sessions.id });
+}
