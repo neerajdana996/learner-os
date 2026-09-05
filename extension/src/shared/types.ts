@@ -9,6 +9,7 @@ import type {
   UserCreateSchema,
   TopicCreateSchema,
   ItemPayloadSchema,
+  ItemGenerationSchema,
   PublicItemSchema,
   DueItemsResponseSchema,
   DueQuerySchema,
@@ -52,6 +53,8 @@ export type TopicCreate = z.infer<typeof TopicCreateSchema>;
 
 export type ItemPayload = z.infer<typeof ItemPayloadSchema>;
 export type PublicItem = z.infer<typeof PublicItemSchema>;
+/** What the model may return, before the worker derives an ItemPayload (T-080). */
+export type ItemGeneration = z.infer<typeof ItemGenerationSchema>;
 export type DueItemsResponse = z.infer<typeof DueItemsResponseSchema>;
 export type DueQuery = z.infer<typeof DueQuerySchema>;
 
