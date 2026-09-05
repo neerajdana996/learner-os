@@ -1666,3 +1666,145 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Two more things found while making `docker compose up` a workflow anyone can follow: `TEST_DATABASE_URL` from `backend/.env` leaked into the container through `env_file` and pointed at `localhost`, which inside a container is the container — `pnpm preflight` reported the test database unreachable while the host's own tests were fine. Compose now sets it explicitly. And the README's start section still said `ANTHROPIC_API_KEY`, three provider changes out of date.
   - **Verified by running it**: `docker compose up --build` → seed → dev sign-in through the frontend's `/api` proxy → dashboard with a real score → `docker compose run --rm extension` produced a loadable `chrome-mv3` folder and a zip → `pnpm preflight` green inside the container.
 
+
+---
+
+## Sprint 5 — Question formats (design done, not yet sequenced)
+
+> **Where this sits in the build order.** `sprint.md`'s Build order runs `T-073` → `T-038`…`T-041` → the extension → the pilot dry run, and it runs that way because the measuring instrument does not exist yet. Nothing below changes that. `T-079` is done ahead of the queue only because it is additive, breaks nothing, and lets the rest be designed against a real schema; every task after it stays behind `T-041` unless the founder re-sequences deliberately.
+>
+> **Design canvas (7 artboards — block system, explaining a concept, missing code, write the code, the 20-second questions, entities & prompts, libraries):** https://claude.ai/code/artifact/24dd7d4a-688c-49f7-9dbb-4b22709454f1
+> Source in `design/code/*.dc.html`.
+>
+> **What this is for.** Every item today is a prompt string and a textarea, whatever the subject. All three pilot topics are code or systems topics (T-058), so the format the pilot measures retention *through* is the one format least suited to two of them: you cannot ask "where is the off-by-one" in a textarea. The bet is that a blank cut into real code is both a better question and a cheaper one — fifteen seconds against ninety — and cheaper questions are the ones that still get answered on day 26.
+
+### T-079 · Schema — code blocks (schema task)
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-054
+- **files:** `backend/src/db/schema.ts`, `backend/src/db/__tests__/schema.test.ts`
+- **description:** One schema task for the whole format line, following T-049 and T-054's precedent. Three changes, all additive:
+  1. **`concept_domain` pgEnum** `code | math | systems | prose`, and **`concepts.domain`** nullable. Nullable rather than defaulted: an existing row's domain is genuinely unknown, and `prose` as a default would silently claim otherwise for the ~120 concepts already generated. The generator sets it during the concept-map pass (T-082). Per concept, not per topic — "Big-O of a hash lookup" and "write a hash function" live in one topic and want different formats.
+  2. **`items.answer_kind`** text nullable, plus an index. The denormalised `kind` of the item's answer block; `NULL` means "plain prompt", which is every item that exists today. It is denormalised out of `payload` for exactly one query: the extension's due-item pick has to exclude formats that cannot render in a 380×300 popup (`codeEditor`, `orderLines`), and filtering on `payload->'blocks'` is neither indexable nor readable. Kept as `text` and not an enum on purpose — block kinds will churn while the categories land, and an enum makes every addition a migration.
+  3. **`review_events.assisted`** boolean not null default false. Set when a learner took the skeleton hint on a `codeEditor` item (T-088). Without it a hinted pass and a cold pass are the same row and the day-30 retention number quietly inflates — which is the one number the pilot exists to produce.
+- **Deliberately not a column: `blocks`.** `items.payload` is already `jsonb` holding the whole discriminated `ItemPayloadSchema`, so `blocks` belongs inside it (T-080) and needs no migration on `items` at all. The design canvas's Entities artboard says "one column: `blocks jsonb`" — that was written before reading `schema.ts` and is wrong; the artboard is corrected in `design/code/Entities.dc.html`.
+- **acceptance:** `pnpm db:push` and `pnpm db:test:push` apply cleanly with no prompts; `truncateAll()` still empties every table; every existing suite passes untouched.
+- **tests:** (extend `schema.test.ts`, real test DB)
+  - `concepts.domain` accepts each of the four enum values and rejects `'javascript'`.
+  - A concept inserted with no `domain` is `null`, not `'prose'` — the default must stay absent.
+  - `items.answer_kind` defaults to `null`, and an item inserted the way the generator does today (payload only) still round-trips.
+  - `items_answer_kind_idx` exists in `pg_indexes`.
+  - `review_events.assisted` defaults to `false` and is `NOT NULL` — inserting an explicit `null` throws.
+  - `truncateAll()` leaves all three touched tables at 0 rows.
+  - Regression: the T-049 and T-054 constraint tests still pass.
+- **notes:** (2026-09-05) Built and verified against real Postgres. `pnpm db:test:push` and `pnpm db:push` both applied cleanly with no prompts; `pnpm preflight` reports **13 tables match schema.ts** on both databases. Backend suite 388 → 394 tests (6 new, schema file 10 → 16), `pnpm lint` clean. `src/shared/` untouched, so no `sync-shared.sh` run was needed.
+  - **`blocks` did not need a column.** The task was written expecting `items.blocks jsonb`; reading `schema.ts` first showed `items.payload` is already `jsonb` carrying the whole discriminated `ItemPayloadSchema`, so `blocks` belongs inside it (T-080) and `items` needs no migration at all. What did get added is `items.answer_kind text` + `items_answer_kind_idx`, justified by exactly one query — T-089's extension eligibility filter, which cannot read `payload->'blocks'` in an indexable way. The design canvas's Entities artboard asserted the column and has been corrected.
+  - **`concepts.domain` has no default, deliberately.** ~120 concepts already exist whose domain is genuinely unknown; `'prose'` as a default would be a claim the generator would then never revisit, and T-082 would have no way to tell "not yet classified" from "classified as prose". A test asserts the null rather than trusting the column definition.
+  - **`answer_kind` is `text`, not a pgEnum.** Block kinds will churn while the remaining categories land (systems, maths), and an enum turns every addition into a migration on a column nothing joins on. The trade is that a typo is not caught by the database — T-080's Zod union is what catches it, before the row is written.
+  - **Mutation-checked, not just green.** Adding a `'prose'` default, dropping the index, and making `assisted` nullable were each applied, pushed and run: 4 of the 6 new tests fail. Following T-054's lesson, the enum test also asserts the *positive* cases (all four values insert) rather than only the rejection, since a too-permissive column passes a "bad value throws" test just as happily as a correct one.
+  - **Not done here, on purpose:** nothing writes any of these three columns yet. `domain` is written by T-082, `answer_kind` by T-083's generator path, `assisted` by T-088. Until then all three are null/false on every row, which is exactly the pre-existing behaviour.
+
+### T-080 · `blocks` in the shared item payload
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-079
+- **files:** `backend/src/shared/blocks.ts`, `backend/src/shared/schemas.ts`, `backend/src/shared/index.ts`, `backend/src/shared/__tests__/blocks.test.ts`, `scripts/sync-shared.sh` output in both clients
+- **description:** The block union, and the projection that keeps its answer keys off the wire. Content blocks (`prose`, `code`, `codeDiff`, `terminal`) and answer blocks (`clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`), added to `ItemPayloadSchema` as an optional `blocks` array on every variant. `PublicItemSchema` gains `blocks` too — through a projection that strips `holes[].answer`, `holes[].accept`, `hotspot.line`, `order`, and `cases[].expect`, the same way `answerIndex` is stripped today (T-010). A `superRefine` enforces what the renderer and the grader assume: exactly one answer block; every `{{n}}` marker in a cloze `src` has a matching hole and vice versa; no `note.line` past the end of the listing; `failure` present on every `clozeCode`; a `short` variant of at most 8 lines that still contains the line the question is about. Browser-safe — only `zod`, per plan.md §5 — then `scripts/sync-shared.sh`.
+- **acceptance:** No answer key appears in any `PublicItem`, asserted by serialising a fully-populated item of every block kind and grepping the JSON for the known answer strings. `diff -r` between `backend/src/shared` and both synced copies is empty.
+- **tests:**
+  - Each block kind parses; each invalid case above is rejected with a message naming the field.
+  - Two answer blocks → rejected. Zero answer blocks on an item whose `type` needs one → rejected.
+  - `{{2}}` in `src` with only one hole → rejected, and the reverse.
+  - Public projection of every block kind contains no answer key (serialise-and-grep, not field-by-field — a field added later must fail this).
+  - An item with `blocks: undefined` still parses and still renders from `prompt` (back-compat).
+- **notes:**
+
+### T-081 · Founder call — CodeMirror on the client
+- **status:** blocked
+- **sprint:** 5
+- **depends_on:** —
+- **files:** `docs/loop.md`, `docs/plan.md`
+- **description:** `loop.md §2` says "UI: plain React, inline styles or a single `styles.css` — no UI library for the pilot." The design for `codeEditor` (T-088) needs CodeMirror 6 in the browser, and it is a UI library by any reading. The argument for an exception is that these are content renderers rather than a component kit — nothing here supplies a button, a layout or a theme — and that three of the four packages in the design (`shiki`, `diff`, `katex`) stay in the generator worker precisely to hold that line. The argument against is that this is how "no UI library" becomes four of them. **This is a founder decision, not one a task should make quietly**, which is why it is written down rather than assumed. Blocks T-088 only; every other task in this sprint ships without it.
+- **acceptance:** `loop.md §2` either carries a written exception naming the package and the screen, or T-088 is rewritten around a plain `<textarea>` with tab handling.
+- **tests:** —
+- **notes:** Raised 2026-09-05 while designing the code category. Note that `loop.md §2` is already stale in the other direction: it says inline styles, and the frontend moved to SCSS classes under `src/styles/` some time ago — so this section needs a pass regardless.
+
+### T-082 · The concept map decides each concept's domain
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-079
+- **files:** `backend/src/llm/prompts/conceptMap/{system,user,example}.md`, `backend/src/generator/conceptMap.ts`, `backend/src/shared/schemas.ts`, `backend/fixtures/`
+- **description:** One new required field per concept in the concept-map response: `domain`. It belongs in this pass and not the item pass because the map call already reasons about what each concept *is* to order and link them, and asking forty separate item calls to re-derive it would pay for the same judgement forty times.
+- **acceptance:** Every concept from a fresh generation has a domain; the fixture is regenerated; an unknown value fails Zod and retries once as any other invalid field does.
+- **tests:** Fixture parses with domains; a response missing `domain` on one concept is rejected; a response with `domain: "javascript"` is rejected.
+- **notes:**
+
+### T-083 · `domains/code.md` — a prompt fragment, not a longer prompt
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-080, T-082
+- **files:** `backend/src/llm/prompts/items/system.md`, `backend/src/llm/prompts/items/domains/code.md`, `backend/src/llm/registry.ts`, `backend/src/generator/items.ts`, `backend/src/generator/__tests__/`, `backend/fixtures/`
+- **description:** `system.md` keeps every rule that is about learning — four types, one of each, one or two transfer items, the 200-character rubric cap — and gains nothing. `domains/code.md` is appended only when the concept's domain is `code`, and carries the block vocabulary, the format-per-concept-shape table from the design canvas, the hard limits (≤12 lines, ≤2 holes, ≤3 notes), and one fully worked example. A topic on Renaissance painting never sees a word of it and never spends a token on it.
+- **acceptance:** A `prose` concept's rendered prompt is byte-identical to today's. A `code` concept's prompt contains the fragment exactly once. Generated items validate against T-080's union including the `superRefine` rules.
+- **tests:** Prompt composition is asserted per domain (mock at the SDK boundary, per loop.md §3); a fixture of real-looking code-item JSON parses; an item whose cloze holes do not match its markers fails generation and retries once.
+- **notes:** ⚠ **Measure the cost.** T-074 puts a 40-concept topic at ~$0.46 / 73 calls / 91k in / 48k out. The fragment adds roughly 600 input tokens to each of ~40 item calls and lengthens the outputs; the design canvas guesses $0.60–0.70. Run `LLM_LOG_CALLS=1` on the first real topic and write the actual number here rather than leaving the guess standing.
+
+### T-084 · Highlight in the worker, not the browser
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-083
+- **files:** `backend/src/generator/highlight.ts`, `backend/src/generator/__tests__/highlight.test.ts`, `backend/package.json`
+- **description:** `shiki` tokenises every `code`, `codeDiff` and `clozeCode` source once, in the generator worker, against a theme built from the five design-system colours (`#8A4225` keyword, `#4F7A5B` string, `#B8873A` number, `#A9A29B` comment, `#8A827A` punctuation) plus a dark variant for the retrieval card. What lands in `payload` is spans; the client ships no highlighter. A concept is generated once and read by ten learners across forty-five days, so this is the side of the wire the work belongs on.
+- **acceptance:** No highlighting dependency in `frontend/package.json`. An unknown `lang` degrades to unstyled spans rather than failing the job.
+- **tests:** Known language produces the expected token classes; unknown language produces one plain span and no throw; tokenisation is deterministic across two runs (the payload is cached content, so drift would show as a spurious diff).
+- **notes:** One-line dependency reason for the commit: `shiki` — TextMate grammars, so highlighting is correct for every language a topic might use, run once at generation time.
+
+### T-085 · The renderer walks blocks
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-080
+- **files:** `frontend/src/components/blocks/*`, `frontend/src/components/QuestionCard.tsx`, `frontend/src/styles/`, tests alongside
+- **description:** `QuestionCard` is already the single switch every surface renders through — diagnostic, session and the day-30 test all go through it (T-010's comment says so). It gains a `BlockList` that walks `item.blocks` when present and falls back to `item.prompt` when absent, so nothing that exists today changes. This task ships the **content** blocks only — `prose`, `code`, `codeDiff`, `terminal` — and the answer blocks arrive in T-086 through T-088.
+- **acceptance:** An item with no `blocks` renders exactly as it does today (snapshot the current output first, then assert it is unchanged). Wide listings scroll inside their own container; the page never scrolls sideways.
+- **tests:** Each content block renders; `blocks: undefined` falls back to `prompt`; a listing wider than its container scrolls rather than overflowing; the annotated-notes rail collapses below its breakpoint instead of squashing the code.
+- **notes:**
+
+### T-086 · Fill in the blank
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-085
+- **files:** `frontend/src/components/blocks/ClozeCode.tsx`, `backend/src/modules/reviews/grade.ts`, tests alongside
+- **description:** The design canvas's *Missing code* artboard. Inputs sit inline in the listing, sized to `hole.width` in `ch` rather than filling a row — a full-width field under the snippet is a text question with decoration. Tab moves between holes; nothing is graded until Check; Check stays disabled until a confidence is tapped, as everywhere else. Grading normalises whitespace and compares against `answer` and `accept` before any model call is considered, so the common case costs nothing. Below ~640px and always in the extension, the same item renders as one hole plus four tappable chips — a code keyboard on touch is miserable, and the design already accounts for it.
+- **acceptance:** A correct answer in either accepted spelling grades correct with no model call. Every hole is a real `<input>` with an accessible name naming its position ("blank 1 of 2").
+- **tests:** `lo<=hi` and `hi >= lo` both grade correct; a wrong answer surfaces the item's `failure` sentence; two holes grade as one boolean; the chip variant grades identically to the typed one.
+- **notes:**
+
+### T-087 · Click the line that is wrong
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-085
+- **files:** `frontend/src/components/blocks/HotspotLine.tsx`, `extension/src/`, `backend/src/modules/reviews/grade.ts`, tests alongside
+- **description:** Every line is a 44px-tall tap target across the full width, and the tap *is* the answer — no submit. The honest catch, recorded on the design canvas: when the fix is an *insertion*, the line that should change is not on screen, so the generator marks the line that has to change and grading accepts its immediate neighbour. This is the cheapest real question the product can ask about code (8–15 seconds), which makes it the one the extension leans on.
+- **acceptance:** Keyboard-operable — the lines are a radio group, not click handlers on `<div>`s.
+- **tests:** The marked line grades correct; its neighbour grades correct when the item is an insertion and wrong when it is not; arrow keys move between lines and Enter answers.
+- **notes:**
+
+### T-088 · Write the code
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-085, T-081
+- **files:** `frontend/src/components/blocks/CodeEditor.tsx`, `frontend/src/lib/runCases.ts`, `backend/src/modules/reviews/grade.ts`, tests alongside
+- **description:** The design canvas's *Write the code* artboard. Deliberately not an IDE: **no autocomplete, no inline type hints, no squiggles while typing** — every one of them is a retrieval cue, and the retrieval is what is being measured. Bracket matching, indent-on-newline and undo stay; those are typing, not knowing. Cases are visible up front as the spec, and the first case passes with almost any attempt on purpose — starting from two reds and one green is a debugging problem, starting from three reds is a blank page. "Show me the shape" reveals a skeleton with the bodies blank and sets `review_events.assisted`, and the scheduler treats an assisted pass as a lapse whatever the cases say. JS and TS run for real in a `<iframe sandbox="allow-scripts">` on a blank `srcdoc` with a 2-second budget — no dependency, a real origin boundary, no cookies and no network. Every other language shows the identical screen with **Submit** and grades server-side. Rationed: at most one per session, never in a review, never in the extension.
+- **acceptance:** Autocomplete is off and asserted by a test, not by configuration alone. The sandbox cannot reach `document.cookie` or the network. An assisted pass writes `assisted = true` and schedules as a lapse.
+- **tests:** A correct implementation passes all cases; an infinite loop is killed at 2s and reports a timeout rather than hanging the tab; the sandbox has no access to the parent document; taking the hint sets `assisted`; the same concept's next review is a `clozeCode`, not this.
+- **notes:** ⚠ Blocked on **T-081** — needs a founder call on CodeMirror before it can start.
+
+### T-089 · What the extension is allowed to pop
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-079, T-085
+- **files:** `backend/src/modules/due/due.repository.ts`, `extension/src/`, tests alongside
+- **description:** The due-item pick filters on `items.answer_kind` so `codeEditor` and `orderLines` never reach a 380×300 popup — the concept still comes due, it just waits for the web session rather than arriving as a card nobody can answer at a traffic light. Listings render from the `short` variant, capped at 8 lines; longer and the card scrolls, and a card that scrolls is a card that gets dismissed.
+- **acceptance:** No item whose `answer_kind` is popup-ineligible is ever returned to a surface of `extension`, asserted at the repository level rather than filtered in the client.
+- **tests:** A concept whose only due item is a `codeEditor` yields nothing for the extension and still yields it for the web session; a listing over 8 lines is rejected by the eligibility check rather than truncated at render.
+- **notes:**

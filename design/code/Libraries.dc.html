@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .c { color: #A9A29B; font-style: italic; }
+    .cel { padding: 15px 16px; border-top: 1px solid #E6E1DA; font-size: 13.5px; line-height: 1.6; color: #57504A; }
+    .cel strong { color: #2B2723; font-weight: 600; }
+    .hd { padding: 13px 16px; background: #F1EDE6; font-size: 12.5px; font-weight: 600; color: #57504A; }
+    .pkg { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: #2B2723; }
+    .where { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .07em;
+             text-transform: uppercase; padding: 3px 7px; border-radius: 3px; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 52px 58px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 34px;">
+    <div>
+      <div class="serif" style="font-size: 28px; font-weight: 500; letter-spacing: -0.015em;">What to install, and where it runs</div>
+      <div style="font-size: 13.5px; color: #8A827A; margin-top: 5px;">Four packages. Three of them never reach the browser.</div>
+    </div>
+    <div class="lbl">Sizes measured on npm, 2026-09-05</div>
+  </div>
+
+  <!-- THE IDEA -->
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 22px 24px; margin-bottom: 36px;">
+    <div class="lbl" style="color: #B0552F; margin-bottom: 11px;">The move that makes all of this affordable</div>
+    <div style="font-size: 15px; line-height: 1.72; color: #2B2723;">
+      A concept is generated <strong>once</strong> and then read by ten learners across forty-five days. So the expensive,
+      library-shaped work &mdash; tokenising code, laying out an equation, drawing a graph &mdash; happens
+      <strong>in the generator worker, at generation time</strong>, and what lands in Postgres is already
+      spans and coordinates. The frontend receives data and renders it with the plain React it already has.
+    </div>
+    <div style="font-size: 14px; line-height: 1.68; color: #57504A; margin-top: 13px;">
+      This is what keeps <span class="mono" style="font-size: 12.5px;">loop.md &sect;2</span>&rsquo;s &ldquo;no UI library for the pilot&rdquo; intact rather than
+      quietly abandoned: the one package that must run in the browser is an editor, and it only loads on the
+      one screen that has an editor on it.
+    </div>
+  </div>
+
+  <!-- INSTALL -->
+  <div class="lbl" style="margin-bottom: 14px;">Install</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: 210px 132px 1fr;">
+      <div class="hd">Package</div><div class="hd">Runs in</div><div class="hd">Why this one</div>
+
+      <div class="cel"><div class="pkg">shiki</div><div class="mono" style="font-size: 11px; color: #A9A29B; margin-top: 3px;">4.4.3 &middot; 603 KB npm</div></div>
+      <div class="cel"><span class="where" style="background: #EDF3EE; color: #3F6349;">Backend</span></div>
+      <div class="cel">
+        <strong>Tokenises code into coloured spans, once, in the worker.</strong> Real TextMate grammars, so the highlighting is
+        right for every language a topic might use rather than right for JavaScript and wrong for Rust.
+        We feed it our own five-colour theme from the design system.
+        <span class="c">Alternative: prism-react-renderer (734 KB) does the same job but only in the browser &mdash; that is the wrong side of the wire here.</span>
+      </div>
+
+      <div class="cel"><div class="pkg">codemirror</div><div class="mono" style="font-size: 11px; color: #A9A29B; margin-top: 3px;">6.0.2 + lang packs</div></div>
+      <div class="cel"><span class="where" style="background: #F7EDE7; color: #8A4225;">Frontend</span><div style="font-size: 11px; color: #A9A29B; margin-top: 4px;">lazy, one route</div></div>
+      <div class="cel">
+        <strong>The one screen that genuinely needs an editor.</strong> Bracket matching, sane indentation, real undo, and
+        &mdash; the reason it beats Monaco here &mdash; it works on a phone and it lets you turn autocomplete
+        <em>off</em>. Monaco unpacks at 98 MB and its whole value proposition is IntelliSense, which on this screen
+        hands the learner the answer.
+        <span class="c">Imported behind React.lazy, so no other page pays for it.</span>
+      </div>
+
+      <div class="cel"><div class="pkg">katex</div><div class="mono" style="font-size: 11px; color: #A9A29B; margin-top: 3px;">0.18.5 &middot; 4.0 MB npm</div></div>
+      <div class="cel"><span class="where" style="background: #EDF3EE; color: #3F6349;">Backend</span><div style="font-size: 11px; color: #A9A29B; margin-top: 4px;">when maths lands</div></div>
+      <div class="cel">
+        <span class="mono" style="font-size: 12.5px;">renderToString</span> at generation time gives HTML plus MathML. The browser needs the
+        <strong>stylesheet and the fonts, not the library</strong> &mdash; about 25 KB of CSS against 4 MB of package.
+        Listed here because it is the same pattern, not because the code category needs it.
+      </div>
+
+      <div class="cel"><div class="pkg">diff</div><div class="mono" style="font-size: 11px; color: #A9A29B; margin-top: 3px;">9.0.0 &middot; 616 KB npm</div></div>
+      <div class="cel"><span class="where" style="background: #EDF3EE; color: #3F6349;">Backend</span></div>
+      <div class="cel">
+        Computes the before/after line pairs for <span class="mono" style="font-size: 12.5px;">codeDiff</span> so the model does not have to
+        emit two listings and get them consistent. <strong>Stored as the resolved diff</strong>; the client renders two coloured rows.
+      </div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 40px; line-height: 1.65; max-width: 940px;">
+    Sizes are npm <em>unpacked package</em> size &mdash; what <span class="mono" style="font-size: 12px;">pnpm install</span> puts on disk, not what a browser downloads.
+    They are the honest number for a backend dependency and a misleading one for a frontend dependency, so CodeMirror&rsquo;s real cost gets measured in
+    a bundle report before it ships, not guessed at here.
+  </div>
+
+  <!-- RUNNING CODE -->
+  <div class="lbl" style="margin-bottom: 14px;">Running the learner&rsquo;s code &mdash; zero packages</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px;">
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 9px;">A sandboxed iframe, and a timeout</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        <span class="mono" style="font-size: 12.5px;">&lt;iframe sandbox="allow-scripts"&gt;</span> on a blank srcdoc is a real origin boundary:
+        no cookies, no DOM of ours, no network. Post the source in, post the case results back, kill it at two seconds.
+        That is about eighty lines and no dependency.
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 9px;">What we are turning down, and why</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        <span class="mono" style="font-size: 12.5px;">quickjs-emscripten</span> (2.4 MB) buys deterministic interpretation and a real instruction budget;
+        <span class="mono" style="font-size: 12.5px;">pyodide</span> buys Python at roughly 10 MB of WASM.
+        Both are the right answer for a product that runs arbitrary code. Neither is worth it for a
+        three-line debounce, and Python topics can grade server-side in the meantime.
+      </div>
+    </div>
+  </div>
+
+  <!-- LATER -->
+  <div class="lbl" style="margin-bottom: 14px;">For the categories after this one &mdash; decided, not yet installed</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: 210px 1fr;">
+      <div class="hd">Package</div><div class="hd">Standing</div>
+
+      <div class="cel"><div class="pkg">@xyflow/react</div><div class="mono" style="font-size: 11px; color: #A9A29B; margin-top: 3px;">12.11.6 &middot; 1.2 MB npm</div></div>
+      <div class="cel">
+        React Flow, for the <strong>systems</strong> category &mdash; drag a node onto a diagram, connect two services, and it is
+        the only sensible way to build &ldquo;where does the cache go&rdquo;. It is a genuine frontend dependency with genuine weight, and it is
+        the one place a canvas beats a form. <strong>Not for the concept map</strong>, which is hand-drawn SVG today and works.
+      </div>
+
+      <div class="cel"><div class="pkg">mermaid</div><div class="cel" style="padding: 0; border: none;"></div></div>
+      <div class="cel">
+        <strong>Rejected for the client.</strong> Renders a flow diagram from a text description, which is exactly what a model is good at emitting &mdash;
+        so run it in the worker and store the SVG. Nobody should ship a diagram compiler to a learner&rsquo;s phone to draw four boxes.
+      </div>
+
+      <div class="cel"><div class="pkg">marked</div><div class="pkg">dompurify</div></div>
+      <div class="cel">
+        <strong>Rejected outright.</strong> Blocks are structured; prose needs bold, italic and inline code and nothing else.
+        A markdown pipeline here buys an HTML sanitiser we would then have to be right about, in exchange for formatting nobody asked for.
+      </div>
+    </div>
+  </div>
+
+  <div style="background: #F1EDE6; border-radius: 6px; padding: 20px 24px; margin-top: 26px;">
+    <div style="font-size: 13.5px; line-height: 1.7; color: #57504A;">
+      <strong style="color: #2B2723;">One caveat worth putting in the commit message.</strong>
+      <span class="mono" style="font-size: 12.5px;">loop.md &sect;2</span> says &ldquo;no UI library for the pilot&rdquo;, and CodeMirror is a library that draws UI.
+      The distinction being drawn is that these are content renderers, not a component kit &mdash; nothing here supplies a button, a layout or a theme.
+      That is a real distinction and also a convenient one, so it belongs in front of a human rather than inside a diff.
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

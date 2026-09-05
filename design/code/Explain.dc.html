@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .k { color: #8A4225; font-weight: 500; } .s { color: #4F7A5B; } .c { color: #A9A29B; font-style: italic; }
+    .n { color: #B8873A; } .p { color: #8A827A; } .f { color: #2B2723; font-weight: 500; }
+    .src { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; display: grid; grid-template-columns: 34px 20px 1fr; }
+    .g { text-align: right; padding-right: 11px; color: #C6BEB5; line-height: 2.05; user-select: none; }
+    .m { line-height: 2.05; }
+    .l { line-height: 2.05; padding-right: 14px; white-space: pre; }
+    .hit { background: #FBF3EC; }
+    .badge { display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center; font-size: 9.5px; font-weight: 500;
+             background: #B0552F; color: #FFF8F4; border-radius: 2px; font-family: "IBM Plex Mono", monospace; vertical-align: 1px; }
+    .ib { background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 13px; font-family: "IBM Plex Mono", monospace; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 44px; min-height: 100%;">
+
+  <!-- top bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 26px;">
+    <div class="serif" style="font-size: 18px; font-weight: 600;">learnos</div>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div class="mono" style="font-size: 11.5px; color: #8A827A; letter-spacing: .05em;">CONCEPT 1 OF 2 &middot; THEN 6 REVIEWS</div>
+      <div style="display: flex; align-items: baseline; gap: 5px;">
+        <span class="mono" style="font-size: 16px; font-weight: 500;">67</span>
+        <span class="mono" style="font-size: 10.5px; color: #8A827A;">SCORE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 11px;">New concept &middot; Cleaning up an async effect</div>
+
+  <!-- ============ EXPLANATION CARD ============ -->
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 26px 28px; margin-bottom: 16px;">
+
+    <div class="lbl" style="margin-bottom: 14px;">How to hold it</div>
+
+    <!-- prose block -->
+    <div style="font-size: 16px; line-height: 1.72; margin-bottom: 22px;">
+      A cleanup function cannot cancel a promise &mdash; nothing in JavaScript can. What it can do is
+      <strong>make the result irrelevant</strong>. That is the entire idea, and it is why the pattern always
+      looks like a flag rather than an abort.
+    </div>
+
+    <!-- annotated code block -->
+    <div style="display: flex; gap: 0; border: 1px solid #E6E1DA; border-radius: 5px; overflow: hidden; margin-bottom: 20px;">
+
+      <div style="flex: 1 1 auto; background: #F4F0EA; padding: 15px 0 15px 0; min-width: 0; overflow-x: auto;">
+        <div class="src">
+          <div class="g">1</div><div class="m"></div><div class="l"><span class="f">useEffect</span><span class="p">(() =&gt; {</span></div>
+          <div class="g hit">2</div><div class="m hit" style="text-align: center;"><span class="badge">A</span></div><div class="l hit">  <span class="k">let</span> <span class="f">cancelled</span> <span class="p">=</span> <span class="k">false</span><span class="p">;</span></div>
+          <div class="g">3</div><div class="m"></div><div class="l">  <span class="f">fetchUser</span><span class="p">(</span><span class="f">userId</span><span class="p">).</span><span class="f">then</span><span class="p">((</span><span class="f">u</span><span class="p">) =&gt; {</span></div>
+          <div class="g hit">4</div><div class="m hit" style="text-align: center;"><span class="badge">B</span></div><div class="l hit">    <span class="k">if</span> <span class="p">(!</span><span class="f">cancelled</span><span class="p">)</span> <span class="f">setUser</span><span class="p">(</span><span class="f">u</span><span class="p">);</span></div>
+          <div class="g">5</div><div class="m"></div><div class="l">  <span class="p">});</span></div>
+          <div class="g hit">6</div><div class="m hit" style="text-align: center;"><span class="badge">C</span></div><div class="l hit">  <span class="k">return</span> <span class="p">() =&gt; { </span><span class="f">cancelled</span> <span class="p">=</span> <span class="k">true</span><span class="p">; };</span></div>
+          <div class="g">7</div><div class="m"></div><div class="l"><span class="p">}, [</span><span class="f">userId</span><span class="p">]);</span></div>
+        </div>
+      </div>
+
+      <div style="flex: 0 0 268px; background: #FFFFFF; border-left: 1px solid #E6E1DA; padding: 15px 18px; display: flex; flex-direction: column; gap: 15px;">
+        <div style="display: flex; gap: 9px;">
+          <span class="badge" style="flex: 0 0 auto; margin-top: 2px;">A</span>
+          <div style="font-size: 12.5px; line-height: 1.55; color: #57504A;">Declared <em>inside</em> the effect, so each run gets its own flag. A module-level flag would be shared by every mount at once.</div>
+        </div>
+        <div style="display: flex; gap: 9px;">
+          <span class="badge" style="flex: 0 0 auto; margin-top: 2px;">B</span>
+          <div style="font-size: 12.5px; line-height: 1.55; color: #57504A;">The fetch still finishes and still costs you the request. You are only refusing to <em>act</em> on it.</div>
+        </div>
+        <div style="display: flex; gap: 9px;">
+          <span class="badge" style="flex: 0 0 auto; margin-top: 2px;">C</span>
+          <div style="font-size: 12.5px; line-height: 1.55; color: #57504A;">Runs before the next effect and on unmount. This is the only line that closes over the flag from the outside.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- diff block -->
+    <div class="lbl" style="margin-bottom: 10px;">Without it</div>
+    <div style="border: 1px solid #E6E1DA; border-radius: 5px; overflow: hidden; background: #F4F0EA; margin-bottom: 20px;">
+      <div class="mono" style="font-size: 13px; line-height: 2;">
+        <div style="display: grid; grid-template-columns: 26px 1fr; background: #F6ECEC;"><div style="text-align: center; color: #A8564E;">&minus;</div><div style="white-space: pre; color: #57504A;">  <span class="f">fetchUser</span><span class="p">(</span><span class="f">userId</span><span class="p">).</span><span class="f">then</span><span class="p">(</span><span class="f">setUser</span><span class="p">);</span></div></div>
+        <div style="display: grid; grid-template-columns: 26px 1fr; background: #EDF3EE;"><div style="text-align: center; color: #4F7A5B;">+</div><div style="white-space: pre; color: #2B2723;">  <span class="f">fetchUser</span><span class="p">(</span><span class="f">userId</span><span class="p">).</span><span class="f">then</span><span class="p">((</span><span class="f">u</span><span class="p">) =&gt; { </span><span class="k">if</span> <span class="p">(!</span><span class="f">cancelled</span><span class="p">)</span> <span class="f">setUser</span><span class="p">(</span><span class="f">u</span><span class="p">); });</span></div></div>
+      </div>
+    </div>
+
+    <!-- terminal block -->
+    <div class="lbl" style="margin-bottom: 10px;">What the removed line actually did</div>
+    <div style="background: #2B2723; border-radius: 5px; padding: 14px 16px; margin-bottom: 20px;">
+      <div class="mono" style="font-size: 12.5px; line-height: 1.75; color: #E8E2DA;">
+        <div><span style="color: #7A736C;">$</span> npm run dev &mdash; open /users/7, then /users/9 fast</div>
+        <div style="color: #D98A63; margin-top: 6px;">Warning: state updated on an unmounted component.</div>
+        <div style="color: #A9A29B;">  &hellip; and the page shows user 7 after you asked for 9.</div>
+      </div>
+    </div>
+
+    <div style="font-size: 15.5px; line-height: 1.7;">
+      That second line is the one that bites in production: not a crash, just the wrong user on screen, whenever
+      the first request happens to be slower than the second.
+    </div>
+
+    <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #B0552F; font-weight: 500; min-height: 44px; margin-top: 6px;">
+      Read the long version
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg>
+    </div>
+
+  </div>
+
+  <!-- ============ DESIGN NOTES ============ -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">The rule that keeps this from becoming a tutorial</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        <strong style="color: #2B2723;">One listing, at most twelve lines, at most three annotations.</strong>
+        The learner reads this once, for ninety seconds, before being asked to reproduce it from memory.
+        A page of code is a page they will skim &mdash; and skimming is the failure mode this whole product exists to beat.
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">What the two teach modes do differently</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        <span class="ib">example_first</span> shows this card, then asks.
+        <span class="ib">try_first</span> shows the diff&rsquo;s <em>minus</em> line only and asks what goes wrong, then reveals the rest of the card.
+        Same blocks, different order &mdash; which is the point of storing them as an array.
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

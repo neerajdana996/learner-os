@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .k { color: #8A4225; font-weight: 500; } .s { color: #4F7A5B; } .c { color: #A9A29B; font-style: italic; }
+    .n { color: #B8873A; } .p { color: #8A827A; } .f { color: #2B2723; font-weight: 500; }
+    .src { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13.5px; display: grid; grid-template-columns: 36px 1fr; }
+    .g { text-align: right; padding-right: 12px; color: #C6BEB5; line-height: 2.15; user-select: none; }
+    .l { line-height: 2.15; padding-right: 16px; white-space: pre; }
+    /* an empty hole: sized to the token it replaces, never a full-width field */
+    .hole { display: inline-block; min-width: 84px; height: 25px; vertical-align: -6px; background: #FFFFFF;
+            border: 1px solid #C9C2B9; border-bottom: 2px solid #B0552F; border-radius: 3px; }
+    .hole-active { border-color: #B0552F; box-shadow: 0 0 0 3px rgba(176,85,47,.13); }
+    .hole-txt { display: inline-block; min-width: 84px; height: 25px; line-height: 24px; vertical-align: -6px; text-align: center;
+                border-radius: 3px; font-size: 13px; }
+    .chip { border: 1px solid #C9C2B9; border-radius: 4px; padding: 8px 13px; font-size: 13px; background: #FFFFFF;
+            font-family: "IBM Plex Mono", monospace; min-height: 40px; display: flex; align-items: center; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 44px; min-height: 100%;">
+
+  <!-- ================= STATE 1 : ASKING ================= -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div class="serif" style="font-size: 18px; font-weight: 600;">learnos</div>
+    <div class="mono" style="font-size: 11.5px; color: #8A827A; letter-spacing: .05em;">REVIEW 3 OF 6 &middot; DUE TODAY</div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 11px;">Binary search &middot; the loop bound</div>
+
+  <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 24px 26px; margin-bottom: 14px;">
+    <div class="lbl" style="color: #A9A29B; margin-bottom: 13px;">Fill both blanks &middot; no running it</div>
+
+    <div class="serif" style="font-size: 20px; line-height: 1.4; margin-bottom: 18px;">
+      This returns <span class="mono" style="font-size: 17px;">-1</span> for a target that is definitely in the array. Two things are missing.
+    </div>
+
+    <!-- code with holes, on the dark retrieval surface -->
+    <div style="background: #221F1C; border: 1px solid #453F39; border-radius: 5px; padding: 14px 0;">
+      <div class="src" style="color: #E8E2DA;">
+        <div class="g" style="color: #6B645D;">1</div><div class="l"><span style="color: #D98A63; font-weight: 500;">function</span> <span style="font-weight: 500;">search</span><span style="color: #948C84;">(a, target) {</span></div>
+        <div class="g" style="color: #6B645D;">2</div><div class="l">  <span style="color: #D98A63; font-weight: 500;">let</span> lo <span style="color: #948C84;">=</span> <span style="color: #D9B072;">0</span><span style="color: #948C84;">,</span> hi <span style="color: #948C84;">=</span> a<span style="color: #948C84;">.</span>length <span style="color: #948C84;">-</span> <span style="color: #D9B072;">1</span><span style="color: #948C84;">;</span></div>
+        <div class="g" style="color: #6B645D;">3</div><div class="l">  <span style="color: #D98A63; font-weight: 500;">while</span> <span style="color: #948C84;">(</span><span class="hole hole-active" style="background: #2F2B27; border-color: #B0552F;"></span><span style="color: #948C84;">) {</span></div>
+        <div class="g" style="color: #6B645D;">4</div><div class="l">    <span style="color: #D98A63; font-weight: 500;">const</span> mid <span style="color: #948C84;">= (</span>lo <span style="color: #948C84;">+</span> hi<span style="color: #948C84;">) &gt;&gt;</span> <span style="color: #D9B072;">1</span><span style="color: #948C84;">;</span></div>
+        <div class="g" style="color: #6B645D;">5</div><div class="l">    <span style="color: #D98A63; font-weight: 500;">if</span> <span style="color: #948C84;">(</span>a<span style="color: #948C84;">[</span>mid<span style="color: #948C84;">] ===</span> target<span style="color: #948C84;">)</span> <span style="color: #D98A63; font-weight: 500;">return</span> mid<span style="color: #948C84;">;</span></div>
+        <div class="g" style="color: #6B645D;">6</div><div class="l">    <span style="color: #D98A63; font-weight: 500;">if</span> <span style="color: #948C84;">(</span>a<span style="color: #948C84;">[</span>mid<span style="color: #948C84;">] &lt;</span> target<span style="color: #948C84;">)</span> lo <span style="color: #948C84;">=</span> <span class="hole" style="background: #2F2B27; border-color: #6B645D; border-bottom-color: #B0552F;"></span><span style="color: #948C84;">;</span></div>
+        <div class="g" style="color: #6B645D;">7</div><div class="l">    <span style="color: #D98A63; font-weight: 500;">else</span> hi <span style="color: #948C84;">=</span> mid <span style="color: #948C84;">-</span> <span style="color: #D9B072;">1</span><span style="color: #948C84;">;</span></div>
+        <div class="g" style="color: #6B645D;">8</div><div class="l">  <span style="color: #948C84;">}</span></div>
+        <div class="g" style="color: #6B645D;">9</div><div class="l">  <span style="color: #D98A63; font-weight: 500;">return</span> <span style="color: #948C84;">-</span><span style="color: #D9B072;">1</span><span style="color: #948C84;">;</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 15px;">
+      <div style="font-size: 13px; color: #A9A29B; line-height: 1.55;">
+        Tab moves between blanks. Nothing is checked until you press Check.
+      </div>
+      <div class="mono" style="font-size: 11.5px; color: #8F877F;">BLANK 1 OF 2</div>
+    </div>
+  </div>
+
+  <!-- confidence + action -->
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 24px; margin-bottom: 40px;">
+    <div class="lbl" style="margin-bottom: 12px;">How sure are you?</div>
+    <div style="display: flex; gap: 9px; margin-bottom: 18px;">
+      <div style="padding: 11px 19px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Guessing</div>
+      <div style="padding: 11px 19px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Fairly sure</div>
+      <div style="padding: 11px 19px; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 14px; min-height: 44px; display: flex; align-items: center;">Certain</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="background: #F1EDE6; color: #A9A29B; padding: 13px 28px; border-radius: 4px; font-size: 15px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Check</div>
+      <div style="font-size: 13px; color: #8A827A;">Disabled until a confidence is tapped &mdash; calibration is one of the numbers the pilot exists to measure.</div>
+    </div>
+  </div>
+
+  <!-- ================= STATE 2 : WRONG ================= -->
+  <div style="border-top: 1px solid #E6E1DA; padding-top: 32px;">
+    <div class="lbl" style="margin-bottom: 16px;">Same item, after Check &mdash; the near miss</div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B8873A; border-radius: 6px; padding: 24px 26px; margin-bottom: 14px;">
+
+      <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 16px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#B8873A" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.8v3.6M8 10.9v.2"/></svg>
+        <div class="lbl" style="color: #B8873A;">One right, one off by exactly one element</div>
+      </div>
+
+      <!-- resolved code: their answer inline, marked -->
+      <div style="background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 14px 0; margin-bottom: 20px;">
+        <div class="src">
+          <div class="g">3</div><div class="l">  <span class="k">while</span> <span class="p">(</span><span class="hole-txt mono" style="background: #F6E9E7; border: 1px solid #D9A79F; color: #A8564E; padding: 0 8px;">lo &lt; hi</span><span class="p">) {</span></div>
+          <div class="g">6</div><div class="l">    <span class="k">if</span> <span class="p">(</span><span class="f">a</span><span class="p">[</span><span class="f">mid</span><span class="p">] &lt;</span> <span class="f">target</span><span class="p">)</span> <span class="f">lo</span> <span class="p">=</span> <span class="hole-txt mono" style="background: #EDF3EE; border: 1px solid #A6C3AF; color: #3F6349; padding: 0 8px;">mid + 1</span><span class="p">;</span></div>
+        </div>
+      </div>
+
+      <!-- the concrete failure -->
+      <div style="background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 5px; padding: 17px 19px; margin-bottom: 18px;">
+        <div class="lbl" style="margin-bottom: 10px;">Where <span class="mono" style="text-transform: none; letter-spacing: 0; color: #A8564E;">lo &lt; hi</span> breaks</div>
+        <div class="mono" style="font-size: 13px; line-height: 1.85; color: #2B2723;">
+          <div><span class="f">search</span><span class="p">([</span><span class="n">4</span><span class="p">],</span> <span class="n">4</span><span class="p">)</span> <span class="p">&rarr;</span> <span style="color: #A8564E;">-1</span>  <span class="c">// lo and hi are both 0; the loop never runs</span></div>
+          <div><span class="f">search</span><span class="p">([</span><span class="n">1</span><span class="p">,</span><span class="n">3</span><span class="p">,</span><span class="n">7</span><span class="p">],</span> <span class="n">7</span><span class="p">)</span> <span class="p">&rarr;</span> <span style="color: #A8564E;">-1</span>  <span class="c">// the last element is never examined</span></div>
+        </div>
+      </div>
+
+      <div style="font-size: 15px; line-height: 1.7; color: #2B2723;">
+        The bound is <span class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 13.5px;">&lt;=</span>
+        because <span class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 13.5px;">hi</span> is an index you still have to look at, not a limit you stop before.
+        Every off-by-one in a search loop is this one question asked in a different accent: <em>is the endpoint included?</em>
+      </div>
+
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="background: #B0552F; color: #FFF8F4; padding: 13px 28px; border-radius: 4px; font-size: 15px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Next</div>
+      <div style="font-size: 14px; color: #8A827A; padding: 13px 6px; min-height: 48px; display: flex; align-items: center;">This question was unclear</div>
+    </div>
+  </div>
+
+  <!-- ================= DESIGN NOTES ================= -->
+  <div style="border-top: 1px solid #E6E1DA; margin-top: 36px; padding-top: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">The hole is sized to the token, not the field</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        A full-width input under the snippet turns this back into a text question with decoration. The blank sits
+        <em>in the code</em>, on the line, at roughly the width of what belongs there &mdash; wide enough to type
+        <span class="mono" style="font-size: 12.5px;">mid + 1</span>, not so wide it hints at the length.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">Grading, before an LLM is involved</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        Normalise whitespace, then compare against <span class="mono" style="font-size: 12.5px;">answer</span> and
+        <span class="mono" style="font-size: 12.5px;">accept</span>. <span class="mono" style="font-size: 12.5px;">lo&lt;=hi</span> and
+        <span class="mono" style="font-size: 12.5px;">hi &gt;= lo</span> are the same answer and both ship in
+        <span class="mono" style="font-size: 12.5px;">accept</span>. A one-token blank almost never needs a model call &mdash;
+        which is most of why this format is cheap enough to use every day.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">On a phone, and in the extension</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A; margin-bottom: 13px;">
+        A code keyboard is miserable on touch. Below ~640px, and always in the extension popup, the same item renders with a
+        token bank &mdash; one hole, four chips, tap to fill. Same <span class="mono" style="font-size: 12.5px;">answer</span>,
+        same grading, no keyboard.
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <div class="chip">lo &lt;= hi</div>
+        <div class="chip">lo &lt; hi</div>
+        <div class="chip">lo != hi</div>
+        <div class="chip">hi &gt; 0</div>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">Two blanks is the ceiling</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        Three or more and a wrong answer stops being diagnostic: you cannot tell which gap the learner actually has, and the
+        scheduler gets one boolean for a mixed result. Two related blanks &mdash; a bound and its matching step &mdash; are a
+        single idea. Three are a quiz.
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

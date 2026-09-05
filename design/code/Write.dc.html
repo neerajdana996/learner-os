@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .k { color: #8A4225; font-weight: 500; } .s { color: #4F7A5B; } .c { color: #A9A29B; font-style: italic; }
+    .n { color: #B8873A; } .p { color: #8A827A; } .f { color: #2B2723; font-weight: 500; }
+    .dk { color: #E8E2DA; } .dk .k { color: #D98A63; font-weight: 500; } .dk .s { color: #8FB79B; }
+    .dk .c { color: #7A736C; font-style: italic; } .dk .n { color: #D9B072; } .dk .p { color: #948C84; } .dk .f { color: #E8E2DA; font-weight: 500; }
+    .src { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13.5px; display: grid; grid-template-columns: 36px 1fr; }
+    .g { text-align: right; padding-right: 12px; color: #6B645D; line-height: 2.1; user-select: none; }
+    .l { line-height: 2.1; padding-right: 16px; white-space: pre; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 44px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div class="serif" style="font-size: 18px; font-weight: 600;">learnos</div>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div class="mono" style="font-size: 11.5px; color: #8A827A; letter-spacing: .05em;">CONCEPT 2 OF 2 &middot; LAST ONE TODAY</div>
+      <div class="mono" style="font-size: 11.5px; color: #8A827A;">~4 MIN</div>
+    </div>
+  </div>
+
+  <div class="lbl" style="margin-bottom: 11px;">Debounce &middot; write it</div>
+
+  <!-- ============ THE TASK ============ -->
+  <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 24px 26px; margin-bottom: 14px;">
+    <div class="lbl" style="color: #A9A29B; margin-bottom: 13px;">From memory &mdash; the docs are not open in another tab</div>
+
+    <div class="serif" style="font-size: 21px; line-height: 1.4; margin-bottom: 8px;">
+      Write <span class="mono" style="font-size: 18px;">debounce(fn, ms)</span>. It returns a function that only calls
+      <span class="mono" style="font-size: 18px;">fn</span> once the calls stop coming.
+    </div>
+    <div style="font-size: 13.5px; color: #A9A29B; line-height: 1.6; margin-bottom: 20px;">
+      Three cases have to hold. They are the spec, not a surprise &mdash; you can read them before you start.
+    </div>
+
+    <!-- editor -->
+    <div style="background: #221F1C; border: 1px solid #453F39; border-radius: 5px; overflow: hidden;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid #453F39; background: #2A2622;">
+        <div class="mono" style="font-size: 11px; color: #8F877F; letter-spacing: .05em;">debounce.js</div>
+        <div class="mono" style="font-size: 11px; color: #6B645D; letter-spacing: .05em;">NO AUTOCOMPLETE</div>
+      </div>
+      <div style="padding: 13px 0;">
+        <div class="src dk">
+          <div class="g">1</div><div class="l"><span class="k">function</span> <span class="f">debounce</span><span class="p">(</span><span class="f">fn</span><span class="p">,</span> <span class="f">ms</span><span class="p">) {</span></div>
+          <div class="g">2</div><div class="l">  <span class="k">let</span> <span class="f">t</span><span class="p">;</span></div>
+          <div class="g">3</div><div class="l">  <span class="k">return</span> <span class="p">(...</span><span class="f">args</span><span class="p">) =&gt; {</span></div>
+          <div class="g">4</div><div class="l">    <span class="f">setTimeout</span><span class="p">(() =&gt; </span><span class="f">fn</span><span class="p">(...</span><span class="f">args</span><span class="p">),</span> <span class="f">ms</span><span class="p">);</span><span style="display: inline-block; width: 1.5px; height: 16px; background: #B0552F; vertical-align: -3px; margin-left: 2px;"></span></div>
+          <div class="g">5</div><div class="l">  <span class="p">};</span></div>
+          <div class="g">6</div><div class="l"><span class="p">}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- spec / results -->
+    <div style="margin-top: 16px;">
+      <div class="lbl" style="color: #A9A29B; margin-bottom: 11px;">What has to be true</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+
+        <div style="display: flex; align-items: center; gap: 11px; background: #232F26; border: 1px solid #3A4A3D; border-radius: 4px; padding: 11px 14px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#8FB79B" stroke-width="1.8"><path d="M3.2 8.4l3 3 6.4-7"/></svg>
+          <div style="font-size: 13.5px; color: #D9E3DB; flex: 1;">Calling it once runs <span class="mono" style="font-size: 12.5px;">fn</span> after the delay</div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 11px; background: #33231F; border: 1px solid #5A3A32; border-radius: 4px; padding: 11px 14px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#D98A63" stroke-width="1.8"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+          <div style="font-size: 13.5px; color: #EBD8CE; flex: 1;">Three rapid calls run <span class="mono" style="font-size: 12.5px;">fn</span> <strong>once</strong>, not three times</div>
+          <div class="mono" style="font-size: 12px; color: #D98A63;">got 3</div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 11px; background: #33231F; border: 1px solid #5A3A32; border-radius: 4px; padding: 11px 14px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#D98A63" stroke-width="1.8"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+          <div style="font-size: 13.5px; color: #EBD8CE; flex: 1;">The last call&rsquo;s arguments are the ones that arrive</div>
+          <div class="mono" style="font-size: 12px; color: #D98A63;">got 'a', want 'c'</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px;">
+      <div style="display: flex; gap: 11px; align-items: center;">
+        <div style="background: #B0552F; color: #FFF8F4; padding: 12px 26px; border-radius: 4px; font-size: 14.5px; font-weight: 500; min-height: 46px; display: flex; align-items: center;">Run the cases</div>
+        <div style="border: 1px solid #4E4740; color: #C9C2B9; padding: 12px 20px; border-radius: 4px; font-size: 14.5px; min-height: 46px; display: flex; align-items: center;">Show me the shape</div>
+      </div>
+      <div class="mono" style="font-size: 11.5px; color: #8F877F;">RUN 1 OF 3</div>
+    </div>
+  </div>
+
+  <div style="font-size: 13px; color: #8A827A; line-height: 1.6; margin-bottom: 38px; max-width: 720px;">
+    You never see &ldquo;3 of 3 failed&rdquo; on the first run &mdash; the first case passes with almost any attempt, on purpose. Starting from
+    two reds and one green is a debugging problem. Starting from three reds is a blank page.
+  </div>
+
+  <!-- ============ AFTER: THE REVEAL ============ -->
+  <div style="border-top: 1px solid #E6E1DA; padding-top: 30px;">
+    <div class="lbl" style="margin-bottom: 16px;">After the cases pass &mdash; or after the third run, either way</div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px 26px; margin-bottom: 14px;">
+      <div class="lbl" style="margin-bottom: 14px;">The one line you were missing</div>
+
+      <div style="background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; overflow: hidden; margin-bottom: 18px;">
+        <div class="mono" style="font-size: 13.5px; line-height: 2.1;">
+          <div style="display: grid; grid-template-columns: 26px 1fr; padding-top: 8px;"><div style="text-align: center; color: #C6BEB5;"> </div><div style="white-space: pre; color: #57504A;">  <span class="k">return</span> <span class="p">(...</span><span class="f">args</span><span class="p">) =&gt; {</span></div></div>
+          <div style="display: grid; grid-template-columns: 26px 1fr; background: #EDF3EE;"><div style="text-align: center; color: #4F7A5B;">+</div><div style="white-space: pre; color: #2B2723;">    <span class="f">clearTimeout</span><span class="p">(</span><span class="f">t</span><span class="p">);</span></div></div>
+          <div style="display: grid; grid-template-columns: 26px 1fr; background: #F6ECEC;"><div style="text-align: center; color: #A8564E;">&minus;</div><div style="white-space: pre; color: #57504A;">    <span class="f">setTimeout</span><span class="p">(() =&gt; </span><span class="f">fn</span><span class="p">(...</span><span class="f">args</span><span class="p">),</span> <span class="f">ms</span><span class="p">);</span></div></div>
+          <div style="display: grid; grid-template-columns: 26px 1fr; background: #EDF3EE;"><div style="text-align: center; color: #4F7A5B;">+</div><div style="white-space: pre; color: #2B2723;">    <span class="f">t</span> <span class="p">=</span> <span class="f">setTimeout</span><span class="p">(() =&gt; </span><span class="f">fn</span><span class="p">(...</span><span class="f">args</span><span class="p">),</span> <span class="f">ms</span><span class="p">);</span></div></div>
+          <div style="display: grid; grid-template-columns: 26px 1fr; padding-bottom: 8px;"><div style="text-align: center; color: #C6BEB5;"> </div><div style="white-space: pre; color: #57504A;">  <span class="p">};</span></div></div>
+        </div>
+      </div>
+
+      <div style="font-size: 15.5px; line-height: 1.7;">
+        You had the closure and the spread right; what was missing is that <span class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 13.5px;">t</span>
+        has to be <em>assigned</em> for the next call to have something to cancel. A timer you never keep a handle to is a timer you can never stop &mdash;
+        which is the same mistake as the effect that never cleans up.
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="background: #B0552F; color: #FFF8F4; padding: 13px 28px; border-radius: 4px; font-size: 15px; font-weight: 500; min-height: 48px; display: flex; align-items: center;">Done for today</div>
+      <div style="font-size: 13.5px; color: #8A827A;">This concept comes back in a day, as a blank &mdash; not as this.</div>
+    </div>
+  </div>
+
+  <!-- ============ DESIGN NOTES ============ -->
+  <div style="border-top: 1px solid #E6E1DA; margin-top: 36px; padding-top: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">Deliberately not an IDE</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        No autocomplete, no inline type hints, no red squiggles while typing. Every one of them is a retrieval cue, and a
+        retrieval cue is the thing being measured. Bracket matching, indent-on-newline and undo stay &mdash; those are typing, not knowing.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">An assisted pass is not a pass</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        &ldquo;Show me the shape&rdquo; reveals the skeleton with the bodies blank. Taking it sets
+        <span class="mono" style="font-size: 12.5px;">assisted = true</span> on the review event, and the scheduler treats the
+        answer as a lapse regardless of the cases going green. Otherwise day 30 comes as a shock.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">Only JavaScript actually runs</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        JS and TS execute in a sandboxed iframe with a 2-second budget, so &ldquo;Run the cases&rdquo; is real. Every other language shows
+        the identical screen with <strong>Submit</strong> instead, and the cases are graded server-side against the model answer.
+        A learner should not be able to tell which one they are looking at until they press the button.
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 22px;">
+      <div class="lbl" style="margin-bottom: 10px;">One per session, never in a review</div>
+      <div style="font-size: 13.5px; line-height: 1.65; color: #57504A;">
+        Four minutes is a quarter of the daily budget. This block earns its place once, for a concept that is genuinely a
+        capability &mdash; and when the same concept comes due on day 8, it comes back as a thirty-second blank instead.
+        Reviews have to stay cheap or they stop happening.
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

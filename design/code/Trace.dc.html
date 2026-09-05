@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .k { color: #8A4225; font-weight: 500; } .s { color: #4F7A5B; } .c { color: #A9A29B; font-style: italic; }
+    .n { color: #B8873A; } .p { color: #8A827A; } .f { color: #2B2723; font-weight: 500; }
+    .src { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; display: grid; grid-template-columns: 32px 1fr; }
+    .g { text-align: right; padding-right: 11px; color: #C6BEB5; line-height: 2.1; user-select: none; }
+    .l { line-height: 2.1; padding-right: 14px; white-space: pre; }
+    .opt { border: 1px solid #C9C2B9; border-radius: 4px; padding: 12px 15px; background: #FFFFFF; font-family: "IBM Plex Mono", monospace;
+           font-size: 13.5px; min-height: 46px; display: flex; align-items: center; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 36px 40px; min-height: 100%;">
+
+  <div class="serif" style="font-size: 22px; font-weight: 500; margin-bottom: 5px;">The twenty-second questions</div>
+  <div style="font-size: 13.5px; color: #8A827A; margin-bottom: 30px; line-height: 1.6;">
+    These carry the volume. A learner does six reviews a day for thirty days &mdash; if each costs a minute, they stop.
+  </div>
+
+  <!-- ===== HOTSPOT ===== -->
+  <div class="lbl" style="margin-bottom: 11px;">hotspotLine &middot; click the line that is wrong</div>
+  <div style="background: #2B2723; color: #FAF8F5; border-radius: 6px; padding: 22px 24px; margin-bottom: 12px;">
+    <div class="serif" style="font-size: 19px; line-height: 1.4; margin-bottom: 16px;">
+      This leaks a listener on every re-render. Which line?
+    </div>
+    <div style="background: #221F1C; border: 1px solid #453F39; border-radius: 5px; padding: 10px 0;">
+      <div class="src" style="color: #E8E2DA;">
+        <div class="g" style="color: #6B645D;">1</div><div class="l"><span style="color: #D98A63; font-weight: 500;">useEffect</span><span style="color: #948C84;">(() =&gt; {</span></div>
+        <div class="g" style="color: #6B645D;">2</div><div class="l">  <span style="color: #D98A63; font-weight: 500;">const</span> on <span style="color: #948C84;">= () =&gt;</span> setW<span style="color: #948C84;">(</span>window<span style="color: #948C84;">.</span>innerWidth<span style="color: #948C84;">);</span></div>
+        <!-- hovered / focusable row -->
+        <div class="g" style="color: #E8E2DA; background: #3A342F;">3</div><div class="l" style="background: #3A342F; border-left: 2px solid #B0552F; margin-left: -2px; padding-left: 2px;">  window<span style="color: #948C84;">.</span>addEventListener<span style="color: #948C84;">(</span><span style="color: #8FB79B;">'resize'</span><span style="color: #948C84;">,</span> on<span style="color: #948C84;">);</span></div>
+        <div class="g" style="color: #6B645D;">4</div><div class="l"><span style="color: #948C84;">});</span></div>
+      </div>
+    </div>
+    <div style="font-size: 12.5px; color: #A9A29B; margin-top: 13px; line-height: 1.55;">
+      Every line is a 46px tap target across the full width. There is no submit &mdash; the tap <em>is</em> the answer, after the confidence tap.
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 34px; line-height: 1.6; max-width: 640px;">
+    The honest catch: line 4 is arguably the real answer &mdash; the missing cleanup is an absence, and you cannot click a line that is not there.
+    So the generator is told to mark <em>the line that has to change</em> and accept its immediate neighbour when the fix is an insertion.
+  </div>
+
+  <!-- ===== PREDICT ===== -->
+  <div class="lbl" style="margin-bottom: 11px;">recognition, with code as the options &middot; predict the output</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 22px 24px; margin-bottom: 12px;">
+    <div class="serif" style="font-size: 19px; line-height: 1.4; margin-bottom: 16px; color: #2B2723;">
+      What prints?
+    </div>
+    <div style="background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 11px 0; margin-bottom: 18px;">
+      <div class="src">
+        <div class="g">1</div><div class="l"><span class="k">for</span> <span class="p">(</span><span class="k">var</span> <span class="f">i</span> <span class="p">=</span> <span class="n">0</span><span class="p">;</span> <span class="f">i</span> <span class="p">&lt;</span> <span class="n">3</span><span class="p">;</span> <span class="f">i</span><span class="p">++)</span> <span class="p">{</span></div>
+        <div class="g">2</div><div class="l">  <span class="f">setTimeout</span><span class="p">(() =&gt; </span><span class="f">console</span><span class="p">.</span><span class="f">log</span><span class="p">(</span><span class="f">i</span><span class="p">),</span> <span class="n">0</span><span class="p">);</span></div>
+        <div class="g">3</div><div class="l"><span class="p">}</span></div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px;">
+      <div class="opt">0 1 2</div>
+      <div class="opt" style="border: 1.5px solid #B0552F; background: #F7EDE7; color: #8A4225; font-weight: 500;">3 3 3</div>
+      <div class="opt">0 0 0</div>
+      <div class="opt">nothing &mdash; it throws</div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 34px; line-height: 1.6; max-width: 640px;">
+    Same <span class="mono" style="font-size: 12px;">recognition</span> type the diagnostic already scores &mdash; the only change is that options render in mono
+    and keep their whitespace. Nothing downstream knows the difference.
+  </div>
+
+  <!-- ===== EXTENSION ===== -->
+  <div class="lbl" style="margin-bottom: 11px;">The same block, in the extension popup &middot; 380&times;300</div>
+  <div style="display: flex; gap: 22px; align-items: flex-start;">
+
+    <div style="width: 380px; background: #FFFFFF; border: 1px solid #D8D2CA; border-radius: 8px; box-shadow: 0 6px 22px rgba(43,39,35,.11); overflow: hidden; flex: 0 0 auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 11px 15px; border-bottom: 1px solid #E6E1DA;">
+        <div class="mono" style="font-size: 10px; letter-spacing: .08em; color: #8A827A;">LEARNOS &middot; 20 SECONDS</div>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#A9A29B" stroke-width="1.5"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+      </div>
+      <div style="padding: 16px 15px 15px;">
+        <div style="font-size: 15px; line-height: 1.45; margin-bottom: 13px; font-weight: 500;">Which line leaks?</div>
+        <div style="background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 4px; padding: 7px 0; margin-bottom: 14px;">
+          <div class="src" style="font-size: 12px;">
+            <div class="g" style="line-height: 2;">1</div><div class="l" style="line-height: 2;"><span class="f">useEffect</span><span class="p">(() =&gt; {</span></div>
+            <div class="g" style="line-height: 2;">2</div><div class="l" style="line-height: 2;">  <span class="k">const</span> <span class="f">on</span> <span class="p">= () =&gt;</span> <span class="f">setW</span><span class="p">(&hellip;);</span></div>
+            <div class="g" style="line-height: 2;">3</div><div class="l" style="line-height: 2;">  <span class="f">window</span><span class="p">.</span><span class="f">addEventListener</span><span class="p">(&hellip;);</span></div>
+            <div class="g" style="line-height: 2;">4</div><div class="l" style="line-height: 2;"><span class="p">});</span></div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 7px;">
+          <div style="flex: 1; padding: 9px 0; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 12.5px; text-align: center; min-height: 40px; display: flex; align-items: center; justify-content: center;">Guessing</div>
+          <div style="flex: 1; padding: 9px 0; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 12.5px; text-align: center; min-height: 40px; display: flex; align-items: center; justify-content: center;">Fairly sure</div>
+          <div style="flex: 1; padding: 9px 0; border: 1px solid #C9C2B9; border-radius: 4px; font-size: 12.5px; text-align: center; min-height: 40px; display: flex; align-items: center; justify-content: center;">Certain</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 13px;">
+      <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="color: #B0552F; margin-bottom: 9px;">Eight lines is the popup&rsquo;s hard limit</div>
+        <div style="font-size: 13px; line-height: 1.6; color: #57504A;">
+          Longer and the card scrolls, and a card that scrolls is a card that gets dismissed. The generator writes a
+          <span class="mono" style="font-size: 12px;">short</span> variant of the listing for anything it marks extension-eligible &mdash;
+          identifiers elided to <span class="mono" style="font-size: 12px;">&hellip;</span>, never the line that matters.
+        </div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="margin-bottom: 9px;">If it does not fit, it does not pop</div>
+        <div style="font-size: 13px; line-height: 1.6; color: #57504A;">
+          <span class="mono" style="font-size: 12px;">codeEditor</span> and <span class="mono" style="font-size: 12px;">orderLines</span> items are simply
+          excluded from the extension queue. The concept still comes due &mdash; it just waits for the web session rather than
+          arriving as a popup nobody can answer at a traffic light.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

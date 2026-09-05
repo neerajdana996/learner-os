@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .k { color: #8A4225; font-weight: 500; } .s { color: #4F7A5B; } .c { color: #A9A29B; font-style: italic; }
+    .n { color: #B8873A; } .p { color: #8A827A; } .f { color: #2B2723; font-weight: 500; }
+    .cell { font-size: 13px; line-height: 1.5; color: #57504A; padding: 13px 14px; border-top: 1px solid #E6E1DA; }
+    .cell strong { color: #2B2723; font-weight: 600; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 52px 60px; min-height: 100%;">
+
+  <!-- HEADER -->
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 40px;">
+    <div>
+      <div class="serif" style="font-size: 30px; font-weight: 500; letter-spacing: -0.015em;">Code &mdash; what a question is made of</div>
+      <div style="font-size: 13.5px; color: #8A827A; margin-top: 5px;">A prompt string can&rsquo;t ask about an off-by-one. Blocks can.</div>
+    </div>
+    <div class="lbl">Category 1 of 5 &middot; code</div>
+  </div>
+
+  <!-- THE RULE -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 44px;">
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px 26px;">
+      <div class="lbl" style="margin-bottom: 11px;">What does not change</div>
+      <div style="font-size: 15px; line-height: 1.7; color: #2B2723;">
+        <code class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 13.5px;">item.type</code>
+        still decides the <em>cognitive act</em> &mdash; recall, recognition, application, explain. Every pilot number is
+        sliced by it, so it stays exactly as it is.
+      </div>
+      <div style="font-size: 14px; line-height: 1.65; color: #57504A; margin-top: 13px;">
+        Blocks decide what the act <em>looks like</em>. A fill-in-the-blank is still an <span class="mono" style="font-size: 13px;">application</span>
+        item. It is just no longer a textarea.
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px 26px;">
+      <div class="lbl" style="margin-bottom: 11px;">What changes</div>
+      <div style="font-size: 15px; line-height: 1.7; color: #2B2723;">
+        <code class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 13.5px;">prompt: string</code>
+        becomes <code class="mono" style="background: #F1EDE6; padding: 1px 5px; border-radius: 3px; font-size: 13.5px;">blocks: Block[]</code>
+        &mdash; and the generator chooses the shape, per concept, at generation time.
+      </div>
+      <div style="font-size: 14px; line-height: 1.65; color: #57504A; margin-top: 13px;">
+        <span class="mono" style="font-size: 13px;">prompt</span> stays as the plain-text fallback: screen readers, the extension
+        popup, and every item generated before this shipped.
+      </div>
+    </div>
+  </div>
+
+  <!-- ANATOMY -->
+  <div class="lbl" style="margin-bottom: 16px;">Anatomy &mdash; every code item, whatever its format</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 26px 28px; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px;">
+
+      <div style="border: 1px solid #E6E1DA; border-radius: 5px; padding: 17px 18px; background: #FAF8F5;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 9px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#8A827A" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12"/></svg>
+          <div class="lbl" style="color: #57504A;">Context &middot; 0&ndash;3</div>
+        </div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">The setup the learner reads. Prose, a code listing, a diff, terminal output. Never interactive.</div>
+      </div>
+
+      <div style="border: 1.5px solid #B0552F; border-radius: 5px; padding: 16px 17px; background: #FDF6F2;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 9px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#B0552F" stroke-width="1.5"><path d="M8 2v12M2 8h12"/></svg>
+          <div class="lbl" style="color: #B0552F;">Answer &middot; exactly 1</div>
+        </div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">The one thing the learner does. Never two &mdash; two answer surfaces means two things graded as one, and the metrics stop meaning anything.</div>
+      </div>
+
+      <div style="border: 1px solid #E6E1DA; border-radius: 5px; padding: 17px 18px; background: #FAF8F5;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 9px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#8A827A" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M8 5.5v3M8 10.8v.2"/></svg>
+          <div class="lbl" style="color: #57504A;">Reveal &middot; 0&ndash;2</div>
+        </div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #57504A;">Shown only after answering: the working version, the real output, why the near-miss was a near-miss.</div>
+      </div>
+
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 44px; line-height: 1.6;">
+    The renderer walks the array. It does not know it is looking at code &mdash; every category rides the same three slots, which is why maths and system design can land later without touching the session screen.
+  </div>
+
+  <!-- CATALOGUE -->
+  <div class="lbl" style="margin-bottom: 16px;">The code blocks &mdash; and what each one costs the learner</div>
+  <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: 190px 1fr 108px 128px;">
+      <div class="cell" style="border-top: none; background: #F1EDE6; color: #57504A; font-weight: 600;">Block</div>
+      <div class="cell" style="border-top: none; background: #F1EDE6; color: #57504A; font-weight: 600;">What the learner does</div>
+      <div class="cell" style="border-top: none; background: #F1EDE6; color: #57504A; font-weight: 600;">Time</div>
+      <div class="cell" style="border-top: none; background: #F1EDE6; color: #57504A; font-weight: 600;">Extension</div>
+
+      <div class="cell"><span class="mono" style="font-size: 12.5px; color: #2B2723;">code</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">context</div></div>
+      <div class="cell">Reads a listing. Lines can be <strong>called out</strong> with a margin note, or dimmed to focus one.</div>
+      <div class="cell mono" style="color: #8A827A;">&mdash;</div>
+      <div class="cell"><span style="color: #4F7A5B;">Yes</span>, &le;8 lines</div>
+
+      <div class="cell"><span class="mono" style="font-size: 12.5px; color: #2B2723;">codeDiff</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">context / reveal</div></div>
+      <div class="cell">Sees a before and after. The whole point of a concept is often the two-line change.</div>
+      <div class="cell mono" style="color: #8A827A;">&mdash;</div>
+      <div class="cell"><span style="color: #4F7A5B;">Yes</span></div>
+
+      <div class="cell"><span class="mono" style="font-size: 12.5px; color: #2B2723;">terminal</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">context / reveal</div></div>
+      <div class="cell">Sees the command and what it printed &mdash; including the stack trace.</div>
+      <div class="cell mono" style="color: #8A827A;">&mdash;</div>
+      <div class="cell"><span style="color: #4F7A5B;">Yes</span></div>
+
+      <div class="cell" style="background: #FDF9F6;"><span class="mono" style="font-size: 12.5px; color: #B0552F;">clozeCode</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer</div></div>
+      <div class="cell" style="background: #FDF9F6;"><strong>Types into 1&ndash;3 holes cut into real code.</strong> The hole is where the concept lives: the condition, the bound, the dependency.</div>
+      <div class="cell mono" style="background: #FDF9F6; color: #57504A;">15&ndash;30s</div>
+      <div class="cell" style="background: #FDF9F6;"><span style="color: #4F7A5B;">Yes</span>, 1 hole</div>
+
+      <div class="cell" style="background: #FDF9F6;"><span class="mono" style="font-size: 12.5px; color: #B0552F;">hotspotLine</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer</div></div>
+      <div class="cell" style="background: #FDF9F6;"><strong>Clicks the line that is wrong.</strong> One tap, no typing &mdash; the cheapest real question we can ask about code.</div>
+      <div class="cell mono" style="background: #FDF9F6; color: #57504A;">8&ndash;15s</div>
+      <div class="cell" style="background: #FDF9F6;"><span style="color: #4F7A5B;">Yes</span></div>
+
+      <div class="cell" style="background: #FDF9F6;"><span class="mono" style="font-size: 12.5px; color: #B0552F;">orderLines</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer</div></div>
+      <div class="cell" style="background: #FDF9F6;"><strong>Drags 4&ndash;6 shuffled lines into order.</strong> Tests the shape of a procedure without demanding recall of syntax.</div>
+      <div class="cell mono" style="background: #FDF9F6; color: #57504A;">25&ndash;45s</div>
+      <div class="cell" style="background: #FDF9F6;"><span style="color: #B8873A;">No</span> &mdash; drag in a popup</div>
+
+      <div class="cell" style="background: #FDF9F6;"><span class="mono" style="font-size: 12.5px; color: #B0552F;">codeEditor</span><div style="font-size: 11.5px; color: #A9A29B; margin-top: 2px;">answer</div></div>
+      <div class="cell" style="background: #FDF9F6;"><strong>Writes a whole small function</strong> against a signature and 2&ndash;4 named cases. The only block that can ask &ldquo;could you actually do it&rdquo;.</div>
+      <div class="cell mono" style="background: #FDF9F6; color: #57504A;">2&ndash;4 min</div>
+      <div class="cell" style="background: #FDF9F6;"><span style="color: #B8873A;">No</span> &mdash; web session only</div>
+    </div>
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 44px; line-height: 1.65; max-width: 900px;">
+    Time is the constraint nobody can argue with: the daily budget is 15 minutes and a session already carries two new concepts plus six reviews.
+    So <span class="mono" style="font-size: 12px;">codeEditor</span> is rationed &mdash; at most one per session, never in a review &mdash; and the twenty-second blocks carry the volume.
+  </div>
+
+  <!-- WHICH FORMAT -->
+  <div class="lbl" style="margin-bottom: 16px;">What the generator is told to pick, and when</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 14px;">
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>rule with a boundary</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Off-by-one, the empty case, the inclusive bound, when a guard fires.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; clozeCode over the condition</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>failure mode</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">A leak, a race, a stale closure, an infinite re-render.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; hotspotLine, or predict-the-output</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>procedure</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Set up, then subscribe, then return the teardown &mdash; in that order or it breaks.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; orderLines</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>capability</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">&ldquo;Write a debounce.&rdquo; Nothing short of writing it is evidence.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; codeEditor, once per session</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>distinction</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Two things that look alike and are not: <span class="mono" style="font-size: 12px;">let</span> vs <span class="mono" style="font-size: 12px;">var</span>, map vs flatMap.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; recognition, options as code</div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 20px 21px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">The concept is a <em>why</em></div>
+      <div style="font-size: 13px; line-height: 1.6; color: #57504A; margin-bottom: 12px;">Nothing to type. The answer is a sentence about a trade-off.</div>
+      <div class="mono" style="font-size: 12px; color: #B0552F;">&rarr; explain, plain text &mdash; unchanged</div>
+    </div>
+
+  </div>
+  <div style="font-size: 12.5px; color: #8A827A; margin-bottom: 44px; line-height: 1.65; max-width: 900px;">
+    A concept that fits none of these gets a plain <span class="mono" style="font-size: 12px;">recall</span> item, as today. That is the correct outcome, not a fallback &mdash; forcing a
+    format onto a concept that does not have one produces a question about the format.
+  </div>
+
+  <!-- HIGHLIGHTING -->
+  <div class="lbl" style="margin-bottom: 16px;">Highlighting uses the product palette, not an editor theme</div>
+  <div style="display: flex; gap: 26px; align-items: stretch; background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 24px 26px;">
+    <div style="background: #F4F0EA; border: 1px solid #E6E1DA; border-radius: 5px; padding: 15px 0; flex: 0 0 400px;">
+      <div class="mono" style="font-size: 13px; line-height: 1.9; display: grid; grid-template-columns: 38px 1fr;">
+        <div style="text-align: right; padding-right: 13px; color: #C2BAB1;">1</div><div><span class="c">// once per id change</span></div>
+        <div style="text-align: right; padding-right: 13px; color: #C2BAB1;">2</div><div><span class="k">const</span> <span class="f">user</span> <span class="p">=</span> <span class="k">await</span> <span class="f">fetchUser</span><span class="p">(</span><span class="s">'me'</span><span class="p">,</span> <span class="n">3</span><span class="p">)</span><span class="p">;</span></div>
+      </div>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px;">
+      <div style="display: flex; gap: 22px; flex-wrap: wrap;">
+        <div><span class="mono k" style="font-size: 13px;">keyword</span> <span class="mono" style="font-size: 11px; color: #A9A29B;">#8A4225</span></div>
+        <div><span class="mono s" style="font-size: 13px;">string</span> <span class="mono" style="font-size: 11px; color: #A9A29B;">#4F7A5B</span></div>
+        <div><span class="mono n" style="font-size: 13px;">number</span> <span class="mono" style="font-size: 11px; color: #A9A29B;">#B8873A</span></div>
+        <div><span class="mono c" style="font-size: 13px;">comment</span> <span class="mono" style="font-size: 11px; color: #A9A29B;">#A9A29B</span></div>
+        <div><span class="mono p" style="font-size: 13px;">punctuation</span> <span class="mono" style="font-size: 11px; color: #A9A29B;">#8A827A</span></div>
+      </div>
+      <div style="font-size: 13px; line-height: 1.65; color: #57504A; border-left: 1px solid #E6E1DA; padding-left: 18px; margin-top: 4px;">
+        Five colours, all already in the design system, all at roughly one lightness. A VS Code theme drops eight saturated hues onto warm paper and
+        the clay button &mdash; the only thing on the screen you can act on &mdash; stops being the loudest thing in the room.
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
