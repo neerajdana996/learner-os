@@ -1283,7 +1283,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Not done:** unlinking a provider, and `DELETE /me` cascading to `oauth_accounts` (T-046 owns that and must include the new table).
 
 ### T-FIX-009 · Nothing stops a test from reaching the real model API
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **severity:** medium — a mocking gap becomes a live API call and a confusing failure
 - **depends_on:** T-052
@@ -1293,9 +1293,14 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:**
   - Calling `complete()` under `NODE_ENV=test` without a mock throws the guard error.
   - The existing generator suites, which mock the SDK boundary, are unaffected.
+- **notes:** (2026-09-05) Fixed, and the root cause was not where I first looked. `vitest.setup.ts` was still setting the stale `NVIDIA_API_KEY`, so once `env.ts` began calling `process.loadEnvFile()` the **real** `OPENAI_API_KEY` from backend/.env reached the suite — which is exactly how an unmocked generator made a live call and failed with a 401 rather than an obvious missing-mock error.
+  - Two parts: a sentinel key (plus an empty `SMTP_HOST`, so a suite that forgets to stub the transport cannot email a learner), and a `fetch` that refuses any outbound call with a message naming the boundary to mock.
+  - **Guarded at `fetch`, not inside the LLM client.** The client is itself mocked in the suites that use it, and there is no reliable way from inside to tell a mocked SDK from a real one. Blocking `fetch` catches every outbound HTTP call — the model API, OAuth providers, anything added later. Postgres, Redis and supertest are untouched: they use sockets and the HTTP module, not `fetch`.
+  - `oauth.test.ts` already replaced `globalThis.fetch` in `beforeEach` and restored it after, so it keeps working and now restores to the guarded version rather than the real one.
+  - 4 tests assert the guard is armed, because a silent guard is one refactor away from being no guard (324 total).
 
 ### T-FIX-005 · `application` items are graded by exact string match
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **severity:** high — systematically depresses the retention numbers the pilot exists to measure
 - **depends_on:** T-011
@@ -1307,6 +1312,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Application item, clearly wrong answer → incorrect.
   - Grader failure on an application item propagates as a 500 (matching the `explain` contract in T-011, so T-031's queue retries rather than recording a free pass).
   - Existing recall/recognition grading is unchanged (regression).
+- **notes:** (2026-09-05) Fixed. Application items now fall back to the LLM grader, keeping exact match as a fast accept path — a verbatim answer should never cost a model call or two seconds of a learner's wait, and only an ambiguous one is worth judging. The model answer becomes the rubric, worded to accept a different route to the same result, which is the point of an application question. Recall stays on pure string matching: short canonical answers are what `accept` is for. A grader failure propagates rather than defaulting to correct, matching the `explain` contract so T-031's queue retries instead of handing out a free pass. 6 new tests (320 total).
 
 ### T-FIX-006 · Generator context and prompt-level test coverage
 - **status:** todo
