@@ -3,6 +3,7 @@
 import { fsrs, createEmptyCard, generatorParameters, Rating, type Card, type Grade } from 'ts-fsrs';
 
 export { Rating };
+export type { Grade };
 
 // No personalised parameters for the pilot (plan.md §8): one shared engine
 // with FSRS defaults. enable_fuzz is already false by default; set explicitly
