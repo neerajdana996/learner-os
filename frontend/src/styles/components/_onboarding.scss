@@ -72,7 +72,13 @@
 
   /// Every step says what it does with the answer. Asking without explaining is
   /// what made the first version feel like a form rather than a conversation.
+  ///
+  /// It is a sibling of `__body`, not a child, so it inherited none of the
+  /// body's own 22px rhythm and sat flush against the last control — the note
+  /// read as part of the field rather than as a remark about it. Closer to what
+  /// it explains (22px) than to the actions below it (30px).
   &__because {
+    margin-top: $s-5;
     display: flex;
     gap: $s-3;
     background: var(--sunken);

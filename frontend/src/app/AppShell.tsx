@@ -1,27 +1,14 @@
-import { Link, Outlet } from 'react-router-dom';
-import { ThemeToggle } from './ThemeToggle';
+import { Outlet } from 'react-router-dom';
+import { AppBar } from './AppBar';
 
 /**
- * The signed-in frame. The score badge that plan.md §4 wants on every page
- * lands here in T-017, reading from the map query's cache rather than fetching.
+ * The signed-in frame. plan.md §4 wants the knowledge score on every page; it
+ * lives in the bar rather than being repeated by each screen (T-081).
  */
 export function AppShell() {
   return (
     <>
-      <header className="app-header">
-        <Link className="app-header__brand" to="/home">
-          learnos
-        </Link>
-        <nav className="app-header__nav">
-          <Link className="app-header__link" to="/session">
-            Today
-          </Link>
-          <Link className="app-header__link" to="/map">
-            Map
-          </Link>
-          <ThemeToggle />
-        </nav>
-      </header>
+      <AppBar />
       <main className="app-main">
         <Outlet />
       </main>

@@ -88,7 +88,7 @@ describe('landing route', () => {
   it('sends a signed-in learner with an active topic to the dashboard', async () => {
     server({ me: 'ok', topics: [topic('active')] });
     renderAt('/');
-    expect(await screen.findByText(/still recall today/)).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Start today/ })).toBeInTheDocument();
   });
 
   it('treats a topic that is still generating as not usable — onboarding owns the wait screen', async () => {
@@ -110,6 +110,6 @@ describe('protected routes', () => {
   it('renders a protected screen when there is a session', async () => {
     server({ me: 'ok', topics: [topic('active')] });
     renderAt('/home');
-    expect(await screen.findByText(/still recall today/)).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Start today/ })).toBeInTheDocument();
   });
 });

@@ -51,8 +51,6 @@ export default function MapPage() {
   };
 
   const atRisk = data.concepts.filter((c) => c.atRisk);
-  const topic = topics?.topics.find((t) => t.id === topicId);
-  const progress = courseDay(topic?.startsAt, topic?.endsAt);
 
   const layers: MapConcept[][] = [];
   for (let i = 0; i < data.concepts.length; i += LAYER_SIZE) {
@@ -61,35 +59,20 @@ export default function MapPage() {
 
   return (
     <div className="u-stack u-stack--loose">
-      {/* Score and what is slipping side by side: the number is the claim and
-          the callout is what to do about it, so reading one should not mean
-          scrolling past the other. */}
-      <div className="map-header">
-        <div className="u-stack u-stack--tight">
-          <p className="u-eyebrow">
-            {data.title}
-            {progress ? ` · day ${progress.day} of ${progress.total}` : null}
+      {/* The score and the day counter are in the bar on every screen now
+          (T-081); repeating them here was the same number twice. What is left
+          is what to act on. */}
+      {atRisk.length > 0 ? (
+        <div className="at-risk u-measure">
+          <p className="at-risk__title">
+            {atRisk.length === 1 ? 'One is slipping' : `${atRisk.length} are slipping`}
           </p>
-          <div className="score">
-            <span className="score__value">{data.score}</span>
-            <span className="score__caption">
-              of what we&rsquo;ve taught, you&rsquo;d still recall today
-            </span>
-          </div>
+          <p className="at-risk__body">
+            {atRisk.map((c) => c.title).filter(Boolean).join(', ')}. Today&rsquo;s session puts
+            {atRisk.length === 1 ? ' it' : ' them'} back in front of you.
+          </p>
         </div>
-
-        {atRisk.length > 0 ? (
-          <div className="at-risk">
-            <p className="at-risk__title">
-              {atRisk.length === 1 ? 'One is slipping' : `${atRisk.length} are slipping`}
-            </p>
-            <p className="at-risk__body">
-              {atRisk.map((c) => c.title).filter(Boolean).join(', ')}. Today&rsquo;s session puts
-              them back in front of you.
-            </p>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       <ConceptLegend counts={counts} />
 

@@ -29,8 +29,21 @@ export const authApi = api.injectEndpoints({
       query: () => ({ url: '/auth/extension-token', method: 'POST' }),
       invalidatesTags: ['Me'],
     }),
+    /**
+     * Ends this browser session (T-080). Only the cookie presented is revoked,
+     * so the learner's extension — which holds its own token by design — stays
+     * connected.
+     */
+    logout: build.mutation<{ ok: true }, void>({
+      query: () => ({ url: '/auth/logout', method: 'POST' }),
+      invalidatesTags: ['Me', 'Topic', 'Map', 'Session', 'Due', 'Diagnostic'],
+    }),
   }),
 });
 
-export const { useRequestMagicLinkMutation, useDevLoginMutation, useExtensionTokenMutation } =
-  authApi;
+export const {
+  useRequestMagicLinkMutation,
+  useDevLoginMutation,
+  useExtensionTokenMutation,
+  useLogoutMutation,
+} = authApi;

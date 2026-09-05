@@ -4,9 +4,10 @@ import { useMapQuery } from '../../map/mapApi';
 import { useSessionQuery } from '../../session/sessionApi';
 import { useTopicsQuery } from '../../topics/topicsApi';
 
-function daysLeft(endsAt: string | null): number {
-  if (!endsAt) return 0;
-  return Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / 86_400_000));
+/** Same weights the server planned the session with (`lib/planner.ts`), so the
+ *  estimate agrees with the budget the session was sized to. */
+function minutes(newConcepts: number, reviews: number): number {
+  return Math.max(1, Math.round((newConcepts * 180 + reviews * 45) / 60));
 }
 
 export default function DashboardPage() {
@@ -31,22 +32,24 @@ export default function DashboardPage() {
     );
   }
 
-  const remaining = daysLeft(topic.endsAt);
   const done = session?.completedToday ?? false;
+  // The score and the day counter live in the bar now (T-081), so this page
+  // leads with the thing worth acting on instead of repeating the number.
+  const atRisk = map?.concepts.filter((c) => c.atRisk) ?? [];
 
   return (
     <div className="u-stack u-stack--loose">
-      <div className="u-stack u-stack--tight">
-        <p className="u-eyebrow">
-          {topic.title} · {remaining === 0 ? 'final day' : `${remaining} days left`}
-        </p>
-        <div className="score">
-          <span className="score__value">{map?.score ?? 0}</span>
-          <span className="score__caption">
-            what you&rsquo;d still recall today of everything taught so far
-          </span>
+      {atRisk.length > 0 ? (
+        <div className="at-risk u-measure">
+          <p className="at-risk__title">
+            {atRisk.length === 1 ? 'One is slipping' : `${atRisk.length} are slipping`}
+          </p>
+          <p className="at-risk__body">
+            {atRisk.map((c) => c.title).filter(Boolean).join(', ')}. Today&rsquo;s session puts
+            {atRisk.length === 1 ? ' it' : ' them'} back in front of you.
+          </p>
         </div>
-      </div>
+      ) : null}
 
       <div className="u-row">
         {done ? (
@@ -65,7 +68,8 @@ export default function DashboardPage() {
 
       {session && !done ? (
         <p className="u-muted">
-          {session.newConcepts.length} new · {session.dueReviews.length} reviews
+          {session.newConcepts.length} new · {session.dueReviews.length} reviews · about{' '}
+          {minutes(session.newConcepts.length, session.dueReviews.length)} minutes
         </p>
       ) : null}
 
