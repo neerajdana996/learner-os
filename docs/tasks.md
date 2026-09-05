@@ -1092,6 +1092,24 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** One `GenerationError` class exists; `instanceof` holds for errors thrown by any generator.
 - **tests:** Existing concept-map and items suites pass unchanged (they import via the re-export); the new teaching suite asserts `instanceof GenerationError` on errors from a third module.
 
+### T-058 · Generated and recommended topics (post-pilot)
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-044, T-045
+- **files:** `backend/src/llm/prompts/topicSuggest/`, `backend/src/modules/topics/`, `frontend/src/features/onboarding/topics.ts`
+- **description:** Founder vision (Neeraj, 2026-09-05): onboarding captures a profile — what the learner does, why they are here — and then **generates or recommends** topics suited to them, rather than offering a fixed pair. "DSA for developers, colour theory for designers, algebra for students."
+- **why this is Sprint 5 and not now — the pilot cannot absorb it:**
+  - **n = 1.** sprint.md's design is two topics × five people. Per-learner topics means every result is a single subject, and "this learner retained 81%" is explainable by motivation or by an easy topic. The day-46 branch (`durability ≥ 0.8 → scale`, `< 0.5 → fix teaching`) needs a number attributable to the *teaching*, which requires several people on the same material.
+  - **Content QA does not scale to it.** T-024 measures ~1 hour of hand-review per topic and T-045 has the founder reading every question. Ten bespoke topics is ten hours on content nobody has checked — and unchecked questions make the retention number meaningless anyway.
+- **not RAG, and not Qdrant.** plan.md §5 rules both out, and there is no Qdrant in the repo — the only mention is that line. RAG answers "find the relevant existing text"; learnos has no corpus, it *generates* a concept map and writes the questions. Suggesting a topic from a profile is one prompt returning a short list. If a corpus ever exists (a library of QA'd topics worth searching), revisit then — that is a different product, not a missing dependency.
+- **what already exists to build on:** `features/onboarding/topics.ts` holds the pilot pair behind `recommendTopic(role)`, deliberately a lookup. Swapping that for a model call is the whole change on the client; the onboarding UI does not move.
+- **acceptance:** A learner's profile yields 3–5 candidate topics with a stated reason each; choosing one generates and QA-gates it before teaching starts.
+- **tests:**
+  - Suggestions for a stated role are on-topic and distinct from each other.
+  - A generated topic passes the same `MIN_CONCEPTS` and DAG validation as a hand-picked one.
+  - A topic that fails validation is never offered to a learner.
+  - Profile answers never reach the teaching path — only topic selection (plan.md §3.1).
+
 ### T-FIX-012 · `pnpm preflight` — verify the real environment, not the mocked one
 - **status:** done
 - **sprint:** 2
