@@ -1,13 +1,33 @@
 import { z } from 'zod';
 
+// `pnpm dev` and `pnpm seed` read backend/.env; nothing else was loading it, so
+// NVIDIA_API_KEY and the SMTP settings were silently empty outside Docker.
+// Node's own loader — no dependency — and it does not overwrite variables that
+// are already set, so compose's `environment:` block and the test overrides in
+// vitest.setup.ts still win.
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env (Docker, CI): env comes from the real environment.
+}
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z.string().url().default('postgres://learnos:learnos@localhost:5432/learnos'),
   REDIS_URL: z.string().url().default('redis://localhost:6379'),
-  // Generation runs against NVIDIA's OpenAI-compatible endpoint (see src/llm/client.ts).
-  NVIDIA_API_KEY: z.string().default(''),
-  NVIDIA_BASE_URL: z.string().url().default('https://integrate.api.nvidia.com/v1'),
+  // Generation provider. Every supported backend speaks the OpenAI chat-completions
+  // shape, so switching is configuration rather than code (T-052's whole point).
+  //   vertex — Google Agent Platform via ADC. No API key: the org policy forbids
+  //            them, so the client mints a short-lived OAuth token instead.
+  //   openai — api.openai.com, or anything OpenAI-compatible via LLM_BASE_URL.
+  LLM_PROVIDER: z.enum(['openai', 'vertex']).default('openai'),
+  /** OpenAI (or any OpenAI-compatible endpoint via LLM_BASE_URL). */
+  OPENAI_API_KEY: z.string().default(''),
+  LLM_BASE_URL: z.string().url().optional(),
+  /** Vertex uses ADC, not a key — the org policy forbids API keys (T-056). */
+  GOOGLE_CLOUD_PROJECT: z.string().default(''),
+  GOOGLE_CLOUD_LOCATION: z.string().default('us-central1'),
   CORS_ORIGINS: z
     .string()
     .default('http://localhost:3000,http://localhost:5173')

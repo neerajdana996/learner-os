@@ -2,9 +2,10 @@
 // imported from src/shared (which must stay browser-safe). All generation goes
 // through here so model choice, retries and defaults live in one place.
 //
-// NVIDIA's endpoint is OpenAI-compatible, so the official `openai` SDK talks to
-// it directly with a different baseURL. That's also why LangChain isn't here:
-// `ChatNVIDIA` wraps this same HTTP API, and plan.md §5 rules out LangChain.
+// Every provider we target speaks the OpenAI chat-completions shape, so the
+// official `openai` SDK covers all of them and switching is a base-URL change
+// (T-052). That is also why LangChain isn't here — plan.md §5 rules it out and
+// it would only wrap this same HTTP API.
 //
 // Retries: the SDK already retries 429/5xx/network errors (default maxRetries=2,
 // honouring `retry-after`), so we don't hand-roll a limiter for the pilot. Job-
@@ -12,48 +13,69 @@
 import OpenAI from 'openai';
 import { env } from '../lib/env.js';
 import { LlmError } from './errors.js';
+import { DEFAULT_MODEL, DEFAULT_REASONING_EFFORT, type ReasoningEffort } from './models.js';
 
-export const DEFAULT_MODEL = 'deepseek-ai/deepseek-v4-pro-0813';
+export { DEFAULT_MODEL } from './models.js';
 
-/** Fixed so the same prompt gives the same map twice — makes a bad generation
- *  reproducible while the founder is doing content QA (T-024). */
-const SEED = 42;
+/**
+ * Built on first use, not at import.
+ *
+ * The OpenAI SDK throws from its constructor when no key is present, so
+ * constructing at module load took the whole process down at boot — `/health`
+ * included — for anyone without a key. That contradicts the deliberate choice
+ * in T-FIX-001 to fail at job time with an actionable message instead of at
+ * boot, and it breaks `scripts/verify.sh`, which must pass with no key set.
+ */
+let client: OpenAI | null = null;
 
-export const openai = new OpenAI({
-  apiKey: env.NVIDIA_API_KEY,
-  baseURL: env.NVIDIA_BASE_URL,
-});
+export function getClient(): OpenAI {
+  client ??= new OpenAI({ apiKey: env.OPENAI_API_KEY, baseURL: env.LLM_BASE_URL });
+  return client;
+}
 
 export interface CompleteOpts {
   system: string;
   user: string;
   model?: string;
   maxTokens?: number;
+  reasoningEffort?: ReasoningEffort;
+  /**
+   * When supplied, the provider guarantees the reply matches this JSON schema.
+   * That removes malformed JSON as a failure mode entirely, which is what makes
+   * the cheap tier safe on the constrained prompts.
+   */
+  jsonSchema?: { name: string; schema: Record<string, unknown> };
 }
 
 /** One non-streaming completion. Returns the message content. */
 export async function complete(opts: CompleteOpts): Promise<string> {
   // The app boots without a key so `/health` and the frontend work in dev; fail
   // here with something actionable rather than letting the SDK return a bare 401.
-  if (!env.NVIDIA_API_KEY) {
-    throw new LlmError('missing_api_key', 'NVIDIA_API_KEY is not set — generation cannot run');
+  if (!env.OPENAI_API_KEY) {
+    throw new LlmError('missing_api_key', 'OPENAI_API_KEY is not set — generation cannot run');
   }
 
-  const completion = await openai.chat.completions.create({
+  const maxTokens = opts.maxTokens ?? 8192;
+
+  const completion = await getClient().chat.completions.create({
     model: opts.model ?? DEFAULT_MODEL,
     messages: [
       { role: 'system', content: opts.system },
       { role: 'user', content: opts.user },
     ],
-    temperature: 1,
-    top_p: 0.95,
-    max_tokens: opts.maxTokens ?? 8192,
-    seed: SEED,
+    // Must be explicit: gpt-5.6 defaults to `medium` when omitted, so leaving
+    // it off silently buys reasoning latency and tokens on every call.
+    reasoning_effort: opts.reasoningEffort ?? DEFAULT_REASONING_EFFORT,
+    max_completion_tokens: maxTokens,
     stream: false,
-    // NVIDIA-specific passthrough, absent from OpenAI's types: DeepSeek emits a
-    // reasoning block by default, which we'd only have to strip before parsing
-    // JSON. Cast is confined to this one call.
-    chat_template_kwargs: { thinking: false },
+    ...(opts.jsonSchema
+      ? {
+          response_format: {
+            type: 'json_schema',
+            json_schema: { name: opts.jsonSchema.name, schema: opts.jsonSchema.schema, strict: true },
+          },
+        }
+      : {}),
   } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
 
   const choice = completion.choices[0];
@@ -64,9 +86,13 @@ export async function complete(opts: CompleteOpts): Promise<string> {
   if (choice?.finish_reason === 'length') {
     throw new LlmError(
       'truncated',
-      `response hit max_tokens (${opts.maxTokens ?? 8192}) — raise maxTokens for this prompt`,
+      `response hit max_completion_tokens (${maxTokens}) — raise maxTokens for this prompt`,
     );
   }
+
+  // A refusal is not a parse failure and retrying it changes nothing.
+  const refusal = (choice?.message as { refusal?: string } | undefined)?.refusal;
+  if (refusal) throw new LlmError('refused', `model refused: ${refusal}`);
 
   return choice?.message?.content ?? '';
 }

@@ -6,6 +6,8 @@ export type LlmErrorReason =
   | 'invalid_shape'
   /** Response hit max_tokens — retrying the same request would truncate again. */
   | 'truncated'
+  /** The model declined. Not a parse failure, and a retry changes nothing. */
+  | 'refused'
   | 'missing_api_key';
 
 export class LlmError extends Error {

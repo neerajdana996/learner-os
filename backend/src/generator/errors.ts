@@ -12,6 +12,7 @@ export type GenerationErrorReason =
   | 'invalid_json'
   | 'invalid_shape'
   | 'truncated'
+  | 'refused'
   | 'missing_api_key'
   // concept map
   | 'duplicate_slug'

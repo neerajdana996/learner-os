@@ -8,8 +8,10 @@ import type { ZodType } from 'zod';
 import { complete } from './client.js';
 import { loadTemplate, render } from './prompts.js';
 import { LlmError } from './errors.js';
+import { MODELS, DEFAULT_MODEL, DEFAULT_REASONING_EFFORT, type ReasoningEffort } from './models.js';
 
-export { DEFAULT_MODEL, openai, complete } from './client.js';
+export { MODELS, DEFAULT_MODEL, type ReasoningEffort } from './models.js';
+export { getClient, complete } from './client.js';
 export { loadTemplate, render } from './prompts.js';
 export { LlmError, type LlmErrorReason } from './errors.js';
 
@@ -21,7 +23,9 @@ export { LlmError, type LlmErrorReason } from './errors.js';
 export interface PromptDef<Vars extends Record<string, string>, Out> {
   name: string;
   schema: ZodType<Out>;
+  /** Overrides the MODELS entry for this prompt name; rarely needed. */
   model?: string;
+  reasoningEffort?: ReasoningEffort;
   maxTokens?: number;
   /** Marker for the Vars type; never read at runtime. */
   readonly _vars?: Vars;
@@ -50,13 +54,22 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
   const system = tpl.example ? `${tpl.system}\n\n## Example\n${tpl.example}` : tpl.system;
   const user = render(tpl.user, vars);
 
+  // Per-prompt tier from MODELS, overridable on the definition. Effort is always
+  // sent explicitly: gpt-5.6 defaults to `medium` when it is omitted, which
+  // would buy reasoning latency on every call including trivial grading.
+  const tier = MODELS[def.name as keyof typeof MODELS] as
+    | { model: string; reasoningEffort: ReasoningEffort }
+    | undefined;
+  const model = def.model ?? tier?.model ?? DEFAULT_MODEL;
+  const reasoningEffort = def.reasoningEffort ?? tier?.reasoningEffort ?? DEFAULT_REASONING_EFFORT;
+
   let lastRaw = '';
   // Two attempts total: one retry for a model that returns malformed or
   // mis-shaped JSON. Errors thrown by complete() itself (truncation, missing
-  // key, SDK failures after its own retries) propagate immediately — retrying
-  // those would just repeat the same failure.
+  // key, refusal, SDK failures after its own retries) propagate immediately —
+  // retrying those would just repeat the same failure.
   for (let attempt = 0; attempt < 2; attempt++) {
-    lastRaw = await complete({ system, user, model: def.model, maxTokens: def.maxTokens });
+    lastRaw = await complete({ system, user, model, reasoningEffort, maxTokens: def.maxTokens });
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripFences(lastRaw));
