@@ -1097,6 +1097,47 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** One `GenerationError` class exists; `instanceof` holds for errors thrown by any generator.
 - **tests:** Existing concept-map and items suites pass unchanged (they import via the re-export); the new teaching suite asserts `instanceof GenerationError` on errors from a third module.
 
+### T-059 · Leech handling — a concept you keep failing eats the whole session
+- **status:** todo
+- **sprint:** 4
+- **severity:** high — a handful of leeches can consume most of a 10-minute daily budget
+- **depends_on:** T-016
+- **files:** `backend/src/lib/recordReview.ts`, `backend/src/modules/due/due.repository.ts`, `backend/src/db/schema.ts` (schema task), tests
+- **description:** From the Anki comparison (2026-09-05). Anki tags a card a **leech** after a threshold of lapses (default 8) and suspends or surfaces it, because a card you keep forgetting is usually a *content* problem — ambiguous wording, two ideas in one card — not a memory problem, and left alone it returns forever at short intervals.
+  learnos has no equivalent. `cards.lapses` is recorded and never read. A concept the learner keeps failing keeps coming back with a short interval, and because T-016 fills the session with due reviews before anything else, three or four leeches can crowd out the new teaching for the rest of the thirty days — silently converting the course into a loop over the learner's four worst concepts.
+  Add a lapse threshold. On crossing it: stop scheduling the concept normally, flag it for the founder's QA queue (a leech is strong evidence the *item* is bad, which is exactly what T-024 is looking for), and tell the learner plainly rather than dropping it silently.
+- **why it matters more here than in Anki:** an Anki user with 2,000 cards absorbs a few leeches. A learner with ~40 concepts and a 10-minute budget does not — and every session a leech steals is a session not spent on the taught-vs-held-out comparison the pilot exists to measure.
+- **acceptance:** A concept lapsed N times stops dominating the due queue, appears in the QA export, and the learner is told it has been set aside rather than finding it silently gone.
+- **tests:**
+  - A card at the lapse threshold is excluded from `GET /due`.
+  - A card one lapse below the threshold is still returned.
+  - Crossing the threshold flags the concept's items for QA.
+  - A leeched concept still appears on the map, marked, rather than vanishing.
+  - Day-30/45 tests still include it (T-038) — setting it aside affects *practice*, never *measurement*.
+
+### T-060 · Decide desired retention deliberately, rather than inheriting 0.9
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-040
+- **files:** `backend/src/scheduler/index.ts`, `docs/plan.md`
+- **description:** From the Anki comparison (2026-09-05). FSRS's `request_retention` (0.9 in ts-fsrs, the same default Anki ships) is the dial between study time and recall: higher retention means shorter intervals, more reviews per day, better recall. learnos inherits the default without a decision.
+- **the mismatch worth thinking about:** FSRS optimises for recall **at the moment a card is due**. The pilot measures recall **on day 30 and again on day 45**, the second after a fortnight of no practice at all. Those are different objectives. A schedule tuned for 90% recall-at-review is not necessarily the one that maximises recall at a fixed future date — and durability (day-45 ÷ day-30) is the number that decides whether the product scales.
+- **do not guess at it.** T-040's `schedulerCalibration` bins predicted recall against actual accuracy; that is the evidence for whether 0.9 is holding in practice. Decide after the first cohort, not before, and record the reasoning in plan.md either way. Raising it also raises daily review load, which collides with the 10-minute budget in T-016 — so this is a product decision, not just a parameter.
+- **acceptance:** `request_retention` is set explicitly with a written reason, whatever value is chosen.
+- **tests:** `schedulerCalibration` bins are within a stated tolerance of the target on real pilot data.
+
+### T-061 · Review clumping: concepts taught together stay together
+- **status:** todo
+- **sprint:** 4
+- **severity:** low for the pilot — noted because the cause is not the obvious one
+- **depends_on:** T-016
+- **files:** `backend/src/scheduler/index.ts`
+- **description:** From the Anki comparison (2026-09-05). FSRS is deterministic: same state plus same rating gives the same interval, so the two or three concepts taught in one session come due on the same day, and keep doing so. Anki breaks that tie with interval **fuzz**.
+- **verified, and not what it looks like:** `createEngine` sets `enable_fuzz: false`, which reads like the bug. It is not the fix either — measured against ts-fsrs 4.7.1, `enable_fuzz: true` produces **zero** spread across eight identical cards, even at 328-day intervals (it shifts the interval systematically, 328 → 338, but does not randomise). So turning the flag on would change nothing. Spreading load would mean doing it ourselves, or upgrading ts-fsrs and re-measuring.
+- **why it is low severity here:** the pilot teaches 2–3 concepts a day for thirty days, so each day's cohort starts on a different day and the load spreads naturally. This bites when a large batch is added at once, which the session planner's cap prevents by design.
+- **acceptance:** Either a measured decision to leave it, or a jitter applied at insert rather than inside the scheduler.
+- **tests:** Concepts taught in one session do not all fall due on the same date; and if left as-is, a test documenting that the clumping is bounded by the 3-concept cap.
+
 ### T-058 · Generated and recommended topics (post-pilot)
 - **status:** todo
 - **sprint:** 5
