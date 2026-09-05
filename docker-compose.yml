@@ -35,6 +35,11 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgres://learnos:learnos@postgres:5432/learnos
+      # Overrides whatever backend/.env says. That file is written for running
+      # on the host, where `localhost` is Postgres; inside a container it is the
+      # container itself, so `pnpm preflight` reported the test database
+      # unreachable while the host's own test runs were fine.
+      TEST_DATABASE_URL: postgres://learnos:learnos@postgres:5432/learnos_test
       REDIS_URL: redis://redis:6379
       PORT: 3001
       CORS_ORIGINS: http://localhost:3000,http://localhost:5173

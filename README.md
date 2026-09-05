@@ -21,12 +21,51 @@ git clone git@github.com:neerajdana996/learner-os-frontend.git  frontend
 git clone git@github.com:neerajdana996/learner-os-extension.git extension
 ```
 
-## Start everything
+## See and test everything
+
 ```bash
-cp backend/.env.example backend/.env   # add ANTHROPIC_API_KEY
-docker compose up --build              # postgres, redis, backend (/health), frontend (:3000)
-docker compose run --rm extension      # optional: build the extension zip into extension/dist
+cp backend/.env.example backend/.env   # OPENAI_API_KEY — only needed to generate a topic
+docker compose up --build -d           # postgres, redis, backend :3001, frontend :3000
+docker compose exec backend pnpm seed  # a usable dataset: no API key, no waiting
+open http://localhost:3000             # "Sign in as dev@learnos.local" — the dev-only button
 ```
+
+That gives you a signed-in learner with a 23-concept topic, 5 concepts already
+taught and 4 reviews due, so **Today's session** and the **Map** have something
+in them immediately. Without the seed you would have to generate a topic (about
+nine minutes and $0.46) and then wait out a thirty-day schedule to see a review.
+
+**The extension is built, not served** — a Chrome extension has to be loaded by
+the browser, so it can't be a compose service. It is behind a `build` profile:
+
+```bash
+docker compose run --rm extension              # → extension/dist/chrome-mv3 + a .zip
+```
+
+Then `chrome://extensions` → Developer mode → **Load unpacked** →
+`extension/dist/chrome-mv3`. Click the icon → **Connect**, and paste an
+extension token — `pnpm seed` prints one, or mint your own:
+
+```bash
+curl -X POST http://localhost:3001/auth/extension-token -H "x-user-id: <dev user id>"
+```
+
+### Resetting and looking inside
+
+```bash
+docker compose exec backend pnpm seed                # reset to a clean dataset, any time
+docker compose exec backend pnpm preflight           # check the LIVE environment, not the mocks
+docker compose exec backend pnpm qa <topicId>        # every concept, item and answer key, to a file
+docker compose logs -f backend                       # generation progress and per-topic cost
+```
+
+`pnpm seed` is safe to re-run after you have used the app — it clears the
+learner's answers along with their topic. It refuses any database that isn't
+local.
+
+Signing in with a password only works outside production: the route is not
+registered under `NODE_ENV=production`, and the button is compiled out of the
+production bundle.
 
 ## Develop one project
 ```bash

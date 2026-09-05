@@ -1641,3 +1641,16 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A learner in their first week gets no delta rather than a misleading one.
   - `TrendUp` / `TrendDown` are chosen by sign, and a zero delta renders neither.
 
+### T-078 · `pnpm seed` failed once you had actually used the app
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-025
+- **files:** `backend/src/scripts/seed.ts`, `backend/src/scripts/__tests__/seed.test.ts`, `docker-compose.yml`, `README.md`
+- **description:** The seed clears the dev user's topics before rebuilding them, but it deleted `items`, `concept_prereqs` and `cards` without the rows that point *at* them — `review_events` references the item it was an answer to, and `session_days` and `tests` reference the topic. So it worked on a fresh database and failed with a foreign-key violation the moment anyone had answered a single question. Resetting after a session is the entire reason to run it twice, so the failure landed exactly when the script was most needed. T-025's idempotency test passed because it only ever seeded twice in a row with nothing in between.
+- **acceptance:** `pnpm seed` resets a database that has been used, not just a fresh one.
+- **tests:**
+  - Seed → answer a review through the API → complete a session → seed again succeeds and leaves one topic. (Mutation-checked: removing the `review_events` delete fails this test.)
+- **notes:** (2026-09-05) Deletes now run in foreign-key order, children first, and are scoped by concept rather than by user — an item belongs to the topic, so a stray event from another account would block the delete just the same.
+  - Two more things found while making `docker compose up` a workflow anyone can follow: `TEST_DATABASE_URL` from `backend/.env` leaked into the container through `env_file` and pointed at `localhost`, which inside a container is the container — `pnpm preflight` reported the test database unreachable while the host's own tests were fine. Compose now sets it explicitly. And the README's start section still said `ANTHROPIC_API_KEY`, three provider changes out of date.
+  - **Verified by running it**: `docker compose up --build` → seed → dev sign-in through the frontend's `/api` proxy → dashboard with a real score → `docker compose run --rm extension` produced a loadable `chrome-mv3` folder and a zip → `pnpm preflight` green inside the container.
+
