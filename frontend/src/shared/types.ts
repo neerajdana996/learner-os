@@ -20,6 +20,10 @@ import type {
   TestStartSchema,
   TestSubmitSchema,
   PulseCreateSchema,
+  MagicLinkSchema,
+  VerifyQuerySchema,
+  MagicLinkResponseSchema,
+  ExtensionTokenResponseSchema,
   WsClientMessageSchema,
   WsServerMessageSchema,
   HealthResponseSchema,
@@ -51,6 +55,11 @@ export type TestStart = z.infer<typeof TestStartSchema>;
 export type TestSubmit = z.infer<typeof TestSubmitSchema>;
 
 export type PulseCreate = z.infer<typeof PulseCreateSchema>;
+
+export type MagicLink = z.infer<typeof MagicLinkSchema>;
+export type VerifyQuery = z.infer<typeof VerifyQuerySchema>;
+export type MagicLinkResponse = z.infer<typeof MagicLinkResponseSchema>;
+export type ExtensionTokenResponse = z.infer<typeof ExtensionTokenResponseSchema>;
 
 export type WsClientMessage = z.infer<typeof WsClientMessageSchema>;
 export type WsServerMessage = z.infer<typeof WsServerMessageSchema>;

@@ -12,11 +12,14 @@ export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
     baseUrl: import.meta.env.VITE_API_URL ?? '/api',
+    // The magic-link session is an httpOnly cookie (T-013), so it rides along
+    // automatically and there is no token for JS to hold.
     credentials: 'include',
     prepareHeaders: (headers) => {
-      // TODO(T-013): magic-link session token. Dev shortcut only:
+      // Dev-only escape hatch so `pnpm seed`'s user can be driven without a mail
+      // round trip. The backend rejects this header under NODE_ENV=production.
       const devUser = import.meta.env.VITE_DEV_USER_ID;
-      if (devUser) headers.set('x-user-id', devUser);
+      if (devUser && import.meta.env.DEV) headers.set('x-user-id', devUser);
       return headers;
     },
   }),
