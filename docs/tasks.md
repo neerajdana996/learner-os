@@ -359,7 +359,7 @@
   - Deliberately not added: no `mastery` column on `concepts` or `cards`. T-015's original wording implies one, but T-017 defines mastery as `predictedRecall(card, now)` and a stored copy would immediately drift from it. T-015 seeds FSRS state instead — see its ⚠ note.
 
 ### T-013 · Magic-link auth
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-054
 - **files:** `backend/src/modules/auth/auth.{routes,controller,service,repository}.ts`, `backend/src/modules/auth/auth.test.ts`, `backend/src/middleware/auth.ts`, `backend/src/lib/mail.ts`, `backend/src/lib/token.ts`, `backend/src/shared/schemas.ts`, `backend/src/app.ts`, `backend/src/test/db.ts`
@@ -382,7 +382,31 @@
   - Revoked session → 401.
   - The stored `auth_tokens.token` / `sessions.token` never equals the value handed to the client (hashing).
   - Regression: topics/due/reviews suites pass on cookie auth.
-- **notes:** Also update `docs/api.md` (it currently documents `x-user-id` as the dev path) and `frontend/src/store/api.ts`'s `prepareHeaders` TODO(T-013). `credentials: 'include'` is already set there, and CORS already runs with `credentials: true`, so the cookie path should work without further wiring — verify rather than assume.
+- **notes:** (2026-09-05) Built and verified. Backend suite 129 → 150 tests (21 new), `pnpm lint` clean in all three projects, `scripts/sync-shared.sh` run and copies identical. Both TODO(T-013) markers are gone.
+  - **Tokens are stored as SHA-256 hashes** (`lib/token.ts`), never raw. Two tests assert the stored value differs from what the client received, so a regression that persists the raw token fails loudly rather than silently. Lookup is by hash against a unique index rather than by comparing candidates in app code, so there is no per-character comparison to time — the 256 bits of entropy is what makes guessing infeasible, the hash is what makes a database dump useless. That is why `timingSafeEqual` (which this task's description suggested) isn't used: there is nothing to compare.
+  - **`POST /auth/magic` is not an account-existence oracle** — same status and body for a known and an unknown address, asserted by a test that compares the two responses directly rather than checking each in isolation.
+  - **Bug caught by my own test:** `MagicLinkSchema` was first written as `z.string().email().max(320).transform(trim+lowercase)`. Zod runs the format check *before* the transform, so a pasted address with a trailing space — the single most common real input — would have 400'd. Reordered to `z.string().trim().toLowerCase().email().max(320)`.
+  - **`x-user-id` is now rejected under `NODE_ENV=production`** (sprint.md's Sprint 2 exit criterion; the TODO T-008 deferred). It still works in dev so `docs/api.md`'s curl examples and `pnpm seed` don't need a mail round trip. Testing the guard needs `vi.stubEnv` + `vi.resetModules()` + a fresh `import` of the app, because `env.ts` parses `process.env` once at import time — noted in the test.
+  - **`seedUser()` now logs the user in** and returns `cookie`/`bearer` alongside the row, so migrating the existing suites off `x-user-id` was a one-line-per-call-site change. Every route suite (topics, due, reviews, sprint1) now authenticates through the real session path; only `auth.test.ts` still mentions the header, where it is the subject under test. This broke two tests that counted `sessions` rows without filtering — both were fixed by scoping the assertion, not by loosening it. Added `seedBareUser` in `auth.test.ts` for the cases that must start with no session.
+  - **Cookie parsing is 10 lines in `modules/auth/cookie.ts`** rather than adding `cookie-parser`. Express 5 sets cookies natively (`res.cookie`) and the only one we read is our own opaque token, so a dependency would buy nothing (CLAUDE.md). It lives in its own module because `middleware/auth.ts` needs the cookie name and the controller needs the middleware — importing the controller from the middleware would be a cycle.
+  - **`auth_tokens.consumed_at` marks single use** rather than the row being deleted, so a replayed link 401s as a *known-but-spent* token. Both paths are tested.
+  - New env: `APP_URL` (verify redirect target), `AUTH_TOKEN_TTL_MIN` (15), `SESSION_TTL_DAYS` (30) — the TTLs live in env so a test can shorten them without reaching into module internals.
+  - Deliberately skipped: no real mail transport (T-043 owns it — `setMailTransport` is the seam), no session-revocation route (T-046's `DELETE /me`), no rate limiting on `/auth/magic`. **Rate limiting is a real gap** — the endpoint creates a user and sends mail on every unauthenticated call. Logged as T-FIX-007.
+  - curl: see the new Auth section in `docs/api.md` for the full four-step flow.
+
+### T-FIX-007 · `POST /auth/magic` has no rate limit
+- **status:** todo
+- **sprint:** 2
+- **severity:** medium — unauthenticated endpoint that writes rows and sends mail
+- **depends_on:** T-013
+- **files:** `backend/src/modules/auth/auth.routes.ts`, `backend/src/lib/rateLimit.ts`, tests
+- **description:** Every unauthenticated `POST /auth/magic` creates a user row on first sight and sends an email. Unthrottled, that is both a mailbox-flooding tool aimed at any address the caller chooses and an easy way to fill the `users` and `auth_tokens` tables. For a 10-person pilot the blast radius is small, which is why it did not block T-013, but it should not reach the pilot unfixed. A small in-memory fixed-window limiter keyed on email **and** client IP is enough (no new dependency, single backend process); reject with 429. Also cap outstanding unconsumed tokens per user so repeated requests replace rather than accumulate.
+- **acceptance:** More than N requests for the same email inside the window return 429 and send no further mail.
+- **tests:**
+  - N+1 requests for the same email in the window → last one is 429 and no mail sent for it.
+  - Requests for different emails from the same IP are limited independently of the per-email counter.
+  - The window expiring lets the next request through (inject the clock).
+  - A 429 creates no `auth_tokens` row.
 
 ### T-014 · Users API + onboarding profile
 - **status:** todo

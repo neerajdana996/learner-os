@@ -3,7 +3,34 @@
 The backend listens on `http://localhost:3001`. The frontend proxy exposes the
 same routes under `http://localhost:3000/api`.
 
-Development requests use the `x-user-id` header until magic-link auth lands.
+## Auth
+
+Real requests carry a session: an httpOnly cookie for the web app, or
+`Authorization: Bearer <token>` for the extension. Both are rows in `sessions`.
+
+```sh
+# 1. request a link (the console transport prints it in dev)
+curl -XPOST localhost:3001/auth/magic \
+  -H 'content-type: application/json' \
+  -d '{"email":"you@example.com"}'          # -> 200 {"ok":true}
+
+# 2. exchange it for a session cookie (single use, 15-min expiry)
+curl -i -c cookies.txt 'localhost:3001/auth/verify?token=<token-from-the-link>'
+
+# 3. use the cookie
+curl -b cookies.txt localhost:3001/topics
+
+# 4. mint a bearer token for the extension
+curl -XPOST -b cookies.txt localhost:3001/auth/extension-token
+# -> 201 {"token":"...","expiresAt":"..."}
+```
+
+`POST /auth/magic` answers identically whether or not the address is
+registered, so it cannot be used to discover who has an account.
+
+**Dev shortcut:** outside production you may send `x-user-id: <uuid>` instead of
+a session. It is rejected under `NODE_ENV=production`. The examples below use it
+for brevity; substitute `-b cookies.txt` for anything production-like.
 Replace `<user-id>` and `<topic-id>` with UUIDs from the database or seed data.
 
 ## Health
