@@ -37,6 +37,19 @@
     width: 100%;
   }
 
+  /// An OAuth button: the provider's mark, then the label, both centred. The
+  /// design puts these on `surface` rather than the transparent secondary fill
+  /// — a provider button is a destination, not a secondary action, and the
+  /// white ground is what makes the coloured Google mark legible.
+  &--with-mark {
+    gap: 11px;
+    background: var(--surface);
+
+    &:hover:not(:disabled) {
+      background: var(--sunken);
+    }
+  }
+
   /// Primary calls to action on sign-in and marketing surfaces sit at 48px in
   /// the design, taller than the 44px floor used for in-page controls.
   &--lg {

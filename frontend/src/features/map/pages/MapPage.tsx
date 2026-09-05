@@ -15,10 +15,28 @@ function layerName(index: number, total: number): string {
   return `Part ${index + 1}`;
 }
 
+/** Which day of the course this is — "day 12 of 30" in the design. Null until
+ *  the topic has both dates, which is every topic created through onboarding. */
+export function courseDay(
+  startsAt: string | null | undefined,
+  endsAt: string | null | undefined,
+  now = Date.now(),
+): { day: number; total: number } | null {
+  if (!startsAt || !endsAt) return null;
+  const start = new Date(startsAt).getTime();
+  const total = Math.round((new Date(endsAt).getTime() - start) / 86_400_000);
+  if (total <= 0) return null;
+  // Day 1 is the day you started, not day 0 — nobody counts their first day as
+  // zero, and "day 0 of 30" reads as though nothing has begun.
+  const day = Math.min(total, Math.max(1, Math.floor((now - start) / 86_400_000) + 1));
+  return { day, total };
+}
+
 export default function MapPage() {
   const { topicId: paramId } = useParams();
-  // Reached from the nav without an id: fall back to the learner's first topic.
-  const { data: topics } = useTopicsQuery(undefined, { skip: Boolean(paramId) });
+  // Always fetched, not just as a fallback for a missing id: the header needs
+  // the topic's dates, and the query is shared cache with the dashboard.
+  const { data: topics } = useTopicsQuery();
   const topicId = paramId ?? topics?.topics[0]?.id ?? '';
 
   const { data, isLoading } = useMapQuery(topicId, { skip: !topicId });
@@ -33,6 +51,8 @@ export default function MapPage() {
   };
 
   const atRisk = data.concepts.filter((c) => c.atRisk);
+  const topic = topics?.topics.find((t) => t.id === topicId);
+  const progress = courseDay(topic?.startsAt, topic?.endsAt);
 
   const layers: MapConcept[][] = [];
   for (let i = 0; i < data.concepts.length; i += LAYER_SIZE) {
@@ -41,27 +61,35 @@ export default function MapPage() {
 
   return (
     <div className="u-stack u-stack--loose">
-      <div className="u-stack u-stack--tight">
-        <p className="u-eyebrow">{data.title}</p>
-        <div className="score">
-          <span className="score__value">{data.score}</span>
-          <span className="score__caption">
-            of what we&rsquo;ve taught, you&rsquo;d still recall today
-          </span>
+      {/* Score and what is slipping side by side: the number is the claim and
+          the callout is what to do about it, so reading one should not mean
+          scrolling past the other. */}
+      <div className="map-header">
+        <div className="u-stack u-stack--tight">
+          <p className="u-eyebrow">
+            {data.title}
+            {progress ? ` · day ${progress.day} of ${progress.total}` : null}
+          </p>
+          <div className="score">
+            <span className="score__value">{data.score}</span>
+            <span className="score__caption">
+              of what we&rsquo;ve taught, you&rsquo;d still recall today
+            </span>
+          </div>
         </div>
-      </div>
 
-      {atRisk.length > 0 ? (
-        <div className="at-risk">
-          <p className="at-risk__title">
-            {atRisk.length === 1 ? 'One is slipping' : `${atRisk.length} are slipping`}
-          </p>
-          <p className="at-risk__body">
-            {atRisk.map((c) => c.title).filter(Boolean).join(', ')}. Today&rsquo;s session puts them
-            back in front of you.
-          </p>
-        </div>
-      ) : null}
+        {atRisk.length > 0 ? (
+          <div className="at-risk">
+            <p className="at-risk__title">
+              {atRisk.length === 1 ? 'One is slipping' : `${atRisk.length} are slipping`}
+            </p>
+            <p className="at-risk__body">
+              {atRisk.map((c) => c.title).filter(Boolean).join(', ')}. Today&rsquo;s session puts
+              them back in front of you.
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       <ConceptLegend counts={counts} />
 

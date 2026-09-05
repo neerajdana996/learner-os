@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/Button';
 import { Field } from '../../../components/Field';
+import { GitHubMark, GoogleMark } from '../../../components/Icon';
 import { useDevLoginMutation, useRequestMagicLinkMutation } from '../authApi';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
@@ -12,8 +13,8 @@ const API_URL = import.meta.env.VITE_API_URL ?? '/api';
  * cookie the app never reads.
  */
 const PROVIDERS = [
-  { id: 'google', label: 'Continue with Google' },
-  { id: 'github', label: 'Continue with GitHub' },
+  { id: 'google', label: 'Continue with Google', Mark: GoogleMark },
+  { id: 'github', label: 'Continue with GitHub', Mark: GitHubMark },
 ] as const;
 
 /**
@@ -67,13 +68,14 @@ export default function LoginPage() {
             </div>
 
             <div className="u-stack u-stack--tight">
-              {PROVIDERS.map((provider) => (
+              {PROVIDERS.map(({ id, label, Mark }) => (
                 <a
-                  key={provider.id}
-                  className="btn btn--secondary btn--block btn--lg"
-                  href={`${API_URL}/auth/oauth/${provider.id}/start`}
+                  key={id}
+                  className="btn btn--secondary btn--block btn--lg btn--with-mark"
+                  href={`${API_URL}/auth/oauth/${id}/start`}
                 >
-                  {provider.label}
+                  <Mark />
+                  {label}
                 </a>
               ))}
             </div>
@@ -91,12 +93,20 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 error={error ? 'That didn’t go through. Try again in a moment.' : null}
-                hint="No password to forget."
+                hint="No password to forget. The link works once and expires in fifteen minutes."
               />
               <Button type="submit" block className="btn--lg" disabled={!email.trim() || isLoading}>
                 {isLoading ? 'Sending…' : 'Email me a link'}
               </Button>
             </form>
+
+            {/* What we collect, before anyone signs up rather than buried in a
+                settings page — the product's whole proposition is that it
+                measures you, so saying so here is the honest place. */}
+            <p className="fine-print">
+              We log what you answer and how long you took, because that&rsquo;s the measurement.{' '}
+              <a href="/privacy">What we keep, in plain words</a>.
+            </p>
 
             {import.meta.env.DEV && (
               <div className="dev-panel">

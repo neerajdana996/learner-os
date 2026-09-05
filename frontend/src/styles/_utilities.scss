@@ -21,6 +21,12 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
+
+  /// The one the eye should land on when two eyebrows stack — the concept's
+  /// name above a session card, the topic above the map.
+  &--strong {
+    color: var(--ink-2);
+  }
 }
 
 .u-sr-only {

@@ -1,6 +1,20 @@
 @use "../variables" as *;
 @use "../mixins" as *;
 
+/// The score and the at-risk callout, side by side above the map. Stacks on a
+/// phone, where two columns of 300px is neither.
+.map-header {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $s-5;
+  align-items: start;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+    gap: $s-7;
+  }
+}
+
 .score {
   display: flex;
   align-items: baseline;

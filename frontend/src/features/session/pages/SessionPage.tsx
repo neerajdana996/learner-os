@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../../components/Button';
 import { ConfidenceTap } from '../../../components/ConfidenceTap';
+import { CheckCircle, ChevronDown } from '../../../components/Icon';
+import { Prose } from '../../../components/Prose';
 import { QuestionCard } from '../../../components/QuestionCard';
 import type { Confidence, SessionResponse } from '../../../shared';
 import { useSubmitReviewMutation } from '../../reviews/reviewsApi';
@@ -9,6 +11,19 @@ import { useCompleteSessionMutation, useSessionQuery } from '../sessionApi';
 
 type Rating = NonNullable<Confidence>;
 type NewConcept = SessionResponse['newConcepts'][number];
+
+/**
+ * Roughly what is left, in minutes — the same weights the server's planner uses
+ * to size the session in the first place (`lib/planner.ts`), so the number the
+ * learner sees agrees with the budget the session was built to.
+ */
+const SECONDS_PER_CONCEPT = 180;
+const SECONDS_PER_REVIEW = 45;
+
+export function minutesLeft(conceptsLeft: number, reviewsLeft: number): number {
+  const seconds = conceptsLeft * SECONDS_PER_CONCEPT + reviewsLeft * SECONDS_PER_REVIEW;
+  return Math.max(1, Math.round(seconds / 60));
+}
 
 /** Loose match, on purpose: this picks which prepared correction to show, it
  *  does not grade anything. Grading is server-side and lives in one place. */
@@ -112,25 +127,48 @@ export default function SessionPage() {
   const correction = revealed ? matchCorrection(concept, attempt) : null;
   const canAnswer = response !== null && response !== '' && confidence !== null;
 
+  const { conceptId } = concept;
+
+  function advance() {
+    setTaught((prev) => [...prev, conceptId]);
+    // Past the last concept, `concept` is undefined and the summary renders —
+    // no separate "finished" flag needed.
+    setIndex(index + 1);
+  }
+
   return (
     <div className="u-stack u-stack--loose">
       <p className="u-eyebrow">
         Concept {index + 1} of {data.newConcepts.length} · then {data.dueReviews.length} reviews
       </p>
 
+      {/* The concept's own name. Without it the learner reads three cards of
+          prose with no idea what the idea is called — and the map, the
+          extension and the day-30 test all name it. */}
+      <p className="u-eyebrow u-eyebrow--strong">New concept · {concept.title}</p>
+
       <div className="teach">
         {/* TRY FIRST — productive failure (plan.md §3.5). Withheld for
             example_first, where the worked explanation comes first instead. */}
         {concept.teachMode === 'try_first' && concept.tryFirstPrompt ? (
           <div className="teach__card">
-            <p className="teach__label">Have a go first</p>
+            <p className="teach__label">
+              {revealed ? (
+                <>
+                  <CheckCircle className="teach__label-icon" />
+                  Your attempt
+                </>
+              ) : (
+                'Have a go first'
+              )}
+            </p>
             <p className="teach__prompt">{concept.tryFirstPrompt}</p>
             {revealed ? (
-              <p className="teach__attempt" style={{ marginTop: 16 }}>
+              <p className="teach__attempt">
                 {attempt || <span className="u-muted">You skipped this one.</span>}
               </p>
             ) : (
-              <div className="u-stack" style={{ marginTop: 16 }}>
+              <div className="u-stack teach__attempt-form">
                 <textarea
                   className="field__textarea"
                   rows={3}
@@ -153,7 +191,7 @@ export default function SessionPage() {
         {correction ? (
           <div className="teach__card teach__card--correction">
             <p className="teach__label teach__label--warn">A common way to read it</p>
-            <p className="teach__prose">{correction.why}</p>
+            <Prose className="teach__prose" text={correction.why} />
           </div>
         ) : null}
 
@@ -161,12 +199,14 @@ export default function SessionPage() {
           <>
             <div className="teach__card">
               <p className="teach__label">How to hold it</p>
-              <p className="teach__prose">
-                {readMore ? concept.explanationLong : concept.explanationShort}
-              </p>
+              <Prose
+                className="teach__prose"
+                text={readMore ? concept.explanationLong : concept.explanationShort}
+              />
               {!readMore ? (
                 <button type="button" className="teach__more" onClick={() => setReadMore(true)}>
                   Read more
+                  <ChevronDown />
                 </button>
               ) : null}
             </div>
@@ -179,7 +219,7 @@ export default function SessionPage() {
                   {verdict.correct ? 'Right.' : 'Not this time.'} {verdict.feedback}
                 </p>
               ) : (
-                <div style={{ marginTop: 20 }}>
+                <div className="teach__confidence">
                   <ConfidenceTap value={confidence} onChange={setConfidence} />
                 </div>
               )}
@@ -189,35 +229,51 @@ export default function SessionPage() {
       </div>
 
       {revealed ? (
-        <div className="u-row">
-          {verdict ? (
-            <Button
-              onClick={() => {
-                setTaught((prev) => [...prev, concept.conceptId]);
-                // Past the last concept, `concept` is undefined and the summary
-                // renders — no separate "finished" flag needed.
-                setIndex(index + 1);
-              }}
-            >
-              Next
-            </Button>
-          ) : (
-            <Button
-              disabled={!canAnswer}
-              onClick={async () => {
-                const result = await submitReview({
-                  itemId: concept.item.itemId,
-                  response,
-                  confidence,
-                  latencyMs: Date.now() - shownAt.current,
-                  surface: 'web',
-                }).unwrap();
-                setVerdict({ correct: result.correct, feedback: result.feedback });
-              }}
-            >
-              Check
-            </Button>
-          )}
+        <div className="session-actions">
+          <div className="u-row">
+            {verdict ? (
+              <Button onClick={advance}>Next</Button>
+            ) : (
+              <>
+                <Button
+                  disabled={!canAnswer}
+                  onClick={async () => {
+                    const result = await submitReview({
+                      itemId: concept.item.itemId,
+                      response,
+                      confidence,
+                      latencyMs: Date.now() - shownAt.current,
+                      surface: 'web',
+                    }).unwrap();
+                    setVerdict({ correct: result.correct, feedback: result.feedback });
+                  }}
+                >
+                  Check
+                </Button>
+                {/* Recorded, not silently dropped: a skipped retrieval is a
+                    real data point (no answer, no scheduling) and pretending
+                    it did not happen would bias the calibration numbers. */}
+                <Button
+                  variant="quiet"
+                  onClick={async () => {
+                    await submitReview({
+                      itemId: concept.item.itemId,
+                      response: null,
+                      confidence: null,
+                      latencyMs: Date.now() - shownAt.current,
+                      surface: 'web',
+                    }).unwrap();
+                    advance();
+                  }}
+                >
+                  Skip this one
+                </Button>
+              </>
+            )}
+          </div>
+          <p className="session-actions__left">
+            ~{minutesLeft(data.newConcepts.length - index - 1, data.dueReviews.length)} min left
+          </p>
         </div>
       ) : null}
     </div>
