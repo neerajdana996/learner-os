@@ -1,0 +1,25 @@
+@use "../variables" as *;
+
+/// The dev-only sign-in block on the login page (T-070).
+///
+/// Deliberately looks like scaffolding rather than product: a dashed border and
+/// a small uppercase label, so nobody mistakes it for a feature in a
+/// screenshot. `import.meta.env.DEV` drops it from the production bundle
+/// entirely, but it should read as temporary even when it is on screen.
+.dev-panel {
+  margin-top: 28px;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: $radius;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dev-panel__label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

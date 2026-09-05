@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/Button';
 import { Field } from '../../../components/Field';
-import { useRequestMagicLinkMutation } from '../authApi';
+import { useDevLoginMutation, useRequestMagicLinkMutation } from '../authApi';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -15,9 +16,27 @@ const PROVIDERS = [
   { id: 'github', label: 'Continue with GitHub' },
 ] as const;
 
+/**
+ * Dev sign-in (T-070). `import.meta.env.DEV` is a build-time constant, so this
+ * whole block — button, credentials and all — is dropped from the production
+ * bundle by dead-code elimination rather than merely hidden. The backend does
+ * not register the route in production either; either lock alone would do.
+ */
+const DEV_CREDENTIALS = { email: 'dev@learnos.local', password: 'learnos' };
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [requestLink, { isLoading, isSuccess, error }] = useRequestMagicLinkMutation();
+  const [devLogin, { isLoading: devLoggingIn, error: devError }] = useDevLoginMutation();
+  const navigate = useNavigate();
+
+  async function signInAsDev() {
+    await devLogin(DEV_CREDENTIALS).unwrap();
+    // The session is an httpOnly cookie the app never reads, so the route guard
+    // decides where this lands — onboarding or the dashboard, depending on
+    // whether this user has a topic yet.
+    navigate('/', { replace: true });
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -78,6 +97,26 @@ export default function LoginPage() {
                 {isLoading ? 'Sending…' : 'Email me a link'}
               </Button>
             </form>
+
+            {import.meta.env.DEV && (
+              <div className="dev-panel">
+                <p className="dev-panel__label">Dev only — not in the production build</p>
+                <Button
+                  type="button"
+                  block
+                  className="btn--secondary"
+                  disabled={devLoggingIn}
+                  onClick={() => void signInAsDev()}
+                >
+                  {devLoggingIn ? 'Signing in…' : `Sign in as ${DEV_CREDENTIALS.email}`}
+                </Button>
+                {Boolean(devError) && (
+                  <p className="dev-panel__label">
+                    Dev sign-in failed. Is the backend running with NODE_ENV=development?
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

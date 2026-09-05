@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { LandingRoute } from './LandingRoute';
+import { RequireAuth } from './RequireAuth';
 import { RouteFallback } from './RouteFallback';
 
 /**
@@ -11,7 +13,6 @@ import { RouteFallback } from './RouteFallback';
  * being able to type an email. Each of these becomes its own chunk, fetched
  * when its route is first visited.
  */
-const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
 const OnboardingPage = lazy(() => import('../features/onboarding/pages/OnboardingPage'));
 const DiagnosticPage = lazy(() => import('../features/diagnostic/pages/DiagnosticPage'));
 const SessionPage = lazy(() => import('../features/session/pages/SessionPage'));
@@ -21,17 +22,13 @@ const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPa
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Signed-out: no shell, no score badge, nothing to distract from one action. */}
-      <Route
-        path="/"
-        element={
-          <Suspense fallback={<RouteFallback />}>
-            <LoginPage />
-          </Suspense>
-        }
-      />
+      {/* Signed out this is the login screen — no shell, no score badge,
+          nothing to distract from one action. Signed in it forwards to
+          whichever screen this learner is actually up to. */}
+      <Route path="/" element={<LandingRoute />} />
 
-      <Route element={<AppShell />}>
+      <Route element={<RequireAuth />}>
+        <Route element={<AppShell />}>
         <Route
           path="/onboarding"
           element={
@@ -80,6 +77,7 @@ export function AppRoutes() {
             </Suspense>
           }
         />
+        </Route>
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

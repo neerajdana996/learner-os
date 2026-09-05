@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { MagicLink, MagicLinkResponse } from '../../shared';
+import type { DevLogin, MagicLink, MagicLinkResponse } from '../../shared';
 
 /**
  * Magic-link sign-in. The OAuth routes are deliberately absent: the provider
@@ -12,7 +12,13 @@ export const authApi = api.injectEndpoints({
     requestMagicLink: build.mutation<MagicLinkResponse, MagicLink>({
       query: (body) => ({ url: '/auth/magic', method: 'POST', body }),
     }),
+    /** Dev only (T-070). The backend does not register this route under
+     *  NODE_ENV=production, so calling it there is a 404. */
+    devLogin: build.mutation<{ ok: true }, DevLogin>({
+      query: (body) => ({ url: '/auth/dev-login', method: 'POST', body }),
+      invalidatesTags: ['Me'],
+    }),
   }),
 });
 
-export const { useRequestMagicLinkMutation } = authApi;
+export const { useRequestMagicLinkMutation, useDevLoginMutation } = authApi;
