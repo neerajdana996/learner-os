@@ -8,7 +8,7 @@
 
 ## Where things stand — 2026-09-05
 
-**61 of 106 tasks done** (1 in progress, 1 blocked, 43 todo). Sprints 1 and most of 2 are shipped: backend **407 tests**, frontend **49**, extension **31**, all lint-clean.
+**61 of 110 tasks done** (1 in progress, 1 blocked, 47 todo). Sprints 1 and most of 2 are shipped: backend **407 tests**, frontend **49**, extension **31**, all lint-clean.
 
 > The count above used to read "55 of 94" and had drifted — it is now taken from the file itself (`awk '/^### T-/{t=$2} /^- \*\*status:\*\*/{print $3}' docs/tasks.md | sort | uniq -c`), so it is worth re-deriving rather than hand-incrementing.
 
@@ -26,7 +26,9 @@ Every item today is a prompt string and a textarea, whatever the subject. Two of
 
 **Done:** `T-079` (schema — `concepts.domain`, `items.answer_kind`, `review_events.assisted`) · `T-090` (`shared-ui/` — one source of truth for presentation, synced into both clients) · `T-091` (schema — `topics.language`, threaded into the item and teaching prompts, asked at onboarding).
 **Blocked on a founder call:** `T-081` — CodeMirror is a UI library and `loop.md §2` bars one. It blocks `T-088` only.
-**Next:** `T-080` (`blocks` in the shared item payload) — `loop.md §0`'s first-unblocked rule, now that the founder's `T-091` detour is done. `T-092` needs `T-082` as well as `T-091`, so it is not next. Nothing in Sprint 5 jumps the measurement-first order above without a deliberate decision.
+**Next:** `T-080` (`blocks` in the shared item payload) — `loop.md §0`'s first-unblocked rule, now that the founder's `T-091` detour is done. `T-092` needs `T-082` as well as `T-095`, so it is not next. Nothing in Sprint 5 jumps the measurement-first order above without a deliberate decision.
+
+**The free-text topic flow, designed 2026-09-05 (Neeraj) — `T-095` → `T-098`.** The question that started it: `T-091`'s language list is hardcoded, and language is only one example of what a topic needs to know. The answer that came out of it is a split by **who can answer**: what only the learner can say is a fast, cheap call on the topic string *before* the topic exists (`T-096`, the probe), and what only the model can say runs in the worker where nobody is waiting (`T-092`, the profile). The probe's more valuable half is not the metadata but the **viability verdict** — today any 2–120 character string enqueues ~73 model calls and five to ten minutes before anyone discovers it was `asdf` or "everything about physics". **Free text stays post-pilot** (`T-058`), gated on `T-098`'s critic, because hand-review does not scale to bespoke topics and unreviewed questions make the retention number meaningless. The pilot's three are pinned (`T-097`) and never touch any of it.
 
 **Things this sprint learned that are expensive to rediscover:**
 - **Two schemas, not one.** `ItemGenerationSchema` is what the model may return; `ItemPayloadSchema` is what we store. No model-writable field accepts markup, which closes an XSS class by construction, and the model quotes line *text* rather than line numbers — it miscounts them constantly, and the worker resolves the index.
@@ -1238,7 +1240,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 ### T-058 · Generated and recommended topics (post-pilot)
 - **status:** todo
 - **sprint:** 5
-- **depends_on:** T-044, T-045
+- **depends_on:** T-044, T-045, T-096, T-098
 - **files:** `backend/src/llm/prompts/topicSuggest/`, `backend/src/modules/topics/`, `frontend/src/features/onboarding/topics.ts`
 - **description:** Founder vision (Neeraj, 2026-09-05): onboarding captures a profile — what the learner does, why they are here — and then **generates or recommends** topics suited to them, rather than offering a fixed pair. "DSA for developers, colour theory for designers, algebra for students."
 - **why this is Sprint 5 and not now — the pilot cannot absorb it:**
@@ -1246,6 +1248,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Content QA does not scale to it.** T-024 measures ~1 hour of hand-review per topic and T-045 has the founder reading every question. Ten bespoke topics is ten hours on content nobody has checked — and unchecked questions make the retention number meaningless anyway.
 - **not RAG, and not Qdrant.** plan.md §5 rules both out, and there is no Qdrant in the repo — the only mention is that line. RAG answers "find the relevant existing text"; learnos has no corpus, it *generates* a concept map and writes the questions. Suggesting a topic from a profile is one prompt returning a short list. If a corpus ever exists (a library of QA'd topics worth searching), revisit then — that is a different product, not a missing dependency.
 - **what already exists to build on:** `features/onboarding/topics.ts` holds the pilot pair behind `recommendTopic(role)`, deliberately a lookup. Swapping that for a model call is the whole change on the client; the onboarding UI does not move.
+- **the two gates, added 2026-09-05 (Neeraj):** the free-text flow was designed out in full and split into `T-095` → `T-096` (the probe: what to ask the learner, and whether the topic is even viable before it costs ~73 calls) and `T-098` (the automated critic, without which hand-review does not scale to bespoke topics). `T-097` pins the pilot three so the pilot never depends on any of it. **Confirmed post-pilot**: free text does not ship for the cohort, because the day-46 branch needs several people on the same material to separate "the teaching failed" from "that topic generated badly". What survives free text is the headline number itself — taught-versus-held-out is within-subject, so the delta still pools across learners on different topics; what is lost is the ability to explain it.
 - **acceptance:** A learner's profile yields 3–5 candidate topics with a stated reason each; choosing one generates and QA-gates it before teaching starts.
 - **tests:**
   - Suggestions for a stated role are on-topic and distinct from each other.
@@ -1902,16 +1905,17 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
     ```
     Omit `language` for "doesn't matter"; the row stores null and every prompt loses the line.
   - **Deliberately skipped:** nothing checks that generated content *obeys* the language — it is an instruction with no verifier. Logged as `T-094`.
+  - ⚠ **Partly superseded the same day, by design review (Neeraj, 2026-09-05).** The column and the six-language list assume every topic has a language-shaped unknown, and only two of the three pilot topics do. `T-095` replaces `topics.language` with `topics.metadata jsonb` and `T-096` generates the questions per topic instead of hardcoding them. **What survives:** `render()`'s optional sections, the threading into every item and teaching call, the "learner chooses, not the model" principle, and absent-means-nobody-said. Left as shipped rather than reverted — it is working, tested and the right behaviour for the pilot's three topics, and `T-097` pins those anyway.
 
 ### T-092 · Topic profile — the decisions that are per-topic, not per-concept
 - **status:** todo
 - **sprint:** 5
-- **depends_on:** T-082, T-091
+- **depends_on:** T-082, T-095
 - **files:** `backend/src/llm/prompts/topicProfile/{system,user,example}.md`, `backend/src/generator/topicProfile.ts`, `backend/src/shared/schemas.ts`, `backend/src/workers/*`, `backend/fixtures/`, tests alongside
 - **description:** One model call per topic, between the concept map and the items, that fixes what the whole topic has to agree about. T-091 supplies the language when the learner gave one; this call supplies the rest, which a learner could not:
   - `styleNotes` — the house style the listings follow: `const` over `let`, `async/await` over `.then`, whether errors are thrown or returned. Forty independent style decisions read to a learner as "this course was generated", without their being able to say why.
   - `componentVocabulary` — for a `systems` topic, the node names the renderer knows how to draw. A diagram naming a component the layout code has never heard of is a broken picture, and the model has no other way to find out what exists.
-  - `language`, only when T-091 left it unset, with `languageInferred: true` recorded so content QA can see which topics were guessed at.
+  - the metadata keys the learner left unset — `language` among them — each recorded as inferred (`inferred: ['language']`) so content QA can see which topics were guessed at. T-091 named this as `topics.language`; `T-095` generalises it to `topics.metadata`, and the rule is unchanged: when the learner answered, nothing infers anything.
   - **Why not in the concept-map call.** That call is already the longest and most expensive in the pipeline (`sol`), and its output is the foundation the whole thirty days is built on. Asking it to also fix a house style is how a 40-concept map quietly comes back with 22.
   - **Why not in the item calls.** Consistency across a topic is exactly what a per-concept call structurally cannot decide — that is the entire reason this step exists.
 - **acceptance:** One extra call per topic (74 against T-074's measured 73). Every item and teaching call receives the profile. A topic whose profile call fails retries once and then fails the job loudly, as every other generated artifact does.
@@ -1933,11 +1937,11 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 ### T-094 · Nothing checks that generated content is in the language that was asked for
 - **status:** todo
 - **sprint:** 5
-- **depends_on:** T-091, T-092
+- **depends_on:** T-095, T-092
 - **files:** `backend/src/generator/items.ts`, `backend/src/generator/teaching.ts`, `backend/src/modules/qa/*` (T-024's), tests alongside
 - **description:** T-091 threads the learner's language into every item and teaching prompt, and that is the whole enforcement: an instruction. Every other generated artifact in this pipeline is Zod-validated and domain-checked before it is stored — a rubric over 200 characters, a `transferCount` of three, a missing `isTransfer` — and this one is not checked at all.
   - It matters more than a style slip. The failure T-091 exists to prevent is silent: a learner asks for Python, forty independent calls mostly comply, and two concepts come back in JavaScript. Nobody sees it until Day 12, and by then the item is scheduled and its `review_events` are already in the retention measurement.
-  - **Where the check can live.** `validateItems` cannot read a language out of a prompt string today — that only becomes checkable once `T-080` puts real listings in `blocks`, where a block carries its own `language`. So the cheap, correct version is: assert every `code` block's declared language matches the topic's, at parse time, in the same place every other domain rule lives. Prose is not checked; a mention of "the JS version" in an explanation is not a defect.
+  - **Where the check can live.** `validateItems` cannot read a language out of a prompt string today — that only becomes checkable once `T-080` puts real listings in `blocks`, where a block carries its own `language`. So the cheap, correct version is: assert every `code` block's declared language matches the topic's `metadata.language`, at parse time, in the same place every other domain rule lives. Prose is not checked; a mention of "the JS version" in an explanation is not a defect.
   - **The QA tool is the other half** (T-024). A topic's QA view should name the language and flag any concept whose blocks disagree, because the model *declaring* `python` on a block of JavaScript is a failure this check cannot catch and a human reading it can.
   - Depends on T-092 as well as T-091: for a topic whose language was inferred rather than chosen, the profile's language is the one to check against, and `languageInferred` is what tells QA to look harder.
 - **acceptance:** An item whose `code` block declares a language other than the topic's is rejected inside the retry loop, so it costs one more call rather than the whole topic — the treatment T-FIX-011 established for this class. A topic with no language checks nothing and generates exactly as it does today.
@@ -1947,4 +1951,79 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The rejection happens inside the retry loop: a first response in the wrong language and a second in the right one succeeds, one extra call, no failed topic.
   - Teaching content is checked the same way as items — the worked example an `example_first` concept must contain is the other place a stray language lands.
   - QA lists the topic's language and flags a concept whose blocks disagree.
+- **notes:**
+
+### T-095 · Schema — `topics.metadata`, superseding `topics.language` (schema task)
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-091
+- **files:** `backend/src/db/schema.ts`, `backend/src/db/__tests__/schema.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/modules/topics/*`, `backend/src/generator/*`, `backend/src/llm/prompts/{items,teaching}/user.md`, tests alongside
+- **description:** Founder decision (Neeraj, 2026-09-05). `topics.language` shipped one commit ago and the column is the part of T-091 that does not generalise: it assumes every topic has a language-shaped unknown. *Dynamic programming* has one. *CAP theorem* has "which datastores do you actually run", so the examples land on Postgres rather than a toy. A Spanish topic has Castilian-versus-Latin-American; a Kubernetes topic has which cloud. One named column is right for two of the three pilot topics and wrong for everything outside them.
+  - `topics.metadata jsonb not null default '{}'`, keyed by the probe's question keys (T-096). `topics.language` is dropped; **`language` becomes a documented reserved key** so `T-094`'s verifier, the QA tool and the prompts all still have one agreed name for it.
+  - **What survives from T-091 untouched:** `render()`'s `{{#var}}…{{/var}}` optional sections, the threading of learner choice into every item and teaching call, and the rule that a value absent means nobody said — which is now an absent *key* rather than a null column. Only the column and the hardcoded six-language list are superseded. Say so in T-091's notes rather than quietly rewriting it.
+  - **The prompt line becomes a block, not a line.** One `{{#metadata}}` section wrapping a rendered `key: value` list, so a topic with three answers and a topic with none both produce sensible prompts. The optional-section machinery is what makes the empty case cost nothing.
+  - `default '{}'` and `not null`, unlike `topics.language`: an empty object and an absent key already express "nobody said", so there is no third state for null to carry and a nullable jsonb would only invite `metadata?.language` everywhere.
+- **acceptance:** A topic created with metadata carries every key into every item and teaching prompt; one created without generates exactly as it does today. `pnpm db:push` and `pnpm db:test:push` apply with no prompts. No column named `language` remains on `topics`.
+- **tests:**
+  - `topics.metadata` defaults to `{}`; a topic inserted without one round-trips as `{}`, and an explicit null is rejected.
+  - Arbitrary keys round-trip, including one whose value contains `<` and `>` — escaped in the rendered prompt like every other learner-supplied value.
+  - The rendered item prompt contains every key and value when metadata is non-empty, and no metadata block at all when it is `{}` — asserted on the prompt, not the vars object.
+  - Same for the teaching prompt: an `example_first` concept's worked example is the other place a stray convention lands.
+  - Regression: T-091's `{{#var}}` behaviour is unchanged — an unclosed section still throws, a section var never supplied still throws.
+- **notes:**
+
+### T-096 · Topic probe — one cheap call decides what to ask the learner
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-095
+- **files:** `backend/src/llm/prompts/topicProbe/{system,user,example}.md`, `backend/src/generator/topicProbe.ts`, `backend/src/modules/topics/*`, `backend/src/shared/schemas.ts`, `backend/fixtures/`, `frontend/src/features/onboarding/*`, tests alongside
+- **description:** The other half of the split T-095 opens up. There are two kinds of per-topic unknown and they divide by **who can answer them**: what only the learner can say (a preference about the material) and what only the model can say (house style, component vocabulary — that is T-092, and it runs in the worker where nobody is waiting). This task is the first half: one cheap call on the topic *string*, before the topic exists, that returns what is worth asking.
+  - `POST /topics/probe`, synchronous, `gpt-5.6-luna` at `reasoning_effort: none`. Against the ~73 calls T-074 measured for a topic this rounds to nothing, and a learner is watching, so latency is the constraint rather than cost.
+  - Returns `{ understood, viable, narrower[], domain, questions[] }`. `questions` is **0–3**, each `{ key, prompt, options[2-6], allowOther }`, every one skippable in one tap. Zero is a normal answer — *CAP theorem* may well have nothing worth asking, and onboarding is where a ten-person pilot loses two of them.
+  - **The viability verdict is worth more than the metadata.** `TopicCreateSchema` accepts any 2–120 character string today and immediately enqueues a job that spends ~73 model calls over five to ten minutes; `asdf` passes, and so does "everything about physics". The learner finds out ten minutes later on a wait screen. `too_broad` comes back with 2–4 narrowings ("Physics is a degree — did you mean *Newtonian mechanics* or *special relativity*?"), `too_narrow` says it cannot fill thirty days, `not_teachable` covers a private internal system with no public knowledge to draw on. All three are recoverable **while the learner is still on the screen**, which is the whole reason this call runs before creation rather than inside the worker.
+  - `domain` is a topic-level hint, not an answer: `T-082` still classifies each concept, because a topic called *Dynamic programming* contains concepts whose correct answer is prose.
+  - **The §3.1 guard ships with this task and cannot be deferred.** A model asked "what should we ask this learner?" will propose *"Do you prefer worked examples or figuring it out yourself?"* — it is the most natural question in the space, `plan.md §3.1` and `CLAUDE.md` ban it outright, and it would also let the learner self-select into `teach_mode` and destroy the §3.4 A/B, which is the pilot's second measurement. A prompt instruction is not enough on its own.
+    - **The shape rule:** a valid question names a property *of the subject matter* whose answer values could literally appear in a listing, an example or a diagram. "Which language" qualifies — the value shows up in every snippet. "How fast do you want to go" has no such value anywhere in the material.
+    - **The mechanical backstop:** a deny-list over the question and option text — learn, prefer, style, pace, difficulty, easy/hard, level, beginner/intermediate/advanced, experience, familiar, comfortable, remind, schedule, motivat, goal, visual, auditory. Experience level is banned for its own reason as well as §3.1's: the diagnostic measures prior knowledge properly (plan.md §3.3), and a self-report would be a worse signal competing with it.
+    - **A tripped question is dropped, never the topic.** The list is blunt and will false-positive on an ML topic ("which learning rate schedule" trips twice). That asymmetry is deliberate: a false positive costs one unasked question, a false negative costs a violated founder rule and a corrupted A/B. Every generated question is logged into the QA export either way, so the first few topics can be read by hand.
+  - **Injection surface:** the topic title already reaches a prompt escaped and tagged as data (T-091). The probe adds a second call over the same string and gets the same treatment; additionally, nothing the probe *returns* may be treated as an instruction — the questions are rendered as UI, and the answers land in `topics.metadata` as data.
+- **acceptance:** A viable topic yields 0–3 material questions and creates normally. A non-viable one never reaches `POST /topics` and never costs a generation. No returned question survives the guard if it asks about the learner rather than the material. The onboarding step renders whatever comes back without knowing any topic in advance.
+- **tests:**
+  - Fixtures for all four verdicts parse; `too_broad` without `narrower` is rejected.
+  - *Dynamic programming* yields a language question; *CAP theorem* yields zero or a systems question, never a language one — asserted against fixtures, not the live API.
+  - Every §3.1-banned phrasing in a table of ~15 examples is dropped, and the topic still creates with the surviving questions.
+  - A question whose text contains an ML false positive is dropped rather than failing the call — documented as accepted behaviour, not a bug.
+  - The rendered onboarding step submits `metadata` keyed by the returned `key`s, and omits a key the learner skipped.
+  - A probe response is never rendered as markup or instructions anywhere.
+  - The probe is not called from the worker, and generation is unchanged when it is skipped entirely.
+- **notes:**
+
+### T-097 · Pinned probe output for the three pilot topics
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-096
+- **files:** `frontend/src/features/onboarding/topics.ts`, `backend/src/modules/topics/*`, tests alongside
+- **description:** Two learners typing *Dynamic programming* must get **identical questions and identical material**, or the five people on that topic are not on the same topic and the taught-versus-held-out comparison is comparing across different courses. A generated probe is not deterministic enough to promise that.
+  - So the pilot's three topics carry hand-written pinned probe output, checked into `topics.ts` next to `PILOT_TOPICS`, and the probe call is **skipped entirely** for them. Free-text topics get the model. That also keeps the model out of the pilot's critical path, which is worth having on its own.
+  - This is the same argument that made `recommendTopic` a lookup rather than a call, and it lapses at the same moment: when T-058 makes topics per-learner, there is no fixed set left to pin.
+- **acceptance:** Creating any of the three pilot topics makes zero probe calls and produces byte-identical questions every time. Any other title goes to the model.
+- **tests:** A pilot title never calls the probe; a non-pilot title always does; two creations of the same pilot title produce identical metadata keys and options.
+- **notes:**
+
+### T-098 · Automated QA critic pass over generated items
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-024, T-045
+- **files:** `backend/src/llm/prompts/itemCritic/`, `backend/src/generator/critic.ts`, `backend/src/scripts/qa.ts`, tests alongside
+- **description:** **The gate that free-text topics are blocked behind.** T-024 measures ~1 hour of hand-review per topic and T-045 has the founder reading every question in both pilot topics. Ten bespoke topics is ten hours on material nobody has checked — and unreviewed questions make the retention number meaningless, which is the only thing the pilot exists to produce. Either the review scales or free text does not ship.
+  - A second cheap pass over each generated item, checking the five things hand-review actually catches: the answer key is correct; no distractor is accidentally also correct; the prompt is unambiguous without context, days later; the explanation does not contradict the item; a `isTransfer` item genuinely applies the idea in a new context rather than restating it.
+  - Output is **flags and a confidence, not a verdict** — it reorders the QA export so the human reads the suspicious items first. Auto-retiring on a model's say-so would let one cheap call silently delete the measurement.
+  - **It has ground truth, which is unusual and should be used.** T-045 hand-QAs both pilot topics and records what it found. Run the critic over exactly that material and measure precision and recall against the founder's real findings. A critic that misses half the wrong answer keys is not a gate, and this is the one moment where that can be known rather than assumed.
+- **acceptance:** The critic's flags are measured against T-045's hand-review on the same two topics, with the numbers written into this task's notes. A stated recall threshold on wrong answer keys is met before free-text topics are enabled.
+- **tests:**
+  - A fixture item with a deliberately wrong answer key is flagged; a correct one is not.
+  - A recognition item with two defensible options is flagged as an ambiguous distractor.
+  - A restated-not-transferred `isTransfer` item is flagged.
+  - The QA export orders flagged items first and states why each was flagged.
+  - The critic never mutates or retires an item — it only annotates.
 - **notes:**
