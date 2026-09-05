@@ -7,6 +7,7 @@ import { db } from '../db/client.js';
 import { concepts, conceptPrereqs, items, topics } from '../db/schema.js';
 import { generateConceptMap } from '../generator/conceptMap.js';
 import { generateItems } from '../generator/items.js';
+import { generateTeaching } from '../generator/teaching.js';
 import { pickHeldOut, seededRng, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER } from '../lib/heldOut.js';
 import { env } from '../lib/env.js';
 
@@ -39,34 +40,60 @@ export async function processGenerationJob(
   try {
     const map = await generateConceptMap(topic.title);
     // The generator returns concepts in teaching order; `order` is 1-based.
-    const ordered = map.concepts.map((concept, index) => ({ ...concept, order: index + 1 }));
-    const heldOut = pickHeldOut(ordered, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER, rng);
+    const indexed = map.concepts.map((concept, index) => ({ ...concept, order: index + 1 }));
+    const heldOut = pickHeldOut(indexed, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER, rng);
 
-    // Held-out concepts are never taught or reviewed, so they get no items
-    // (plan.md §6). They still appear in tests, where T-038 generates an item
-    // for them on demand.
+    // teach_mode is drawn here rather than at insert time because the teaching
+    // prompt is conditioned on it — an `example_first` concept needs a worked
+    // example in its explanation (T-053). Randomised per concept so T-040 can
+    // compare delayed recall between the two modes (plan.md §6, §7).
+    const ordered = indexed.map((concept) => ({
+      ...concept,
+      heldOut: heldOut.has(concept.slug),
+      teachMode: (rng() < 0.5 ? 'try_first' : 'example_first') as 'try_first' | 'example_first',
+    }));
+
+    // Held-out concepts are never taught or reviewed, so they get neither items
+    // nor teaching content (plan.md §6). They still appear in tests, where
+    // T-038 generates an item for them on demand.
     const itemsBySlug = new Map<string, Awaited<ReturnType<typeof generateItems>>['items']>();
+    const teachingBySlug = new Map<string, Awaited<ReturnType<typeof generateTeaching>>>();
     for (const concept of ordered) {
-      if (heldOut.has(concept.slug)) continue;
+      if (concept.heldOut) continue;
       const generated = await generateItems(concept.title);
       itemsBySlug.set(concept.slug, generated.items);
+      teachingBySlug.set(
+        concept.slug,
+        await generateTeaching({
+          topic: topic.title,
+          concept: concept.title,
+          summary: concept.summary ?? '',
+          teachMode: concept.teachMode,
+        }),
+      );
     }
 
     await db.transaction(async (tx) => {
       const inserted = await tx
         .insert(concepts)
         .values(
-          ordered.map((concept) => ({
-            topicId,
-            slug: concept.slug,
-            title: concept.title,
-            summary: concept.summary,
-            order: concept.order,
-            heldOut: heldOut.has(concept.slug),
-            // Randomised per concept so T-040 can compare delayed recall
-            // between the two teaching modes (plan.md §6, §7).
-            teachMode: (rng() < 0.5 ? 'try_first' : 'example_first') as 'try_first' | 'example_first',
-          })),
+          ordered.map((concept) => {
+            const teaching = teachingBySlug.get(concept.slug);
+            return {
+              topicId,
+              slug: concept.slug,
+              title: concept.title,
+              summary: concept.summary,
+              order: concept.order,
+              heldOut: concept.heldOut,
+              teachMode: concept.teachMode,
+              // Null for held-out concepts, which are never taught.
+              tryFirstPrompt: teaching?.tryFirstPrompt ?? null,
+              explanationShort: teaching?.explanationShort ?? null,
+              explanationLong: teaching?.explanationLong ?? null,
+              corrections: teaching?.corrections ?? [],
+            };
+          }),
         )
         .returning({ id: concepts.id, slug: concepts.slug });
 

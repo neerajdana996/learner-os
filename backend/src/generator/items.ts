@@ -5,25 +5,9 @@ import { ItemPayloadSchema, type ItemPayload } from '../shared/index.js';
 /** sprint.md's Sprint 1 demo expects 6–8 items per taught concept. */
 export const MIN_ITEMS = 6;
 
-export type GenerationErrorReason =
-  | 'invalid_json'
-  | 'invalid_shape'
-  | 'truncated'
-  | 'missing_api_key'
-  | 'missing_item_type'
-  | 'transfer_count'
-  | 'explain_rubric'
-  | 'too_few_items';
+import { GenerationError, type GenerationErrorReason } from './errors.js';
 
-export class GenerationError extends Error {
-  constructor(
-    public readonly reason: GenerationErrorReason,
-    message: string,
-  ) {
-    super(`${reason}: ${message}`);
-    this.name = 'GenerationError';
-  }
-}
+export { GenerationError, type GenerationErrorReason };
 
 export interface GeneratedItem {
   payload: ItemPayload;

@@ -34,6 +34,15 @@ vi.mock('../generator/items.js', () => ({
   })),
 }));
 
+vi.mock('../generator/teaching.js', () => ({
+  generateTeaching: vi.fn(async ({ concept }: { concept: string }) => ({
+    tryFirstPrompt: `What do you think ${concept} does?`,
+    explanationShort: `${concept} in brief.`,
+    explanationLong: `${concept} at greater length, with more detail than the short form.`,
+    corrections: [{ wrong: 'a misconception', why: 'because' }, { wrong: 'another', why: 'also because' }],
+  })),
+}));
+
 const app = createApp();
 const validTopic = { title: 'React Hooks' };
 

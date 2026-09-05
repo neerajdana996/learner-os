@@ -3,8 +3,20 @@ import { eq } from 'drizzle-orm';
 
 const generateConceptMap = vi.fn();
 const generateItems = vi.fn();
+const generateTeaching = vi.fn();
 vi.mock('../../generator/conceptMap.js', () => ({ generateConceptMap: (...a: unknown[]) => generateConceptMap(...a) }));
 vi.mock('../../generator/items.js', () => ({ generateItems: (...a: unknown[]) => generateItems(...a) }));
+vi.mock('../../generator/teaching.js', () => ({ generateTeaching: (...a: unknown[]) => generateTeaching(...a) }));
+
+const fakeTeaching = (concept: string) => ({
+  tryFirstPrompt: `What do you think ${concept} does?`,
+  explanationShort: `${concept} in brief.`,
+  explanationLong: `${concept} at greater length, with more detail than the short form.`,
+  corrections: [
+    { wrong: `${concept} misconception`, why: 'because that is not how it works' },
+    { wrong: `another ${concept} misconception`, why: 'nor that' },
+  ],
+});
 
 const { processGenerationJob } = await import('../generator.worker.js');
 const { pickHeldOut, seededRng } = await import('../../lib/heldOut.js');
@@ -49,6 +61,10 @@ async function seedTopic() {
 beforeEach(async () => {
   generateConceptMap.mockReset();
   generateItems.mockReset();
+  generateTeaching.mockReset();
+  // Default so tests that don't care about teaching content don't have to set
+  // it up; a test asserting on teaching overrides this.
+  generateTeaching.mockImplementation(async ({ concept }: { concept: string }) => fakeTeaching(concept));
   await truncateAll();
 });
 
@@ -116,6 +132,72 @@ describe('processGenerationJob', () => {
     const [after] = await db.select().from(topics).where(eq(topics.id, topic.id));
     expect(after?.status).toBe('active');
     expect(after?.error).toBeNull();
+  });
+
+  // T-053 — teaching content is what T-016's GET /session returns and T-021
+  // renders, so it has to survive the same transaction as the map.
+  it('persists teaching content for every taught concept', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    await processGenerationJob({ topicId: topic.id }, seededRng(42));
+
+    const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
+    const taught = rows.filter((r) => !r.heldOut);
+
+    expect(taught).toHaveLength(18);
+    for (const row of taught) {
+      expect(row.tryFirstPrompt).toBeTruthy();
+      expect(row.explanationShort).toBeTruthy();
+      expect(row.explanationLong).toBeTruthy();
+      expect((row.corrections as unknown[]).length).toBeGreaterThanOrEqual(2);
+      // "read more" must reveal something new, not the same text again.
+      expect((row.explanationLong ?? '').length).toBeGreaterThan((row.explanationShort ?? '').length);
+    }
+  });
+
+  it('generates no teaching content for held-out concepts', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    await processGenerationJob({ topicId: topic.id }, seededRng(42));
+
+    const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
+    const held = rows.filter((r) => r.heldOut);
+
+    expect(held.length).toBeGreaterThan(0);
+    for (const row of held) {
+      expect(row.tryFirstPrompt).toBeNull();
+      expect(row.explanationShort).toBeNull();
+      expect(row.explanationLong).toBeNull();
+      expect(row.corrections).toEqual([]);
+    }
+    // Never even asked for — a held-out concept must cost nothing to generate
+    // and, more importantly, must not exist as teachable text anywhere.
+    expect(generateTeaching).toHaveBeenCalledTimes(18);
+  });
+
+  it('conditions the teaching prompt on the concept’s teach mode', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    await processGenerationJob({ topicId: topic.id }, seededRng(42));
+
+    const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
+    const modeBySlug = new Map(rows.map((r) => [r.slug, r.teachMode]));
+
+    // The mode stored on the row must be the mode the generator was told, or
+    // an example_first concept gets an explanation written with no worked
+    // example and plan.md §3.4's A/B compares two identical arms.
+    for (const call of generateTeaching.mock.calls) {
+      const arg = call[0] as { concept: string; teachMode: string; topic: string; summary: string };
+      const row = rows.find((r) => r.title === arg.concept);
+      expect(arg.teachMode).toBe(modeBySlug.get(row?.slug ?? ''));
+      expect(arg.topic).toBe('React Hooks');
+    }
   });
 
   it('marks the topic failed and persists nothing when generation throws', async () => {

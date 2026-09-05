@@ -9,25 +9,9 @@ import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js'
  */
 export const MIN_CONCEPTS = 10;
 
-export type GenerationErrorReason =
-  | 'invalid_json'
-  | 'invalid_shape'
-  | 'truncated'
-  | 'missing_api_key'
-  | 'duplicate_slug'
-  | 'unknown_prereq'
-  | 'cycle'
-  | 'too_few_concepts';
+import { GenerationError, type GenerationErrorReason } from './errors.js';
 
-export class GenerationError extends Error {
-  constructor(
-    public readonly reason: GenerationErrorReason,
-    message: string,
-  ) {
-    super(`${reason}: ${message}`);
-    this.name = 'GenerationError';
-  }
-}
+export { GenerationError, type GenerationErrorReason };
 
 const ConceptSchema = z.object({
   slug: z.string().min(1),
