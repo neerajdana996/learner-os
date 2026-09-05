@@ -1006,7 +1006,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** (2026-09-04) Added `--exclude='__tests__/'` to the rsync, `! -path './__tests__/*'` to the no-rsync `find` fallback, `--exclude-dir='__tests__'` to the Node-only-import grep guard, and `-x '__tests__'` to both `diff` calls in `verify()`. Verified: `--check` exits 0, a full sync leaves the working tree untouched, and `sync-shared.test.sh` passes. Both test layouts (`foo.test.ts` beside the code, and `__tests__/foo.test.ts`) are now handled, so this doesn't re-break if a folder converts back.
 
 ### T-053 · Teaching content generator — try-first prompts, explanations, corrections
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **severity:** high — T-016 and T-021 cannot be built without it
 - **depends_on:** T-007, T-052, T-054
@@ -1020,6 +1020,37 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Malformed `corrections` entry (missing `why`) → `GenerationError`.
   - Held-out concepts get no teaching content persisted.
   - Worker persists the columns inside the existing transaction (extend T-007's happy-path test).
+- **notes:** (2026-09-05) Built and verified. Backend suite 166 → 183 tests (14 generator + 3 worker), lint clean. T-016 and T-021 are unblocked.
+  - **`teach_mode` moved out of the transaction and up before generation.** It used to be drawn with `rng()` inside the insert, but the teaching prompt is *conditioned* on it — an `example_first` concept needs a worked example in its explanation. Deciding the mode after the content was written would have produced `example_first` concepts with no example, which is exactly the failure that makes plan.md §3.4's A/B compare two identical arms. A test asserts the mode stored on the row is the mode the generator was told.
+  - **The generator takes full context** — topic title, concept title, summary and teach mode — deliberately not repeating the mistake T-FIX-006 logged against the items generator, which receives only a bare concept title. There is a test asserting the rendered prompt actually contains all four, so this can't silently regress.
+  - **`explanationLong` must be strictly longer than `explanationShort`.** T-021 offers "read more" as a distinct affordance; a reworded copy of the same length means the learner taps through to the same text. Cheaper to reject at generation than to discover during content QA.
+  - Corrections are bounded 2–4: one is not a list, and past four the learner is reading a catalogue of ways to be wrong instead of the idea.
+  - **Extracted `GenerationError` into `src/generator/errors.ts`** (beyond this task's file list — logged as T-FIX-008). `conceptMap.ts` and `items.ts` each declared their *own* class of that name, so `instanceof GenerationError` succeeded or failed depending purely on which module the catching code imported from. Both now re-export the shared one, so existing imports are unchanged. This surfaced because `teaching.ts` needed an error type that wasn't behind a test mock.
+  - `tryFirstPrompt` is generated for **every** taught concept, not just `try_first` ones, so the mode can be re-randomised later without regenerating content. The app decides whether to show it.
+  - **Fixture is hand-written** (same reason as T-005/T-006 — no working API key here). One concept, `useState`, in `try_first` mode. Should be replaced with a real capture before T-045's content QA.
+  - Discovered while testing: a worker test reached the **real** NVIDIA API and came back 401, because it mocked two generators but not the third. loop.md §3 says tests never hit the network, and nothing enforces it. Logged as T-FIX-009.
+
+### T-FIX-008 · Duplicate `GenerationError` classes
+- **status:** done
+- **sprint:** 2
+- **severity:** medium — `instanceof` silently depended on the import path
+- **depends_on:** T-005, T-006
+- **files:** `backend/src/generator/errors.ts`, `backend/src/generator/{conceptMap,items,teaching}.ts`
+- **description:** Found while building T-053. `conceptMap.ts` and `items.ts` each declared a `GenerationError` class and a `GenerationErrorReason` union with the same names but different members. Two classes with one name means a `catch (e) { if (e instanceof GenerationError) }` matches only errors from whichever module the catching code happened to import — a handler written against the concept-map error would fall through for an identical-looking items error. Extracted one class into `generator/errors.ts` with the union of both reason sets; both modules re-export it so no caller changed.
+- **acceptance:** One `GenerationError` class exists; `instanceof` holds for errors thrown by any generator.
+- **tests:** Existing concept-map and items suites pass unchanged (they import via the re-export); the new teaching suite asserts `instanceof GenerationError` on errors from a third module.
+
+### T-FIX-009 · Nothing stops a test from reaching the real model API
+- **status:** todo
+- **sprint:** 2
+- **severity:** medium — a mocking gap becomes a live API call and a confusing failure
+- **depends_on:** T-052
+- **files:** `backend/vitest.setup.ts`, `backend/src/llm/client.ts`
+- **description:** Found while building T-053. The worker suite mocks `generateConceptMap` and `generateItems`; when a third generator was added and not mocked, the test made a **real HTTP call** to NVIDIA and failed with a 401 rather than an obvious "you forgot to mock this". loop.md §3 requires that generator tests never hit the network, but nothing enforces it — the rule holds only as long as every suite remembers. Make `complete()` throw immediately when `NODE_ENV=test` unless the SDK boundary is mocked (or assert no un-mocked `openai` client is constructed under test, or set a sentinel key in `vitest.setup.ts` and fail fast on it). The failure message should name the module that needs mocking.
+- **acceptance:** A suite that forgets to mock a generator fails with a clear "network call attempted in test" error, not a 401 from a live endpoint, and no request leaves the machine.
+- **tests:**
+  - Calling `complete()` under `NODE_ENV=test` without a mock throws the guard error.
+  - The existing generator suites, which mock the SDK boundary, are unaffected.
 
 ### T-FIX-005 · `application` items are graded by exact string match
 - **status:** todo
