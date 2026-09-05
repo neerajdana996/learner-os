@@ -6,6 +6,43 @@
 
 ---
 
+## Where things stand — 2026-09-05
+
+**42 of 74 tasks done.** Sprints 1 and most of 2 are shipped: backend **333 tests**, frontend **21**, all lint-clean.
+
+**Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
+
+**Next task:** `T-026` (Sprint 2 integration test). `T-024` and `T-FIX-006` are also ready and can be done in any order. Sprint 2 closes when T-026 passes.
+
+### Run it
+
+```
+docker compose up -d postgres redis
+cd backend && pnpm preflight      # checks the LIVE environment — run this first
+cd backend && pnpm seed           # a usable dataset in one command, no API key needed
+cd backend && pnpm dev            # :3001
+cd frontend && pnpm dev           # :5173
+```
+
+`pnpm preflight` exists because a green test suite repeatedly coexisted with an app that would not start — the suite mocks the model SDK, never reads `.env`, and only touches `learnos_test`. It checks both databases against `schema.ts` column by column, Redis, SMTP, and a real model round trip. **Run it before believing anything works.**
+
+### Things that will bite you if nobody tells you
+
+- **Tests cannot reach the network.** `vitest.setup.ts` replaces `fetch` and sets a sentinel API key. An unmocked generator fails with a message naming the boundary to mock, not a confusing 401 (T-FIX-009).
+- **`drizzle-kit push` saying "Changes applied" is not proof the schema is live.** A container restarting onto a fresh volume takes the migrations with it; the symptom surfaces later as an unrelated 500. `pnpm preflight` catches it.
+- **Never edit `schema.ts` outside a schema task** (loop.md). T-049 and T-054 are the precedent: one consolidated schema task per sprint.
+- **Never edit `frontend/src/shared` or `extension/src/shared`.** Change `backend/src/shared` and run `scripts/sync-shared.sh`.
+- **Provider is OpenAI** with per-task model tiering in `src/llm/models.ts` — sol for the concept map, terra for teaching prose, luna for items and grading. `reasoning_effort` must always be sent explicitly: gpt-5.6 defaults to `medium` when omitted, which silently buys reasoning cost on every call. plan.md §5 is current; T-052 records why.
+- **Frontend conventions:** zero inline styles — SCSS classes under `src/styles/`, components take `className`. Each feature owns its RTK Query endpoints (`features/<name>/<name>Api.ts`) and injects them; `store/api.ts` stays endpoint-free. Redux holds only client state no server owns (theme, onboarding draft) — server state is RTK Query's.
+- **Pilot runs three topics:** Sliding window, Dynamic programming, Consistency in distributed systems. Not per-learner topics — see T-058 for why, and for when that changes.
+
+### Design
+
+Canvas (8 artboards — design system, landing, sign-in, onboarding, diagnostic, session, map, extension card): https://claude.ai/code/artifact/dd5bf689-0bdf-4ece-ac46-7d683699ccbe
+Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_themes.scss`.
+
+---
+
 ## Sprint 1 — Foundation & generation
 
 ### T-001 · Three-project bootstrap, Docker, shared-sync
@@ -716,7 +753,7 @@
   - `qa:retire` excludes the item from `GET /due`.
 
 ### T-025 · Seed script for local dev
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-015, T-053
 - **files:** `backend/src/scripts/seed.ts` (stub exists — replace), `backend/src/scripts/__tests__/seed.test.ts`
@@ -731,6 +768,10 @@
   - Seeded topic has status `active` and non-zero concept and item counts.
   - At least one seeded card is overdue and at least one is due later.
   - Refuses to run against a non-localhost `DATABASE_URL` without `SEED_FORCE=1`.
+- **notes:** (2026-09-05) Built and verified. `pnpm seed` → 23 concepts (2 held out), 147 items, 5 taught with 4 due now, and prints a ready-to-paste extension token plus the `VITE_DEV_USER_ID` line for driving the web app without a magic link. 9 tests (333 total).
+  - **Two bugs caught by verifying rather than assuming.** Seeding taught concepts as blank cards left every one at stability 0, so `predictedRecall` was 0 and the map rendered **score 0 with all five flagged at risk** — technically correct and useless to develop against. They now carry real review history with varied ratings (four remembered, one forgotten) and the map reads 86 with a genuine spread. Separately, importing the module ran `main()` and closed the shared pg pool underneath the rest of the suite; the entrypoint is guarded on `process.argv[1]` now.
+  - `seed()` is **exported** so tests call it directly against `learnos_test` rather than shelling out to the script.
+  - Refuses a non-local `DATABASE_URL` unless `SEED_FORCE=1`, because seeding deletes rows.
 
 ### T-026 · Sprint 2 integration test
 - **status:** todo
