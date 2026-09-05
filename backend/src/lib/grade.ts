@@ -52,6 +52,15 @@ function matchesText(response: string, answer: string, accept: string[] = []): b
 }
 
 /**
+ * Turns an application item's model answer into a rubric the grader can judge
+ * against. Kept explicit so the grader is told to accept a different route to
+ * the same result, which is the whole point of an application question.
+ */
+function applicationRubric(modelAnswer: string): string {
+  return `A correct answer must reach the same result as this model answer, by any valid route: ${modelAnswer}`;
+}
+
+/**
  * Decides whether an answer is correct — on the server, always. The client
  * never sees the answer key (T-010 strips it), so it cannot grade, and a
  * client-supplied `correct` is never trusted: it would let a learner inflate
@@ -71,13 +80,31 @@ export async function grade(payload: ItemPayload, response: string | number): Pr
       };
     }
 
-    case 'recall':
-    case 'application': {
+    case 'recall': {
+      // Short, canonical answers: string matching is the right tool and costs
+      // nothing. `accept` carries the alternative phrasings.
       const correct = matchesText(text, payload.answer, payload.accept);
       return {
         correct,
         feedback: correct ? 'Correct.' : `Not quite — the answer is: ${payload.answer}`,
       };
+    }
+
+    case 'application': {
+      // An application item asks the learner to *use* the concept on a concrete
+      // problem, so the answer is a sentence in their own words. Matching that
+      // against a short accept-list rejects correct answers almost every time —
+      // and since these count toward the retention and transfer numbers the
+      // pilot exists to produce, that is a broken instrument, not a strict one.
+      //
+      // Exact match stays as a fast accept path: a verbatim answer should not
+      // cost a model call or two seconds of a learner's wait.
+      if (matchesText(text, payload.answer, payload.accept)) {
+        return { correct: true, feedback: 'Correct.' };
+      }
+      // Otherwise judge it, using the model answer as the rubric. Failures
+      // propagate rather than defaulting to correct — see gradeExplanation.
+      return gradeExplanation(applicationRubric(payload.answer), text);
     }
 
     case 'explain': {

@@ -111,3 +111,64 @@ describe('grade — explain', () => {
     ).rejects.toThrow(/truncated/);
   });
 });
+
+describe('application items are judged, not string-matched (T-FIX-005)', () => {
+  const item = {
+    type: 'application' as const,
+    prompt: 'The effect refetches on every render. Fix it.',
+    answer: 'Add a dependency array containing userId so it only re-runs when the id changes',
+    accept: [],
+  };
+
+  it('accepts a verbatim answer without spending a model call', async () => {
+    gradeExplanation.mockClear();
+    const result = await grade(item, item.answer);
+
+    expect(result.correct).toBe(true);
+    // The fast path exists so a correct learner never waits on the model.
+    expect(gradeExplanation).not.toHaveBeenCalled();
+  });
+
+  it('accepts a correct answer phrased differently', async () => {
+    gradeExplanation.mockResolvedValueOnce({
+      correct: true,
+      feedback: 'Right — pinning it to the id is the fix.',
+    });
+
+    const result = await grade(item, 'pass [userId] as the second arg so it only reruns when that changes');
+
+    // String matching would have rejected this, and it counts toward the
+    // retention number the pilot exists to produce.
+    expect(result.correct).toBe(true);
+    expect(gradeExplanation).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a wrong answer', async () => {
+    gradeExplanation.mockResolvedValueOnce({ correct: false, feedback: 'That removes the effect entirely.' });
+    const result = await grade(item, 'delete the useEffect');
+    expect(result.correct).toBe(false);
+  });
+
+  it('gives the grader the model answer as the rubric', async () => {
+    gradeExplanation.mockResolvedValueOnce({ correct: true, feedback: 'ok' });
+    await grade(item, 'something plausible');
+
+    const [rubric] = gradeExplanation.mock.calls[0] ?? [];
+    expect(rubric).toContain(item.answer);
+  });
+
+  it('propagates a grader failure rather than handing out a free pass', async () => {
+    gradeExplanation.mockRejectedValueOnce(new Error('model unavailable'));
+    await expect(grade(item, 'anything')).rejects.toThrow();
+  });
+
+  it('leaves recall items on the cheap path', async () => {
+    gradeExplanation.mockClear();
+    const recall = { type: 'recall' as const, prompt: 'q', answer: 'a ref', accept: ['useRef'] };
+
+    expect((await grade(recall, 'useRef')).correct).toBe(true);
+    expect((await grade(recall, 'a hook')).correct).toBe(false);
+    // Short canonical answers never need a model call in either direction.
+    expect(gradeExplanation).not.toHaveBeenCalled();
+  });
+});
