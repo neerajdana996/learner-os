@@ -2,12 +2,16 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
 import { api } from './api';
 import { uiReducer } from './uiSlice';
+import { onboardingReducer } from '../features/onboarding/onboardingSlice';
 
 const rootReducer = combineReducers({
   [api.reducerPath]: api.reducer,
   // Server state lives in RTK Query; slices hold only client state no server
   // owns. Right now that is the theme — see uiSlice for where the line sits.
   ui: uiReducer,
+  // A four-step draft that must survive a closed tab — see the slice for why
+  // this clears the bar and a half-typed answer does not.
+  onboarding: onboardingReducer,
 });
 
 /** Factory so tests can build an isolated store; `store` is the app singleton. */

@@ -12,7 +12,7 @@ import { RouteFallback } from './RouteFallback';
  * when its route is first visited.
  */
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
-const OnboardingPage = lazy(() => import('../features/topics/pages/OnboardingPage'));
+const OnboardingPage = lazy(() => import('../features/onboarding/pages/OnboardingPage'));
 const DiagnosticPage = lazy(() => import('../features/diagnostic/pages/DiagnosticPage'));
 
 export function AppRoutes() {

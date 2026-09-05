@@ -51,7 +51,7 @@ export default function LoginPage() {
               {PROVIDERS.map((provider) => (
                 <a
                   key={provider.id}
-                  className="btn btn--secondary btn--block"
+                  className="btn btn--secondary btn--block btn--lg"
                   href={`${API_URL}/auth/oauth/${provider.id}/start`}
                 >
                   {provider.label}
@@ -74,7 +74,7 @@ export default function LoginPage() {
                 error={error ? 'That didn’t go through. Try again in a moment.' : null}
                 hint="No password to forget."
               />
-              <Button type="submit" block disabled={!email.trim() || isLoading}>
+              <Button type="submit" block className="btn--lg" disabled={!email.trim() || isLoading}>
                 {isLoading ? 'Sending…' : 'Email me a link'}
               </Button>
             </form>

@@ -1,0 +1,156 @@
+@use "../variables" as *;
+@use "../mixins" as *;
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: $s-3;
+  margin-bottom: $s-7;
+
+  &__bar {
+    height: 3px;
+    width: 56px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background-color $duration $ease;
+
+    &--done {
+      background: var(--clay);
+    }
+  }
+
+  &__label {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  @include until($breakpoint-sm) {
+    &__bar {
+      width: 100%;
+      flex: 1;
+    }
+  }
+}
+
+.step {
+  max-width: 620px;
+  animation: rise-in $duration $ease both;
+
+  &__kicker {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: $s-3;
+  }
+
+  &__title {
+    font-family: $font-display;
+    font-size: $display-md;
+    font-weight: $weight-medium;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: $s-2;
+  }
+
+  &__lede {
+    font-size: $text-md;
+    line-height: 1.65;
+    color: var(--ink-2);
+    margin-bottom: $s-6;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: $s-5;
+  }
+
+  /// Every step says what it does with the answer. Asking without explaining is
+  /// what made the first version feel like a form rather than a conversation.
+  &__because {
+    display: flex;
+    gap: $s-3;
+    background: var(--sunken);
+    border-radius: 5px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+
+    svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--muted);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $s-3;
+    margin-top: $s-6;
+  }
+}
+
+.window-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &__to {
+    font-size: $text-sm;
+    color: var(--muted);
+  }
+
+  &__remove {
+    @include control;
+    min-height: 36px;
+    width: 36px;
+    padding: 0;
+    color: var(--muted);
+    background: transparent;
+
+    &:hover {
+      color: var(--ink);
+      background: var(--sunken);
+    }
+  }
+
+  .field {
+    flex: 1;
+  }
+}
+
+.protocol {
+  display: flex;
+  flex-direction: column;
+  gap: $s-4;
+
+  &__row {
+    display: flex;
+    gap: $s-4;
+    align-items: baseline;
+  }
+
+  &__when {
+    font-family: $font-mono;
+    font-size: $text-xs;
+    color: var(--clay);
+    min-width: 64px;
+    flex-shrink: 0;
+  }
+
+  &__what {
+    font-size: 14.5px;
+    line-height: 1.5;
+
+    &--quiet {
+      color: var(--muted);
+    }
+  }
+}

@@ -17,7 +17,10 @@ export default defineConfig({
           if (!id.includes('node_modules')) return undefined;
           if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) return 'react';
           if (/[\\/]node_modules[\\/](@reduxjs|react-redux|redux|redux-thunk|immer|reselect)[\\/]/.test(id)) return 'redux';
-          return 'vendor';
+          // Everything else — notably zod, which only the screens doing shared
+          // client-side validation import as a value — is left to Rollup, so it
+          // rides the chunk that needs it instead of loading on the login page.
+          return undefined;
         },
       },
     },
