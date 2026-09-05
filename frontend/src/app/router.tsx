@@ -18,6 +18,7 @@ const DiagnosticPage = lazy(() => import('../features/diagnostic/pages/Diagnosti
 const SessionPage = lazy(() => import('../features/session/pages/SessionPage'));
 const MapPage = lazy(() => import('../features/map/pages/MapPage'));
 const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
+const ConnectExtensionPage = lazy(() => import('../features/extension/pages/ConnectExtensionPage'));
 
 export function AppRoutes() {
   return (
@@ -74,6 +75,14 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <MapPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/connect"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <ConnectExtensionPage />
             </Suspense>
           }
         />

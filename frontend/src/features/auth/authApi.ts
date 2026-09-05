@@ -18,7 +18,19 @@ export const authApi = api.injectEndpoints({
       query: (body) => ({ url: '/auth/dev-login', method: 'POST', body }),
       invalidatesTags: ['Me'],
     }),
+    /**
+     * Mints a bearer token for the extension (T-034).
+     *
+     * A mutation rather than a query, and deliberately uncached: each call
+     * issues a new session row, so re-fetching on a re-render would quietly
+     * create sessions. `Me` is invalidated because `hasExtensionToken` changes.
+     */
+    extensionToken: build.mutation<{ token: string; expiresAt: string }, void>({
+      query: () => ({ url: '/auth/extension-token', method: 'POST' }),
+      invalidatesTags: ['Me'],
+    }),
   }),
 });
 
-export const { useRequestMagicLinkMutation, useDevLoginMutation } = authApi;
+export const { useRequestMagicLinkMutation, useDevLoginMutation, useExtensionTokenMutation } =
+  authApi;

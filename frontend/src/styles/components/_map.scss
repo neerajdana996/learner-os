@@ -48,6 +48,12 @@
     margin-bottom: 5px;
   }
 
+  /// Clay, not ochre: this is something to act on, not something slipping.
+  /// (Was an inline style; the project's rule is classes only.)
+  &--nudge {
+    border-left-color: var(--clay);
+  }
+
   &__body {
     font-size: 13.5px;
     line-height: 1.6;

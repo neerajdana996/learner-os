@@ -70,11 +70,16 @@ export default function DashboardPage() {
       ) : null}
 
       {me && !me.hasExtensionToken ? (
-        <div className="at-risk" style={{ borderLeftColor: 'var(--clay)' }}>
+        <div className="at-risk at-risk--nudge">
           <p className="at-risk__title">The extension isn&rsquo;t connected yet</p>
           <p className="at-risk__body">
             Most of the remembering happens between sessions, in twenty-second cards while
             you&rsquo;re already at your desk. Without it you&rsquo;re getting half the method.
+          </p>
+          <p>
+            <Link className="btn btn--secondary" to="/connect">
+              Connect extension
+            </Link>
           </p>
         </div>
       ) : null}
