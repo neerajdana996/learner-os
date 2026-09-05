@@ -32,6 +32,18 @@ export async function consumeAuthToken(id: string, now: Date) {
   await db.update(authTokens).set({ consumedAt: now }).where(eq(authTokens.id, id));
 }
 
+/**
+ * Spends every outstanding link for a user, so requesting a new one replaces
+ * the old rather than leaving a growing set of working links (T-FIX-007).
+ * Also what a learner expects after clicking "send it again".
+ */
+export async function consumePriorAuthTokens(userId: string, now: Date) {
+  await db
+    .update(authTokens)
+    .set({ consumedAt: now })
+    .where(and(eq(authTokens.userId, userId), isNull(authTokens.consumedAt)));
+}
+
 export async function insertSession(values: {
   userId: string;
   token: string;

@@ -3,6 +3,7 @@ import { getMailTransport } from '../../lib/mail.js';
 import { hashToken, issueToken } from '../../lib/token.js';
 import {
   consumeAuthToken,
+  consumePriorAuthTokens,
   createUser,
   findActiveSession,
   findUnconsumedAuthToken,
@@ -28,6 +29,10 @@ export interface IssuedSession {
 export async function requestMagicLink(email: string, now: Date = new Date()): Promise<void> {
   const user = (await findUserByEmail(email)) ?? (await createUser(email));
   const { raw, hash } = issueToken();
+
+  // Only the newest link works. Prevents an unbounded set of live links from
+  // repeated requests, and matches what "send it again" implies.
+  await consumePriorAuthTokens(user.id, now);
 
   await insertAuthToken({
     userId: user.id,

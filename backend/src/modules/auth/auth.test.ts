@@ -8,6 +8,7 @@ import { consoleTransport, setMailTransport, type Mail } from '../../lib/mail.js
 import { issueToken } from '../../lib/token.js';
 import { loginAs, seedUser, truncateAll } from '../../test/db.js';
 import { SESSION_COOKIE } from './cookie.js';
+import { resetAuthRateLimits } from './auth.rateLimit.js';
 import { users } from '../../db/schema.js';
 
 const app = createApp();
@@ -33,6 +34,8 @@ function tokenFromLastMail(): string {
 
 beforeEach(async () => {
   await truncateAll();
+  // Counters live in module state, so they carry between tests in one process.
+  resetAuthRateLimits();
   sent.length = 0;
   setMailTransport({
     async send(mail) {
@@ -97,6 +100,53 @@ describe('POST /auth/magic', () => {
   });
 });
 
+describe('POST /auth/magic rate limiting (T-FIX-007)', () => {
+  const magic = (email: string) => request(app).post('/auth/magic').send({ email });
+
+  it('refuses a fourth request for the same address in the window', async () => {
+    for (let i = 0; i < 3; i += 1) expect((await magic('spam@example.com')).status).toBe(200);
+
+    const fourth = await magic('spam@example.com');
+    expect(fourth.status).toBe(429);
+    // The point of the limit is that no further mail goes out.
+    expect(sent).toHaveLength(3);
+  });
+
+  it('writes no token row for a refused request', async () => {
+    for (let i = 0; i < 3; i += 1) await magic('spam@example.com');
+    const before = (await db.select().from(authTokens)).length;
+
+    await magic('spam@example.com');
+
+    expect(await db.select().from(authTokens)).toHaveLength(before);
+  });
+
+  it('limits per address, so one spammed inbox does not lock out others', async () => {
+    for (let i = 0; i < 3; i += 1) await magic('spam@example.com');
+    expect((await magic('spam@example.com')).status).toBe(429);
+
+    expect((await magic('someone-else@example.com')).status).toBe(200);
+  });
+
+  it('counts normalised addresses as one bucket', async () => {
+    // Casing and padding must not buy a fresh budget — the limiter runs after
+    // validation for exactly this reason.
+    await magic('spam@example.com');
+    await magic('SPAM@example.com');
+    await magic('  spam@EXAMPLE.com  ');
+
+    expect((await magic('spam@example.com')).status).toBe(429);
+  });
+
+  it('refuses an unknown address the same way, staying no account oracle', async () => {
+    for (let i = 0; i < 3; i += 1) await magic('nobody@example.com');
+    const refused = await magic('nobody@example.com');
+
+    expect(refused.status).toBe(429);
+    expect(refused.body).toEqual({ error: 'rate_limited' });
+  });
+});
+
 describe('GET /auth/verify', () => {
   async function requestLink(email = 'new@example.com') {
     await request(app).post('/auth/magic').send({ email });
@@ -135,6 +185,16 @@ describe('GET /auth/verify', () => {
     const res = await request(app).get('/auth/verify').query({ token: raw });
     expect(res.status).toBe(401);
     expect(await db.select().from(sessions)).toHaveLength(0);
+  });
+
+  it('invalidates the previous link when a new one is requested', async () => {
+    const first = await requestLink();
+    const second = await requestLink();
+
+    // Only the newest link works — otherwise repeated requests leave a growing
+    // set of live links, and "send it again" would not mean what it says.
+    expect((await request(app).get('/auth/verify').query({ token: first })).status).toBe(401);
+    expect((await request(app).get('/auth/verify').query({ token: second })).status).toBe(302);
   });
 
   it('rejects an unknown token', async () => {
