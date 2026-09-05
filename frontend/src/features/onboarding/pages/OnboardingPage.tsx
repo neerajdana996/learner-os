@@ -13,10 +13,13 @@ import { WindowsStep } from '../WindowsStep';
 
 import { PILOT_TOPICS, recommendTopic, type Role } from '../topics';
 
+// Every option maps to a topic that genuinely suits it. "I design" was dropped:
+// all three pilot topics are engineering, so offering it would imply something
+// for designers that isn't there.
 const ROLES: { value: Role; label: string }[] = [
-  { value: 'developer', label: 'I write software' },
+  { value: 'product', label: 'I build products or apps' },
+  { value: 'backend', label: 'I work on backends or infrastructure' },
   { value: 'student', label: 'I’m studying' },
-  { value: 'designer', label: 'I design' },
   { value: 'other', label: 'Something else' },
 ];
 
