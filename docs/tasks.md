@@ -409,7 +409,7 @@
   - A 429 creates no `auth_tokens` row.
 
 ### T-014 · Users API + onboarding profile
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-013, T-054
 - **files:** `backend/src/modules/users/users.{routes,controller,service,repository}.ts`, `backend/src/modules/users/users.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/app.ts`
@@ -427,6 +427,14 @@
   - `PATCH` with only `name` leaves `timezone` and `activeWindows` untouched.
   - `GET /me` for another user's session never returns this user's data.
   - `GET /me` includes `profile.dailyCap` defaulted to 12 when never set.
+- **notes:** (2026-09-05) Built and verified. Backend suite 150 → 166 tests (16 new), lint clean, shared synced.
+  - **`ActiveWindowsSchema` lives in shared and is the only window validator** — the extension will validate the same shape client-side in T-028. Windows are zero-padded `HH:MM` **strings**, not minute counts, specifically so `start <= now < end` is a plain lexicographic comparison with no parsing; and a window may not cross midnight (22:00–02:00 is entered as two), so T-028 never needs a wraparound branch. Both facts are written into the schema comment where the extension author will actually read them.
+  - Adjacent windows that touch (`09:00–12:00`, `12:00–15:00`) are **legal**; only strict overlap is rejected. Tested both ways — an off-by-one in the comparison would otherwise pass a "rejects overlap" test while banning a perfectly normal schedule.
+  - **Timezone validation uses the runtime's own tz database** via `new Intl.DateTimeFormat(undefined, {timeZone})` rather than a shipped list that would rot. No new dependency, and it works unchanged in the browser copy. T-023 reuses `isValidTimeZone` from here rather than defining a second one.
+  - **`UserProfileSchema` parses on read with defaults**, so `dailyCap` is 12 for any user onboarded before the field existed. That is what stops T-028 from having to handle a missing cap, and it is asserted rather than assumed.
+  - **A rejected patch writes nothing** — validation is whole-body in the `validate()` middleware, so the valid half of a partially-invalid patch cannot land. Tested explicitly, since a field-by-field implementation would quietly fail that.
+  - `PATCH /me` distinguishes an omitted key (leave alone) from an explicit `null` (clear), using `'name' in body` rather than an undefined check.
+  - curl: `curl -b cookies.txt localhost:3001/me` → the full profile; `curl -XPATCH -b cookies.txt localhost:3001/me -H 'content-type: application/json' -d '{"timezone":"Asia/Kolkata","activeWindows":[{"start":"09:00","end":"12:00"}]}'`.
 
 ### T-053 · Teaching content generator — try-first prompts, explanations, corrections
 > Moved into the Sprint 2 build order (originally logged under "Fix / discovered tasks").
