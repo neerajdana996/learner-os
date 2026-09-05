@@ -8,7 +8,7 @@
 
 ## Where things stand — 2026-09-05
 
-**44 of 76 tasks done.** Sprints 1 and most of 2 are shipped: backend **353 tests**, frontend **21**, all lint-clean.
+**48 of 80 tasks done.** Sprints 1 and most of 2 are shipped: backend **362 tests**, frontend **26**, all lint-clean.
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
@@ -1412,3 +1412,92 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Editing one correction's `why` updates only that entry.
   - Adding and removing a correction both work.
   - Dropping below 2 or above 4 corrections aborts with nothing written.
+
+### T-064 · "0 concepts so far" can never move
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-007
+- **files:** `backend/src/workers/generator.worker.ts`, `backend/src/workers/__tests__/generator.worker.test.ts`, `backend/src/modules/topics/topics.controller.ts`, `backend/src/modules/topics/topics.service.ts`, `frontend/src/features/onboarding/pages/OnboardingPage.tsx`
+- **description:** The onboarding wait screen shows `counts.concepts` as a progress indicator, but the worker makes every model call first and writes concepts, items and teaching in **one transaction at the end**. So the number is 0 for the entire five-to-ten minutes and then jumps to 40. Found by watching the network tab: a topic six minutes in, "0 concepts so far", nothing wrong. A learner reads that as broken and reloads — or clicks build again (**T-065**).
+  - **Do not stream partial rows in to make the number move.** T-007's all-or-nothing persistence is what lets `getSession` treat a concept without items as a bug rather than a race; giving that up to animate a counter is a bad trade.
+  - Report progress out of band instead: BullMQ already carries `job.updateProgress()`, the job id **is** the topic id, and the worker knows its own totals (1 map call, then 2 calls per non-held-out concept). `GET /topics/:id` reads it back while `status = 'generating'`.
+  - `processGenerationJob` is called directly by tests, so progress goes in as an optional callback rather than a `job` dependency.
+- **acceptance:** The wait screen shows real movement within seconds of the map call returning, and a reload mid-generation picks the progress back up (it lives in Redis, not React state).
+- **tests:**
+  - The worker reports progress at least once per concept, ending at completed = total.
+  - `GET /topics/:id` returns progress while generating, and omits it once the topic is terminal.
+  - A topic whose job has been evicted from Redis still returns a valid response (progress simply absent) rather than a 500.
+
+- **notes:** (2026-09-05) Progress is reported through `job.updateProgress()` — `GenerationProgress { stage, completed, total, concept }` — and read back by `GET /topics/:id` while `status = 'generating'`. T-007's one-transaction persistence is untouched, which was the point: the counter was wrong, not the storage model. `processGenerationJob` takes an optional `onProgress` callback so the tests and Sprint walks still call it without a queue. The wait screen now reads "7 of 36 concepts written" instead of a frozen "0 concepts so far". A missing job (evicted, or never reported) returns `progress: null` and the screen says "Starting up…" rather than 500ing.
+### T-065 · Two clicks on "Build" create two topics and pay for both
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-008
+- **files:** `backend/src/modules/topics/topics.service.ts`, `backend/src/modules/topics/topics.test.ts`
+- **description:** `POST /topics` inserts unconditionally. The dev database currently holds two `Dynamic programming` topics created 51 seconds apart, both `generating` — the second click, during the six-minute wait with a frozen progress counter, cost a second full generation (~81 model calls). Worse afterwards: `findActiveTopic` takes the **oldest** active topic, so once both finish the learner works on one and the other is invisible, paid-for dead weight.
+  - Fix: while the user already has a topic in `generating`, return **that** topic from `POST /topics` instead of creating another. The UI then polls the topic that is really building, and a double submit becomes a no-op rather than a purchase.
+  - Deliberately scoped to `generating`. A user with an `active` topic creating a second is a real question — plan.md §8 puts multi-topic scheduling out of scope, and `findActiveTopic`'s silent "oldest wins" is the thing that will bite when T-058 lands — but that is a product decision, not this bug.
+- **acceptance:** Submitting the onboarding form twice leaves exactly one topic and one generation job.
+- **tests:**
+  - Two `POST /topics` in a row while generating return the same `topicId`, and only one row exists.
+  - The second call does not enqueue a second job.
+  - Once the first topic is `active` (or `failed`), a new `POST /topics` creates a new topic as normal.
+
+- **notes:** (2026-09-05) `POST /topics` returns the user's already-`generating` topic instead of inserting a second one, so a double submit is a no-op rather than another ~81 model calls. Scoped to `generating` only. One existing test (`GET /topics` "newest first") had to change its **setup** — it created two topics back to back for one user, which the product no longer allows — but its assertions are unchanged. Guarded against over-reach: a second user is never blocked by the first user's generation.
+### T-066 · Poll backoff on the generation wait screen
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-064
+- **files:** `frontend/src/features/topics/topicsApi.ts`, `frontend/src/features/topics/topicsApi.test.ts`, `frontend/src/features/onboarding/pages/OnboardingPage.tsx`
+- **description:** The wait screen polls `GET /topics/:id` every 3 s for a job that takes five to ten minutes — 100-200 requests per topic. Three seconds is the right latency for the *transition* but not for the wait. Back off: keep 3 s for the first 30 s (so a cached or fast failure still feels instant), then 15 s.
+  - `generationPollInterval` stays a pure function — it takes elapsed ms and returns the interval, so the schedule is unit-testable without rendering anything.
+- **acceptance:** A six-minute generation costs roughly 30 requests instead of 120, with no visible change in how quickly the screen moves on.
+- **tests:**
+  - Returns 3000 while generating and under the fast window, 15000 after it, 0 for every terminal status.
+  - Elapsed time never makes a terminal status poll again.
+
+- **notes:** (2026-09-05) 3 s for the first 30 s, then 15 s — roughly 25 requests for a six-minute generation instead of 120. `generationPollInterval(status, elapsedMs)` stays pure, so the schedule is unit-tested with no rendering; one `setTimeout` in the page flips the rate. Terminal statuses still return 0 at any elapsed time. 5 frontend tests (26 total).
+### T-067 · Push generation status over the WebSocket instead of polling
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-064, T-027
+- **files:** `backend/src/ws.ts`, `backend/src/shared/schemas.ts`, `backend/src/workers/generator.worker.ts`, `frontend/src/store/`, tests in each
+- **description:** `attachWebSocket` has been mounted at `/ws` since T-001 and still only answers `ping` → `pong`; `src/ws.ts` names "generation finished" as its first real event. The generation wait screen is the obvious candidate, and the transport is genuinely better: the worker runs **in the same process** as the HTTP and WebSocket server (`index.ts` builds both), so pushing is an in-process call — no Redis pub/sub, no second service.
+  - **Why this is not the fix for T-064.** The bug there is that nothing *records* progress; a socket would push the same `0` the poll fetches. Transport is not the defect, and swapping it first would hide the real one.
+  - **What it actually costs.** The socket has **no authentication** — every connection is accepted and gets `hello`. Pushing per-user topic progress over it requires authenticating the upgrade against the session cookie and routing events per user; without that, one learner's generation events reach every open socket. That is the real work, and it is a security boundary, not a refactor.
+  - **It does not remove the fetch.** The wait screen's own copy says "you can close the tab and come back", so the page must still read state on load. WS removes the *repeated* request, not the first one.
+  - **Do it when the socket serves two things, not one.** Sprint 3's extension wants pushed due-cards (T-028 currently plans an hourly poll); at that point the upgrade-auth work pays for itself twice and the event union is worth defining properly. With ten pilot users, a 15 s poll (T-066) costs nothing measurable, so this is a design investment, not a performance fix.
+- **acceptance:** A socket is authenticated as a user before any event reaches it, generation events reach only that user's sockets, and the wait screen updates with no poll running.
+- **tests:**
+  - An unauthenticated upgrade is rejected.
+  - A generation event for user A never arrives on user B's socket.
+  - The client falls back to polling when the socket is closed or unavailable.
+
+### T-068 · Tests share Redis with dev and delete running jobs
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-002
+- **files:** `backend/vitest.setup.ts`, `backend/src/__tests__/redisIsolation.test.ts`
+- **description:** `vitest.setup.ts` isolated Postgres to `learnos_test` from T-002 onward, but pointed Redis at `redis://localhost:6379` — **the dev database**. `topics.test.ts`, `sprint1.test.ts` and `sprint2.test.ts` all call `getGenerationQueue().obliterate({ force: true })` in `beforeEach`. So running `pnpm test` while a real generation was in flight deleted the running job outright, leaving its topic on `generating` with nothing left to finish it and the onboarding screen polling forever.
+  - This is not theoretical: it happened on 2026-09-05 to topic `a71f1e2a`, which sat at `generating` with 0 concepts and no job in the queue. The `docs` already warn that a green suite can coexist with a broken app; this is the sharper version — a green suite that *breaks* the running app.
+- **acceptance:** `pnpm test` cannot touch dev's queue. Verified by running the full suite with a job queued on database 0 and confirming it survives.
+- **tests:**
+  - The suite's `REDIS_URL` never resolves to database 0.
+  - The suite's `DATABASE_URL` is never the dev database (the same guarantee, asserted rather than assumed).
+- **notes:** (2026-09-05) Fixed: tests now use `redis://localhost:6379/1`, overridable with `TEST_REDIS_URL`. Guard test added next to `networkGuard.test.ts`, which exists for exactly the same class of mistake. **Anyone whose dev job vanished mid-generation before this fix has a topic stuck on `generating`** — see T-069 for why nothing recovers it.
+
+### T-069 · A topic can be stuck on `generating` forever
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-064
+- **files:** `backend/src/workers/generator.worker.ts`, `backend/src/modules/topics/topics.service.ts`, `backend/src/scripts/`, tests
+- **description:** `topics.status` is flipped to `active` or `failed` only by `processGenerationJob`. If the job never runs to completion — the worker process is killed mid-job (`tsx watch` restarting on a file save does this), the job is evicted, or Redis is flushed (T-068) — the row stays `generating` with no job behind it, forever. The onboarding screen polls it forever, and T-065's duplicate guard now makes it worse: a stuck topic **blocks the learner from creating any new one**.
+  - Detection is cheap now that the job id is the topic id: `generating` **and** no job in the queue **and** older than a few minutes = stranded.
+  - Decide the recovery deliberately — re-enqueue, or mark `failed` so the existing "That didn't build / Try again" path takes over. Failing loudly is the better default; a silent re-enqueue can double-spend on model calls if the job was actually alive.
+  - A stranded row must not block `POST /topics` (T-065's guard), whichever recovery is chosen.
+- **acceptance:** A topic whose job has vanished reaches a terminal state without anyone running SQL by hand, and never blocks a new topic.
+- **tests:**
+  - A `generating` topic with no job, older than the threshold, is marked `failed` with a reason that says so.
+  - A `generating` topic **with** a live job is left alone, however long it has been running.
+  - A stranded topic does not block `POST /topics` from creating a new one.
+
