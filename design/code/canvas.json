@@ -63,6 +63,14 @@
       "w": 1180,
       "h": 2450,
       "title": "Build spec \u2014 shared"
+    },
+    {
+      "file": "Flow.dc.html",
+      "x": 2600,
+      "y": 7050,
+      "w": 1560,
+      "h": 1500,
+      "title": "Generation flow"
     }
   ],
   "annotations": [
@@ -82,7 +90,7 @@
     },
     {
       "id": "loop-md",
-      "x": 2560,
+      "x": 4260,
       "y": 7050,
       "w": 470,
       "text": "The rule this bumps into\n\nloop.md \u00a72: \"UI: plain React, inline styles or a single styles.css \u2014 no UI library for the pilot.\"\n\nThe stack on the left keeps three of four packages on the backend precisely to stay inside that. CodeMirror does not: it is a UI library, on the client, on one screen.\n\nThat is a founder call, not a call a task should make quietly. Written up as T-081 rather than assumed."

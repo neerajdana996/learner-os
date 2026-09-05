@@ -940,6 +940,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **sprint:** 4
 - **depends_on:** T-015, T-017
 - **files:** `backend/src/lib/testGen.ts`, `backend/src/routes/tests.ts`, tests
+- ⚠ **See T-093 before building the item picker.** The test draws from the same pool as the session, which now contains four-minute `codeEditor` items; three of them is twelve minutes of a surprise test, and an abandoned test produces no Day-30 number at all.
 - **description:** `POST /topics/:id/tests {kind}` builds a test: 25–30 items — every held-out concept (generate 1 item each on demand via generator, cached in `items`), a stratified sample of taught concepts (low/mid/high mastery), and 3–5 `is_transfer` items. Never reuse an item the user answered in the last 7 days. Store `tests.itemIds`. `GET /tests/:id/next`, `POST /tests/:id/answer` (confidence required, recorded with `surface='test'`, **no scheduling**), `POST /tests/:id/complete` computes `scores`: `overall, taught, heldOut, transfer, calibrationGap, perConcept`.
 - **tests:**
   - Built test includes every held-out concept.
@@ -1850,3 +1851,49 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
     - `CLAUDE.md` line 13 → "`backend/src/shared/` is the only source of shared schemas/types, and `shared-ui/` the only source of shared tokens and mixins. After editing either, run `scripts/sync-shared.sh`."
     - `plan.md §5` tree → add `shared-ui/` and widen the sync-shared line; the **Shared code rule** bullet → both folders, both must be browser-safe and self-contained, and a copy rather than a workspace because version independence between the two surfaces is the failure mode rather than the goal.
     - `loop.md §2` is stale in two ways now: it says "inline styles or a single `styles.css`" where the frontend has used SCSS classes for some time, and it says "no UI library for the pilot" — the open question in **T-081**.
+
+### T-091 · The learner picks the language, not the model (schema task)
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-079
+- **files:** `backend/src/db/schema.ts`, `backend/src/db/__tests__/schema.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/modules/topics/*`, `backend/src/generator/*`, `frontend/src/features/onboarding/*`, tests alongside
+- **description:** Nothing in the pipeline decides what language a topic is written in, so forty item calls each decide it privately: a learner on *Dynamic programming* gets Python on day 3 and JavaScript on day 11, from the same course, plus `let` here and `const` there. It is invisible today because every item is a prompt string. It stops being invisible the moment items carry real listings — which is what this whole sprint is building.
+  - **The learner chooses it, because we cannot.** A Python developer learning sliding-window is not served by JavaScript, and no amount of inference fixes that. `TopicCreateSchema` gains `language?: string`, `topics.language` stores it, and it is threaded into the generation context every item and teaching call already receives.
+  - **This is not the forbidden question.** `plan.md §3.1` and `CLAUDE.md` bar asking how someone *learns*. "Which language should the examples be in?" is a factual preference about the material, the same kind of question as "why do you want this topic", which onboarding already asks.
+  - **Optional, with an honest escape.** Not every topic has a language — *Consistency in distributed systems* mostly does not, and a botany topic never will. The onboarding field offers "doesn't matter / let learnos choose" and that is a first-class answer, not a skip. When it is unset the topic profile (T-092) infers one and records that it inferred; when it is set, nothing infers anything.
+  - **Declared a schema task for one column**, following T-FIX-001's precedent rather than reopening T-079: `topics.language text` nullable. Nullable and undefaulted, because "the learner didn't say" and "the learner said it doesn't matter" both have to stay distinguishable from "JavaScript".
+- **acceptance:** A topic created with a language carries it into every generator prompt's context; one created without still generates exactly as it does today. `pnpm db:push` and `pnpm db:test:push` apply with no prompts.
+- **tests:**
+  - `topics.language` defaults to null; a topic inserted without one round-trips.
+  - `TopicCreateSchema` accepts a language, rejects one over 40 characters, and accepts the body with the field absent (back-compat with the existing onboarding payload).
+  - `POST /topics` with a language persists it; without one persists null.
+  - The generator's prompt context carries the language when set and omits the line entirely when not — asserted on the rendered prompt, not on the vars object, since an empty `Language: ` line is worse than no line.
+  - Onboarding submits the field, and submits nothing for it when the learner chooses "doesn't matter".
+- **notes:**
+
+### T-092 · Topic profile — the decisions that are per-topic, not per-concept
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-082, T-091
+- **files:** `backend/src/llm/prompts/topicProfile/{system,user,example}.md`, `backend/src/generator/topicProfile.ts`, `backend/src/shared/schemas.ts`, `backend/src/workers/*`, `backend/fixtures/`, tests alongside
+- **description:** One model call per topic, between the concept map and the items, that fixes what the whole topic has to agree about. T-091 supplies the language when the learner gave one; this call supplies the rest, which a learner could not:
+  - `styleNotes` — the house style the listings follow: `const` over `let`, `async/await` over `.then`, whether errors are thrown or returned. Forty independent style decisions read to a learner as "this course was generated", without their being able to say why.
+  - `componentVocabulary` — for a `systems` topic, the node names the renderer knows how to draw. A diagram naming a component the layout code has never heard of is a broken picture, and the model has no other way to find out what exists.
+  - `language`, only when T-091 left it unset, with `languageInferred: true` recorded so content QA can see which topics were guessed at.
+  - **Why not in the concept-map call.** That call is already the longest and most expensive in the pipeline (`sol`), and its output is the foundation the whole thirty days is built on. Asking it to also fix a house style is how a 40-concept map quietly comes back with 22.
+  - **Why not in the item calls.** Consistency across a topic is exactly what a per-concept call structurally cannot decide — that is the entire reason this step exists.
+- **acceptance:** One extra call per topic (74 against T-074's measured 73). Every item and teaching call receives the profile. A topic whose profile call fails retries once and then fails the job loudly, as every other generated artifact does.
+- **tests:** Fixture parses; a profile missing `styleNotes` is rejected; `componentVocabulary` is required when any concept's domain is `systems` and absent otherwise; a learner-set language is passed through untouched and sets `languageInferred: false`; the rendered item prompt contains the profile.
+- **notes:**
+
+### T-093 · The Day-30 test must not contain a four-minute question
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-089
+- **files:** `backend/src/modules/tests/*` (T-038's), `backend/src/modules/due/due.repository.ts`, tests alongside
+- **description:** Found while drawing the generation flow. The Day-30 test is 25–30 items and T-038 generates them for held-out concepts on demand, from the same item pool everything else draws from. Three `codeEditor` items in it is **twelve minutes of a surprise test** that people already have to be persuaded to sit — and a learner who abandons it produces no Day-30 number at all, which is the pilot's entire output.
+  - The eligibility filter T-089 builds for the extension has to cover the test surface too: same `items.answer_kind` predicate, one shared helper, applied at the repository rather than in each caller. Neither T-038 nor T-089 says so today, and the two were written far enough apart that nobody would notice until a pilot participant sat down to a two-hour test.
+  - A `graphBuild` item is 90 seconds and is borderline: allowed, but capped at one per test. `codeEditor` is excluded outright.
+- **acceptance:** No `codeEditor` item can be returned for a `test` surface, asserted at the repository. A generated Day-30 test's total estimated time stays under the 20 minutes plan.md's pilot design assumes.
+- **tests:** A held-out concept whose only item is a `codeEditor` yields a different item for the test, or none, never that one; a test containing two `graphBuild` items fails assembly; the extension and test surfaces share one predicate (changing it moves both, asserted).
+- **notes:**

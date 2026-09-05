@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    a { color: #B0552F; text-decoration: none; } a:hover { color: #8A4225; }
+    .serif { font-family: "Newsreader", Georgia, serif; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .lbl { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .stage { background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 16px 18px; }
+    .stage__h { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+    .stage__t { font-weight: 600; font-size: 14px; }
+    .stage__b { font-size: 12.5px; line-height: 1.6; color: #57504A; }
+    .tag { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase;
+           padding: 3px 7px; border-radius: 3px; white-space: nowrap; }
+    .arrow { display: flex; justify-content: center; align-items: center; padding: 3px 0; }
+    .cel { padding: 12px 14px; border-top: 1px solid #E6E1DA; font-size: 12.5px; line-height: 1.55; color: #57504A; }
+    .hd { padding: 11px 14px; background: #F1EDE6; font-size: 11.5px; font-weight: 600; color: #57504A; }
+  </style>
+</helmet>
+
+<div style="background: #FAF8F5; color: #2B2723; padding: 52px 58px; min-height: 100%;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #E6E1DA; padding-bottom: 20px; margin-bottom: 36px;">
+    <div>
+      <div class="serif" style="font-size: 28px; font-weight: 500; letter-spacing: -0.015em;">Where each decision actually gets made</div>
+      <div style="font-size: 13.5px; color: #8A827A; margin-top: 5px;">One topic, from a string the learner typed to a question on a screen. Model calls in clay; our code in ink.</div>
+    </div>
+    <div class="lbl">Generation flow</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 336px; gap: 32px; align-items: start;">
+
+    <!-- ================= THE PIPELINE ================= -->
+    <div style="display: flex; flex-direction: column;">
+
+      <!-- 0 -->
+      <div class="stage" style="border-left: 3px solid #A9A29B;">
+        <div class="stage__h">
+          <div class="tag" style="background: #F1EDE6; color: #57504A;">Learner</div>
+          <div class="stage__t">Onboarding &mdash; picks a topic, says why</div>
+        </div>
+        <div class="stage__b">
+          <span class="mono" style="font-size: 12px;">TopicCreateSchema</span> already carries <span class="mono" style="font-size: 12px;">title</span>, <span class="mono" style="font-size: 12px;">why</span> and
+          <span class="mono" style="font-size: 12px;">dailyBudgetMin</span>. <strong style="color: #2B2723;">Nothing is added here.</strong> plan.md &sect;3.1 forbids asking how someone
+          learns, and a learner cannot tell you whether &ldquo;memoisation&rdquo; wants a blank or a sentence.
+        </div>
+      </div>
+
+      <div class="arrow"><svg width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="#C9C2B9" stroke-width="1.4"><path d="M7 2v18M2.5 16L7 20.5 11.5 16"/></svg></div>
+
+      <!-- 1 -->
+      <div class="stage" style="border-left: 3px solid #B0552F;">
+        <div class="stage__h">
+          <div class="tag" style="background: #F7EDE7; color: #8A4225;">Model &middot; sol</div>
+          <div class="stage__t">Concept map &mdash; 1 call</div>
+          <div class="tag" style="background: #FBF3EC; color: #B8873A; margin-left: auto;">T-082 adds a field</div>
+        </div>
+        <div class="stage__b">
+          20&ndash;40 atomic concepts, a prereq DAG, a teaching order. <strong style="color: #2B2723;">Gains <span class="mono" style="font-size: 12px;">domain</span> per concept</strong> &mdash;
+          decided here because this call already reasons about what each concept <em>is</em>, and because forty independent
+          classifications would let sibling concepts disagree for no reason.
+        </div>
+      </div>
+
+      <div class="arrow"><svg width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="#C9C2B9" stroke-width="1.4"><path d="M7 2v18M2.5 16L7 20.5 11.5 16"/></svg></div>
+
+      <!-- 2 — THE MISSING STEP -->
+      <div class="stage" style="border-left: 3px solid #B0552F; background: #FDF6F2; border-color: #E8D5C8;">
+        <div class="stage__h">
+          <div class="tag" style="background: #B0552F; color: #FFF8F4;">Missing</div>
+          <div class="stage__t">Topic profile &mdash; 1 call</div>
+          <div class="tag" style="background: #FFFFFF; color: #B0552F; border: 1px solid #E8D5C8; margin-left: auto;">proposed</div>
+        </div>
+        <div class="stage__b">
+          Nothing in the pipeline decides <strong style="color: #2B2723;">what language the topic is written in</strong>, and forty item calls each
+          decide it privately. A learner on &ldquo;Dynamic programming&rdquo; gets Python on day 3 and JavaScript on day 11, from the same course.
+          It is invisible today because a prompt string hides it. It stops being invisible the moment items contain real listings.
+          <div style="margin-top: 9px; padding-top: 9px; border-top: 1px solid #EADCD1;">
+            One cheap call fixes it for the whole topic: <span class="mono" style="font-size: 12px;">language</span>,
+            <span class="mono" style="font-size: 12px;">styleNotes</span> (const over let, async/await over .then), and for a systems topic the
+            <span class="mono" style="font-size: 12px;">componentVocabulary</span> the renderer knows how to draw. Then every item call is told, rather than guessing.
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow"><svg width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="#C9C2B9" stroke-width="1.4"><path d="M7 2v18M2.5 16L7 20.5 11.5 16"/></svg></div>
+
+      <!-- 3 -->
+      <div class="stage" style="border-left: 3px solid #B0552F;">
+        <div class="stage__h">
+          <div class="tag" style="background: #F7EDE7; color: #8A4225;">Model &middot; terra</div>
+          <div class="stage__t">Teaching prose &mdash; ~25 calls, one per taught concept</div>
+        </div>
+        <div class="stage__b">
+          Try-first prompt, short and long explanation, misconceptions. Later gains the annotated-listing blocks from the
+          <em>Explaining a concept</em> artboard &mdash; not yet tasked; it needs the profile above to know what to write code <em>in</em>.
+        </div>
+      </div>
+
+      <div class="arrow"><svg width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="#C9C2B9" stroke-width="1.4"><path d="M7 2v18M2.5 16L7 20.5 11.5 16"/></svg></div>
+
+      <!-- 4 -->
+      <div class="stage" style="border-left: 3px solid #B0552F;">
+        <div class="stage__h">
+          <div class="tag" style="background: #F7EDE7; color: #8A4225;">Model &middot; luna</div>
+          <div class="stage__t">Items &mdash; ~40 calls, one per concept</div>
+          <div class="tag" style="background: #FBF3EC; color: #B8873A; margin-left: auto;">T-083</div>
+        </div>
+        <div class="stage__b">
+          <span class="mono" style="font-size: 12px;">system.md</span> unchanged &mdash; four types, one of each, 1&ndash;2 transfer.
+          <span class="mono" style="font-size: 12px;">domains/&lt;domain&gt;.md</span> appended only when the concept's domain matches, carrying the format test,
+          the time budget, and the contrastive examples. <strong style="color: #2B2723;">A <span class="mono" style="font-size: 12px;">prose</span> concept's prompt is byte-identical to today's.</strong>
+        </div>
+      </div>
+
+      <div class="arrow"><svg width="14" height="24" viewBox="0 0 14 24" fill="none" stroke="#C9C2B9" stroke-width="1.4"><path d="M7 2v18M2.5 16L7 20.5 11.5 16"/></svg></div>
+
+      <!-- 5 -->
+      <div class="stage" style="border-left: 3px solid #2B2723;">
+        <div class="stage__h">
+          <div class="tag" style="background: #2B2723; color: #FAF8F5;">Our code</div>
+          <div class="stage__t">Validate &rarr; render &rarr; store</div>
+          <div class="tag" style="background: #FBF3EC; color: #B8873A; margin-left: auto;">T-080, T-084</div>
+        </div>
+        <div class="stage__b">
+          <span class="mono" style="font-size: 12px;">ItemGenerationSchema</span> parses what the model returned &mdash; no markup, no tokens, no line numbers, because
+          <strong style="color: #2B2723;">no field accepts them.</strong> Then the worker resolves quoted lines to indices, runs shiki, lays out diagrams, and writes
+          <span class="mono" style="font-size: 12px;">ItemPayloadSchema</span> plus <span class="mono" style="font-size: 12px;">items.answer_kind</span>. A failure retries once, then fails the job loudly.
+        </div>
+      </div>
+
+      <div class="arrow"><svg width="14" height="26" viewBox="0 0 14 26" fill="none" stroke="#C9C2B9" stroke-width="1.4"><path d="M7 2v20M2.5 18L7 22.5 11.5 18"/></svg></div>
+
+      <!-- 6 : three read paths -->
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+        <div class="stage" style="border-left: 3px solid #4F7A5B; padding: 14px 15px;">
+          <div class="stage__t" style="font-size: 13px; margin-bottom: 7px;">Web session</div>
+          <div class="stage__b" style="font-size: 12px;">Everything. The only surface that may serve <span class="mono" style="font-size: 11.5px;">codeEditor</span>, one per session.</div>
+        </div>
+        <div class="stage" style="border-left: 3px solid #B8873A; padding: 14px 15px;">
+          <div class="stage__t" style="font-size: 13px; margin-bottom: 7px;">Extension</div>
+          <div class="stage__b" style="font-size: 12px;">Filtered on <span class="mono" style="font-size: 11.5px;">answer_kind</span> at the repository. No editor, no canvas, &le;8 lines. <span style="color: #B8873A;">T-089</span></div>
+        </div>
+        <div class="stage" style="border-left: 3px solid #A8564E; padding: 14px 15px;">
+          <div class="stage__t" style="font-size: 13px; margin-bottom: 7px;">Day-30 test</div>
+          <div class="stage__b" style="font-size: 12px;"><strong style="color: #A8564E;">Same filter, and nobody has said so yet.</strong> See the note on the right.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= FINDINGS RAIL ================= -->
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+
+      <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #B0552F; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="color: #B0552F; margin-bottom: 10px;">Answering the question directly</div>
+        <div style="font-size: 13px; line-height: 1.65; color: #57504A;">
+          <strong style="color: #2B2723;">Not onboarding.</strong> Nothing a learner can tell you at signup decides whether a concept wants a blank or a sentence,
+          and asking edges into the one question plan.md forbids.
+          <div style="margin-top: 8px;"><strong style="color: #2B2723;">Not a new step in item generation.</strong> That call already has the judgement it needs, per concept.</div>
+          <div style="margin-top: 8px;"><strong style="color: #2B2723;">One new step, between the map and the items</strong> &mdash; and it is about consistency across the topic,
+          which is precisely the thing a per-concept call structurally cannot decide.</div>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-left: 3px solid #A8564E; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="color: #A8564E; margin-bottom: 10px;">Found while drawing this &mdash; the Day-30 test</div>
+        <div style="font-size: 13px; line-height: 1.65; color: #57504A;">
+          The test is 25&ndash;30 items and T-038 generates them for held-out concepts on demand, from the same pool. Three
+          <span class="mono" style="font-size: 12px;">codeEditor</span> items in it is <strong style="color: #2B2723;">twelve minutes of a surprise test</strong> people already have
+          to be persuaded to sit &mdash; and a learner who abandons it produces no Day-30 number at all, which is the pilot's entire output.
+          <div style="margin-top: 8px;">The extension's eligibility filter has to cover the test too. Neither T-038 nor T-089 says so today.</div>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="margin-bottom: 10px;">What the profile call costs</div>
+        <div style="font-size: 13px; line-height: 1.65; color: #57504A;">
+          One call against T-074's measured 73. Against a topic at ~$0.46 and ~9 minutes, it is noise &mdash; and it removes
+          forty independent style decisions, which is the kind of incoherence a learner reads as &ldquo;this course was
+          generated&rdquo; without being able to say why.
+        </div>
+      </div>
+
+      <div style="background: #F1EDE6; border-radius: 6px; padding: 18px 20px;">
+        <div class="lbl" style="margin-bottom: 10px;">Where it does not go</div>
+        <div style="font-size: 13px; line-height: 1.65; color: #57504A;">
+          Not in the map call. That call is already the longest and most expensive thing in the pipeline, its output is the
+          foundation for thirty days, and asking it to also fix a language and a house style is how a 40-concept map quietly
+          becomes a 22-concept one.
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
