@@ -165,6 +165,30 @@ export const SessionResponseSchema = z.object({
   completedToday: z.boolean(),
 });
 
+// ---------- Map & score (T-017) ----------
+export const ConceptStateSchema = z.enum(['known', 'taught', 'untaught', 'heldout']);
+
+export const MapConceptSchema = z.object({
+  conceptId: z.string().uuid(),
+  /** Null for held-out concepts — a learner who sees the title studies it, and
+   *  that destroys the control group the pilot rests on (plan.md §6). */
+  title: z.string().nullable(),
+  order: z.number().int(),
+  state: ConceptStateSchema,
+  mastery: z.number().min(0).max(1),
+  atRisk: z.boolean(),
+});
+
+export const MapResponseSchema = z.object({
+  topicId: z.string().uuid(),
+  title: z.string(),
+  /** Mean mastery over taught + known concepts, 0-100. */
+  score: z.number().int().min(0).max(100),
+  concepts: z.array(MapConceptSchema),
+  /** `from` is the prerequisite, `to` the concept that depends on it. */
+  edges: z.array(z.object({ from: z.string().uuid(), to: z.string().uuid() })),
+});
+
 // ---------- Tests (Day-30 / Day-45) ----------
 export const TestStartSchema = z.object({
   kind: z.enum(['day30', 'day45']),
