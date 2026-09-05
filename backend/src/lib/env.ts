@@ -33,7 +33,7 @@ const EnvSchema = z.object({
     .default('http://localhost:3000,http://localhost:5173')
     .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
   // Where /auth/verify sends the browser after setting the session cookie (T-013).
-  APP_URL: z.string().url().default('http://localhost:5173'),
+  APP_URL: z.string().url().default('http://localhost:3000'),
   // Magic-link and session lifetimes, in minutes and days respectively. Kept in
   // env so a test can shorten them without reaching into module internals.
   AUTH_TOKEN_TTL_MIN: z.coerce.number().int().positive().default(15),
