@@ -1074,6 +1074,70 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** One `GenerationError` class exists; `instanceof` holds for errors thrown by any generator.
 - **tests:** Existing concept-map and items suites pass unchanged (they import via the re-export); the new teaching suite asserts `instanceof GenerationError` on errors from a third module.
 
+### T-FIX-010 · Backend could not boot: .env never loaded, LLM client built at import
+- **status:** done
+- **sprint:** 2
+- **severity:** high — `pnpm dev` crashed on startup; local dev never had a working API key
+- **depends_on:** T-052
+- **files:** `backend/src/lib/env.ts`, `backend/src/llm/client.ts`, `backend/src/llm/index.ts`
+- **description:** Found by actually running the app during the T-016 journey walkthrough — 237 passing tests did not catch either bug.
+  1. **`.env` was never read.** `env.ts` parsed `process.env` directly and nothing loaded the file. `DATABASE_URL` and `REDIS_URL` only worked because their defaults happen to match localhost, so the gap was invisible; `NVIDIA_API_KEY` and every `SMTP_*` value were silently empty under `pnpm dev` and `pnpm seed`. Fixed with Node's built-in `process.loadEnvFile()` — no dependency, and it does **not** overwrite variables already set, so compose's `environment:` block and `vitest.setup.ts`'s test overrides still win.
+  2. **`new OpenAI()` ran at module import** and the SDK throws from its constructor when no key is present, taking the whole process down at boot — `/health` included. The Anthropic SDK it replaced did not do this, so T-052's provider switch silently undid the deliberate decision in T-FIX-001 finding 10 to fail at *job* time with an actionable message rather than at boot. It also breaks `scripts/verify.sh`, which must pass with no key set. The client is now built lazily on first use.
+- **why the suite missed it:** every test mocks the `openai` module, so the real client is never constructed and `.env` is never needed. This is the second concrete instance of the blind spot T-FIX-009 tracks.
+- **acceptance:** `pnpm dev` boots with no API key set and serves `/health`; with a key set, generation works.
+
+### T-056 · LLM provider — OpenAI with per-task model tiering (supersedes T-052)
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-052
+- **files:** `backend/src/llm/models.ts`, `backend/src/llm/client.ts`, `backend/src/llm/index.ts`, `backend/src/llm/errors.ts`, `backend/src/lib/env.ts`, `backend/.env.example`
+- **description:** Founder decision (Neeraj, 2026-09-05). **NVIDIA's endpoint was unusable**, and this was measured, not assumed: a trivial 11-token completion took **164s** on `deepseek-v4-pro` and **269s** on the `flash` variant — so it was the account being queued, not the model choice. A topic is ~50 sequential calls, which put full generation at 2+ hours. The same trivial call on OpenAI returns in **1.4–2.5s**, a ~100x difference.
+- **model tiering** (`src/llm/models.ts`), following the founder's principle that good prompts should let small models carry most tasks and advanced models are reserved for genuinely hard ones:
+  - `conceptMap` → **gpt-5.6-sol**, effort `medium`. The one structurally hard task (20–40 atomic concepts forming a valid DAG), run **once per topic** at ~$0.10. A better map is also fewer corrections in content QA, which T-045 explicitly measures — so quality here buys back founder hours.
+  - `teaching` → **gpt-5.6-terra**, effort `low`. Prose the learner actually reads; ~25 calls per topic.
+  - `items` → **gpt-5.6-luna**, effort `low`. Tightly constrained, schema-validated and retried, so the cheap tier is safe: bad output fails loudly instead of reaching a learner.
+  - `gradeExplanation` → **gpt-5.6-luna**, effort `none`. In the request path with a learner waiting, so latency dominates.
+  - Roughly **$0.50 per topic**, under $10 for the whole 10-person pilot.
+- **notes:** (2026-09-05)
+  - **`reasoning_effort` is now always sent explicitly.** gpt-5.6 defaults to `medium` when the field is omitted, so a naive port would have silently bought reasoning latency and tokens on *every* call, including one-line grading judgements. This is the single easiest way to waste money on this family and it is invisible unless you look.
+  - **Verified against the live API, not the docs:** the general documentation lists `minimal` and `max` as valid efforts, but gpt-5.6 rejects both with a 400 — the accepted set is `none | low | medium | high | xhigh`. `ReasoningEffort` is typed to what the models actually accept, with the discrepancy noted where a future reader will hit it.
+  - **Structured outputs are now available and wired** (`response_format: json_schema, strict: true`). T-050 deferred these because the old Anthropic SDK lacked them. Passing a schema makes malformed JSON impossible rather than merely retried, which is what makes `luna` safe on the constrained prompts. `complete()` accepts an optional `jsonSchema`; converting each prompt to supply one is follow-up work, not done here.
+  - Added an `LlmError('refused')` reason: a model declining is not a parse failure and retrying it changes nothing, so it propagates instead of burning the retry.
+  - `PromptDef.model` / `.reasoningEffort` still override the table per prompt; the table is just the default per prompt *name*.
+  - **NVIDIA config is commented out rather than deleted** in `.env`, since the account works and may be worth revisiting if the queueing clears.
+  - **Vertex/ADC is the likely eventual destination** — Neeraj's org policy disallows API keys — and `LLM_PROVIDER` already carries a `vertex` value for it. Not implemented: it needs `gcloud` ADC set up on the machine, which is an interactive browser login only the founder can complete. Tracked as T-057.
+
+### T-057 · Vertex AI provider via Application Default Credentials
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-056
+- **files:** `backend/src/llm/client.ts`, `backend/src/lib/env.ts`, `docs/deploy.md`
+- **description:** Neeraj's organisation disallows API keys by policy, so a Google-hosted deployment must authenticate with Application Default Credentials. Vertex exposes an OpenAI-compatible chat-completions endpoint, so `client.ts` mostly survives — base URL becomes `https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/openapi` and the `apiKey` slot takes a short-lived OAuth token instead of a static string.
+- **the non-obvious part:** ADC issues **~1-hour tokens**, so the client cannot hold a fixed credential. It must mint and cache a token and refresh before expiry. `google-auth-library` is already installed for this. The same code path works unchanged in production against an attached service account, which is the main reason to prefer ADC over a key even where keys are allowed.
+- **blocked on:** `gcloud` is not installed on the dev machine and `gcloud auth application-default login` is an interactive browser flow only the founder can complete. Also needs the GCP project id, region, and the chosen Gemini model.
+- **tests:** token minting mocked; a request builds the right Vertex URL from project+location; an expired cached token triggers a refresh rather than a 401.
+
+### T-055 · Google + GitHub OAuth sign-in
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-013, T-054
+- **files:** `backend/src/modules/auth/oauth.{routes,controller,service}.ts`, `backend/src/db/schema.ts` (needs a schema task), `backend/src/lib/env.ts`, `backend/.env.example`, `frontend/src/pages/LoginPage.tsx`, tests
+- **description:** Founder request (Neeraj, 2026-09-05), supplying Google and GitHub OAuth credentials. **This is new scope** — plan.md §5 says "Auth for pilot: magic link (email)", so either plan.md is amended or this is recorded as a deliberate addition. Sessions themselves need no change: T-013 already separates *proving who you are* from *the session it mints*, so OAuth becomes a third way to reach `createSession(userId, 'web')`.
+- **the part that is not boilerplate — identity collision:** the same human can arrive as Google `alice@x.com`, GitHub `alice@x.com`, and a magic link to `alice@x.com`. `users.email` is unique, so a naive implementation either crashes on the second provider or silently merges accounts.
+  - **Matching on email alone is an account-takeover hole.** GitHub lets a user claim any address on their profile, verified or not. An attacker who sets their GitHub email to the victim's address would log straight into the victim's learnos account. Google's `email_verified` claim must be checked, and GitHub's address must come from `GET /user/emails` with `verified: true` — never from the profile field.
+  - Store the provider identity separately: a new `oauth_accounts (provider, provider_user_id, user_id, created_at)` table, unique on `(provider, provider_user_id)`. Link to an existing user by **verified** email; otherwise create one. This is a schema change, so it needs its own schema task or an amendment to T-054's pattern.
+  - **CSRF:** the callback must verify a `state` parameter it issued, or an attacker can force a victim's browser through a login they control.
+- **no new dependency needed:** the authorization-code flow is two `fetch` calls per provider (exchange code for token, then fetch the profile). Roughly 150 lines for both, against a library that would need its own session integration. Hand-roll it (CLAUDE.md).
+- **acceptance:** All three sign-in methods land the same human on the same `users` row; an unverified provider email never links to an existing account; the callback rejects a missing or mismatched `state`.
+- **tests:** (mock the provider HTTP calls; never hit Google or GitHub in tests)
+  - Google sign-in for a new email creates a user and a session.
+  - Google sign-in for an email that already has a magic-link account links to that same user, not a second one.
+  - GitHub profile email that is **not** verified does not link to an existing account.
+  - Google `email_verified: false` does not link to an existing account.
+  - Callback with a missing/incorrect `state` → 400, no session created.
+  - Two providers for the same verified email resolve to one `users` row and two `oauth_accounts` rows.
+  - Provider token exchange failing → 502, no user and no session created.
+
 ### T-FIX-009 · Nothing stops a test from reaching the real model API
 - **status:** todo
 - **sprint:** 2
