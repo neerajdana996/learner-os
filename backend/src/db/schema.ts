@@ -227,6 +227,41 @@ export const authTokens = pgTable('auth_tokens', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const oauthProviderEnum = pgEnum('oauth_provider', ['google', 'github']);
+
+/**
+ * A provider identity (T-055), kept separate from `users` so one human can hold
+ * several: Google, GitHub and a magic link all land on the same `users` row.
+ *
+ * Identity is `(provider, provider_user_id)` — the provider's immutable subject
+ * id — never the email. An email can be changed at the provider; the subject id
+ * cannot, so keying on email would let an address change silently re-point an
+ * account.
+ */
+export const oauthAccounts = pgTable(
+  'oauth_accounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id),
+    provider: oauthProviderEnum('provider').notNull(),
+    providerUserId: text('provider_user_id').notNull(),
+    email: text('email'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    providerIdentityUnique: uniqueIndex('oauth_accounts_provider_provider_user_id_unique').on(
+      table.provider,
+      table.providerUserId,
+    ),
+    // One account per provider per user: a second Google login for someone who
+    // already linked Google is the same identity, not a new link.
+    userProviderUnique: uniqueIndex('oauth_accounts_user_id_provider_unique').on(
+      table.userId,
+      table.provider,
+    ),
+  }),
+);
+
 // Web cookie sessions and extension bearer tokens (T-013), hashed like above.
 export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom(),

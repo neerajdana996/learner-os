@@ -50,6 +50,14 @@ const EnvSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   MAIL_FROM: z.string().default('learnos <no-reply@example.com>'),
+  // OAuth (T-055). Empty client id disables that provider rather than failing
+  // at boot, so a deployment can run with one, both, or neither configured.
+  GITHUB_CLIENT_ID: z.string().default(''),
+  GITHUB_CLIENT_SECRET: z.string().default(''),
+  GOOGLE_CLIENT_ID: z.string().default(''),
+  GOOGLE_CLIENT_SECRET: z.string().default(''),
+  /** Public origin of this API — the base the provider redirects back to. */
+  API_URL: z.string().url().default('http://localhost:3001'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
