@@ -8,11 +8,11 @@
 
 ## Where things stand — 2026-09-05
 
-**48 of 80 tasks done.** Sprints 1 and most of 2 are shipped: backend **362 tests**, frontend **26**, all lint-clean.
+**49 of 80 tasks done.** Sprints 1 and most of 2 are shipped: backend **362 tests**, frontend **26**, extension **31**, all lint-clean.
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
-**Sprint 2 is closed.** Next up is Sprint 3 (`T-027`, the extension scaffold). `T-FIX-006` is still open and can be done any time.
+**Sprint 3 is under way** — T-027 (scaffold + bearer auth) is done; next is `T-028`, the background scheduler. `T-FIX-006` is still open and can be done any time.
 
 ### Run it
 
@@ -808,7 +808,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 ## Sprint 3 — Chrome extension
 
 ### T-027 · Extension scaffold (WXT) + auth
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-013
 - **files:** `extension/wxt.config.ts`, `extension/entrypoints/background.ts`, `extension/entrypoints/popup/`, `extension/lib/api.ts`, `extension/lib/storage.ts`, `extension/src/shared/` (synced)
@@ -816,6 +816,15 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **tests:** (vitest with `@webext-core/fake-browser` or WXT's testing utils)
   - Token saved/read from storage.
   - API call attaches bearer header.
+- **notes:** (2026-09-05) Built on the existing WXT scaffold: `src/lib/storage.ts`, `src/lib/api.ts`, an options page (the connect flow), and a popup that can reach it. 31 extension tests, lint clean, `pnpm build` produces a valid MV3 manifest.
+  - **Verified against the real backend**, not just mocks: minted a token with `POST /auth/extension-token`, and `GET /me` + `GET /due?limit=2` both answered over `Authorization: Bearer`. An invalid token gets 401; `/due` returns prompts with no answer keys.
+  - **The token is checked before it is stored.** `getMe(token)` runs against the pasted value; only a 200 saves it. Storing first and failing on the next alarm presents as an extension that silently does nothing, which is the hardest failure for a pilot participant to report.
+  - **A stored token that 401s is cleared** (revoked or expired — retrying it every five minutes for a month is just noise), but a rejected *pasted* token never disconnects a working install.
+  - `chrome.storage.local`, never `sync`: `sync` would push a live credential to every browser signed into the same Google account. Asserted in a test.
+  - **Manifest:** `storage`, `alarms`, `notifications`, `idle`, and exactly one host permission built from `WXT_API_URL` — the same value `lib/api.ts` reads at runtime, so they cannot drift. No `<all_urls>`: this extension reads nothing from the pages the learner browses.
+  - `credentials: 'omit'` is explicit on every request. A browser that *would* attach a cookie makes this work in dev and fail once installed for real.
+  - **New dev dependencies:** `@testing-library/react`, `/jest-dom`, `/user-event`, `happy-dom` — the frontend's exact stack, so the popup and options page have tests; T-029's question card needs them next. Cleanup is registered explicitly in `vitest.setup.ts` because this project imports test globals rather than setting `globals: true`.
+  - The web half of the connect flow — showing the token under "Connect extension" — remains **T-034**; the README documents the curl in the meantime.
 
 ### T-028 · Background scheduler — when to pop
 - **status:** todo
@@ -885,7 +894,8 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **depends_on:** T-027, T-022
 - **files:** `entrypoints/options/`, `frontend/src/pages/ConnectExtension.tsx`
 - **description:** Web page shows a one-time token + install steps. Options page accepts the token, verifies via `GET /me`, shows connected state, and a "pause for today" switch (sets backoff).
-- **tests:** Invalid token → error shown, nothing stored. Pause → `backoffUntil` set.
+  - **Mostly done already.** T-027 built the options page: it accepts a token, verifies it against `GET /me` **before** storing, shows the connected account, and disconnects. What is left is the **web** half — a "Connect extension" page that calls `POST /auth/extension-token` and shows the token with install steps (today the README hands you a curl) — and the **"pause for today"** switch, which needs T-030's backoff state to exist first.
+- **tests:** Invalid token → error shown, nothing stored (**done in T-027**). Pause → `backoffUntil` set.
 
 ### T-035 · Extension telemetry hooks
 - **status:** todo
