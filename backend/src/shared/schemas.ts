@@ -136,8 +136,17 @@ export const DiagnosticNextResponseSchema = z.discriminatedUnion('done', [
   }),
 ]);
 
+/** plan.md §6 caps a session at three new concepts. */
+export const MAX_NEW_CONCEPTS_PER_SESSION = 3;
+
 // ---------- Session ----------
-const CorrectionSchema = z.object({ wrong: z.string(), why: z.string() });
+/** Body of POST /session/complete. Ids are checked against a freshly computed
+ *  plan server-side, so this only has to be well-formed (T-016). */
+export const SessionCompleteSchema = z.object({
+  conceptIds: z.array(z.string().uuid()).max(MAX_NEW_CONCEPTS_PER_SESSION),
+});
+
+export const CorrectionSchema = z.object({ wrong: z.string(), why: z.string() });
 
 const NewConceptSchema = z.object({
   conceptId: z.string().uuid(),

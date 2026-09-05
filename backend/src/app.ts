@@ -5,6 +5,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
 import { diagnosticRouter } from './modules/diagnostic/diagnostic.routes.js';
+import { sessionRouter } from './modules/session/session.routes.js';
 import { topicsRouter } from './modules/topics/topics.routes.js';
 import { reviewsRouter } from './modules/reviews/reviews.routes.js';
 import { dueRouter } from './modules/due/due.routes.js';
@@ -27,6 +28,7 @@ export function createApp(): Express {
   app.use(authRouter);
   app.use(usersRouter);
   app.use(diagnosticRouter);
+  app.use(sessionRouter);
   app.use(topicsRouter);
   app.use(reviewsRouter);
   app.use(dueRouter);

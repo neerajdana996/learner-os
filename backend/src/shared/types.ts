@@ -17,6 +17,8 @@ import type {
   DiagnosticAnswerSchema,
   DiagnosticNextResponseSchema,
   SessionResponseSchema,
+  SessionCompleteSchema,
+  CorrectionSchema,
   TestStartSchema,
   TestSubmitSchema,
   PulseCreateSchema,
@@ -55,6 +57,8 @@ export type DiagnosticAnswer = z.infer<typeof DiagnosticAnswerSchema>;
 export type DiagnosticNextResponse = z.infer<typeof DiagnosticNextResponseSchema>;
 
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+export type SessionComplete = z.infer<typeof SessionCompleteSchema>;
+export type Correction = z.infer<typeof CorrectionSchema>;
 
 export type TestStart = z.infer<typeof TestStartSchema>;
 export type TestSubmit = z.infer<typeof TestSubmitSchema>;
