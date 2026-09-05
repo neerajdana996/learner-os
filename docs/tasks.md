@@ -8,11 +8,13 @@
 
 ## Where things stand — 2026-09-05
 
-**49 of 80 tasks done.** Sprints 1 and most of 2 are shipped: backend **362 tests**, frontend **26**, extension **31**, all lint-clean.
+**53 of 87 tasks done.** Sprints 1 and most of 2 are shipped: backend **379 tests**, frontend **42**, extension **31**, all lint-clean.
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
-**Sprint 3 is under way** — T-027 (scaffold + bearer auth) is done; next is `T-028`, the background scheduler. `T-FIX-006` is still open and can be done any time.
+**Sprint 3 is under way** — T-027 (scaffold + bearer auth) is done; next is `T-028`, the background scheduler.
+
+**Before the pilot, two open items matter more than new features:** `T-073` (the web session counts due reviews and never asks them — retrieval practice is the mechanism, and until the extension ships this is the only place it can happen) and `T-069` (a topic stuck on `generating` blocks the learner from creating any other).
 
 ### Run it
 
@@ -34,6 +36,8 @@ cd frontend && pnpm dev           # :5173
 - **Never edit `frontend/src/shared` or `extension/src/shared`.** Change `backend/src/shared` and run `scripts/sync-shared.sh`.
 - **Provider is OpenAI** with per-task model tiering in `src/llm/models.ts` — sol for the concept map, terra for teaching prose, luna for items and grading. `reasoning_effort` must always be sent explicitly: gpt-5.6 defaults to `medium` when omitted, which silently buys reasoning cost on every call. plan.md §5 is current; T-052 records why.
 - **Frontend conventions:** zero inline styles — SCSS classes under `src/styles/`, components take `className`. Each feature owns its RTK Query endpoints (`features/<name>/<name>Api.ts`) and injects them; `store/api.ts` stays endpoint-free. Redux holds only client state no server owns (theme, onboarding draft) — server state is RTK Query's.
+- **A topic costs ~$0.46 and ~9 minutes** — measured, not estimated: 73 model calls, 91k in / 48k out tokens for a 40-concept topic (T-074). `LLM_LOG_CALLS=1` prints every call.
+- **Sign in during development** with the button on the login page — `dev@learnos.local` / `learnos` (T-070). The route does not exist under `NODE_ENV=production`.
 - **Pilot runs three topics:** Sliding window, Dynamic programming, Consistency in distributed systems. Not per-learner topics — see T-058 for why, and for when that changes.
 
 ### Design
@@ -1602,4 +1606,38 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:**
   - Each controller's response parses against its shared schema.
   - Removing a field from a controller's select makes its test fail.
+
+### T-076 · Screens drifted from the design canvas
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-018, T-021, T-020
+- **files:** `frontend/src/components/Icon.tsx`, `frontend/src/components/Prose.tsx`, `frontend/src/features/auth/pages/LoginPage.tsx`, `frontend/src/features/session/pages/SessionPage.tsx`, `frontend/src/features/map/pages/MapPage.tsx`, `frontend/src/styles/**`
+- **description:** The design system in `design/DesignSystem.dc.html` is implemented faithfully — every colour, font and spacing token in `_variables.scss` / `_themes.scss` matches — but the individual screens had drifted from their artboards: missing icons, missing lines of copy, and a few elements that were never built. Compared artboard against running app, screen by screen.
+- **acceptance:** Each screen matches its artboard, with anything deliberately not built recorded here rather than silently dropped.
+- **tests:**
+  - `Prose` renders inline code spans as `<code>`, leaves an unpaired backtick alone, and never interprets markup.
+  - `courseDay` counts the first day as day 1, clamps at both ends, and returns null rather than "day NaN" when a topic has no dates.
+  - `minutesLeft` uses the same weights the server planned the session with.
+- **notes:** (2026-09-05) Fixed, screen by screen against the artboards:
+  - **Login** — OAuth buttons had no provider marks (the artboard has both, in Google's colours; GitHub's is monochrome so it takes `currentColor` and inverts with the theme). The email hint was truncated to half its line. The privacy footnote — "We log what you answer and how long you took, because that's the measurement" — was missing entirely, and it is the honest place to say it, before anyone signs up.
+  - **Session** — the concept's own **name** was never shown, so a learner read three cards of prose without knowing what the idea was called, while the map, the extension and the day-30 test all name it. Added the "Your attempt" check icon, the chevron on "Read more", and the footer row the artboard specifies: Check, "Skip this one", and "~N min left".
+  - **Session, inverted card** — the retrieval question is on ink, but its textarea was still white, which made the input the brightest thing on screen instead of the question. Form controls and option chips now invert with the card, in **one** block rather than colours in one place and controls in another.
+  - **Map** — the eyebrow read "REACT HOOKS" where the artboard reads "REACT HOOKS · DAY 12 OF 30"; a learner had no idea where they were in thirty days. The score and the at-risk callout now sit side by side as designed, stacking on a phone.
+  - **Inline code in generated prose** — 17 of 492 text fields in the first real generation contain markdown code spans (`[2, 3, 1, 2]`, `distinctCount <= 2`), because the prompt asks for concrete examples and examples are code. They were rendered with the backticks still in. `Prose` renders them as the design's code chips, as text nodes — never `dangerouslySetInnerHTML`, because this text comes from a model prompted with a learner-supplied topic title.
+  - **DRY, as asked.** Icons are one module taking `currentColor` and a size, so no screen hard-codes a hex or an SVG path twice. The code chip is one rule in `_base.scss` because every surface that shows teaching prose needs it. Inline `style={{…}}` objects that had crept into `SessionPage` are gone — the project's rule is classes only.
+  - **Deliberately not done:** the score's "▲ 4 this week" delta needs a score from seven days ago, which no endpoint returns — **T-077**. The login brand reads "Js Ai Labs" where the artboard says "learnos"; that looks like a deliberate rename rather than drift, so it is left alone pending a decision. Onboarding is five steps against the artboard's three, which is a product change from T-018, not a styling gap.
+
+### T-077 · The knowledge score has no trend
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-017, T-040
+- **files:** `backend/src/modules/map/map.service.ts`, `backend/src/lib/score.ts`, `frontend/src/features/map/pages/MapPage.tsx`
+- **description:** Every artboard shows the score with a week-on-week delta — "67 ▲ 4 this week" — and plan.md §4 wants a number that visibly rises as recall improves. `GET /topics/:id/map` returns only today's score, so the delta cannot be rendered and the number sits there with no indication of direction. A score that never appears to move is the same motivational dead end as no score.
+  - The data is already there: `predictedRecall` is a pure function of a card's FSRS state and a timestamp, so last week's score is the same computation over the same cards at `now - 7d`, restricted to concepts taught by then.
+  - Decide what a delta means in week one, when most concepts were untaught seven days ago — probably "no delta yet" rather than a large fake gain.
+- **acceptance:** The map shows the delta the design specifies, and it is right on a learner who has been going for two weeks.
+- **tests:**
+  - Score seven days ago is computed over concepts taught by then, not all of them.
+  - A learner in their first week gets no delta rather than a misleading one.
+  - `TrendUp` / `TrendDown` are chosen by sign, and a zero delta renders neither.
 
