@@ -8,7 +8,9 @@
 
 ## Where things stand — 2026-09-05
 
-**55 of 94 tasks done.** Sprints 1 and most of 2 are shipped: backend **394 tests**, frontend **46**, extension **31**, all lint-clean.
+**61 of 106 tasks done** (1 in progress, 1 blocked, 43 todo). Sprints 1 and most of 2 are shipped: backend **407 tests**, frontend **49**, extension **31**, all lint-clean.
+
+> The count above used to read "55 of 94" and had drifted — it is now taken from the file itself (`awk '/^### T-/{t=$2} /^- \*\*status:\*\*/{print $3}' docs/tasks.md | sort | uniq -c`), so it is worth re-deriving rather than hand-incrementing.
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
@@ -22,13 +24,13 @@ The teaching machine is built and the measuring instrument is not: nothing can g
 
 Every item today is a prompt string and a textarea, whatever the subject. Two of the three pilot topics are code topics and one is systems, so the format the pilot measures retention *through* is the one least suited to them. Designed in full on two canvases; the links and the reasoning are in the Sprint 5 section below.
 
-**Done:** `T-079` (schema — `concepts.domain`, `items.answer_kind`, `review_events.assisted`) · `T-090` (`shared-ui/` — one source of truth for presentation, synced into both clients).
+**Done:** `T-079` (schema — `concepts.domain`, `items.answer_kind`, `review_events.assisted`) · `T-090` (`shared-ui/` — one source of truth for presentation, synced into both clients) · `T-091` (schema — `topics.language`, threaded into the item and teaching prompts, asked at onboarding).
 **Blocked on a founder call:** `T-081` — CodeMirror is a UI library and `loop.md §2` bars one. It blocks `T-088` only.
-**Next, as directed by the founder:** `T-091` (the learner picks the language). `loop.md §0`'s first-unblocked rule would pick `T-080`; the founder asked for `T-091` first, so take that unless told otherwise. Nothing in Sprint 5 jumps the measurement-first order above without a deliberate decision.
+**Next:** `T-080` (`blocks` in the shared item payload) — `loop.md §0`'s first-unblocked rule, now that the founder's `T-091` detour is done. `T-092` needs `T-082` as well as `T-091`, so it is not next. Nothing in Sprint 5 jumps the measurement-first order above without a deliberate decision.
 
 **Things this sprint learned that are expensive to rediscover:**
 - **Two schemas, not one.** `ItemGenerationSchema` is what the model may return; `ItemPayloadSchema` is what we store. No model-writable field accepts markup, which closes an XSS class by construction, and the model quotes line *text* rather than line numbers — it miscounts them constantly, and the worker resolves the index.
-- **`loadTemplate()` cannot compose a prompt fragment.** It reads three fixed files from one folder. `T-083` has to extend it before `domains/code.md` means anything.
+- **`loadTemplate()` cannot compose a prompt fragment.** It reads three fixed files from one folder. `T-083` has to extend it before `domains/code.md` means anything. (`render()` *can* now drop an optional line — `{{#var}}…{{/var}}`, added by `T-091` — but that is a conditional line inside one template, not composition across files.)
 - **Classify a concept by the shape of a correct answer, not the subject** — otherwise every concept in a topic called *Dynamic programming* comes back `code`.
 - **`pnpm lint` never compiles SCSS.** It is `tsc --noEmit` in both clients, so a broken `@use` path passes lint and fails at build. `verify.sh` and `loop.md §4` now require `pnpm build` when a stylesheet is touched.
 - **`CLAUDE.md`, `plan.md`, `loop.md` and `sprint.md` were write-protected and are now writable** (founder ran `chmod u+w` on 2026-09-05). They are still the governing documents — change them deliberately, not in passing.
@@ -1868,7 +1870,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
     - `loop.md §2` is stale in two ways now: it says "inline styles or a single `styles.css`" where the frontend has used SCSS classes for some time, and it says "no UI library for the pilot" — the open question in **T-081**.
 
 ### T-091 · The learner picks the language, not the model (schema task)
-- **status:** todo
+- **status:** done
 - **sprint:** 5
 - **depends_on:** T-079
 - **files:** `backend/src/db/schema.ts`, `backend/src/db/__tests__/schema.test.ts`, `backend/src/shared/schemas.ts`, `backend/src/modules/topics/*`, `backend/src/generator/*`, `frontend/src/features/onboarding/*`, tests alongside
@@ -1884,7 +1886,22 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - `POST /topics` with a language persists it; without one persists null.
   - The generator's prompt context carries the language when set and omits the line entirely when not — asserted on the rendered prompt, not on the vars object, since an empty `Language: ` line is worse than no line.
   - Onboarding submits the field, and submits nothing for it when the learner chooses "doesn't matter".
-- **notes:**
+- **notes:** (2026-09-05) Built and verified. Backend 407 tests, frontend 49, extension 31; `pnpm lint` green in all three, `pnpm build` green in both clients, `pnpm preflight` green — including its column-by-column schema check against both live databases, which is the part that proves `db:push` actually landed.
+  - **`render()` grew optional sections, because a `{{var}}` cannot express "leave the line out".** The acceptance criterion asks that an unset language omit the line *entirely*, and the two obvious routes both fail: passing an empty string leaves `Language: ` sitting in the prompt, which reads to the model as a field it is expected to fill in; and building the whole line in the caller doesn't work either, because `render` escapes `<` and `>` in a substituted value — correctly, since values are learner-supplied — so the line's own delimiting tags would arrive as `&lt;language&gt;`. So `{{#var}}…{{/var}}` on its own line is kept when the var is a non-empty string and removed, newline and all, when it is empty. Deliberately one line at a time, not a block engine. **This is not what `T-083` needs:** that task has to compose a fragment across *files*, which is `loadTemplate`'s problem, and it is untouched.
+  - **A section's var is required even though its value is optional.** `render` already throws on a `{{var}}` it was never given, precisely so a renamed template variable fails loudly instead of shipping `{{concept}}` to the model; sections inherit that. It surfaced immediately: `jsonSchemas.test.ts` builds a vars object by hand and had to gain `language: ''`. That is the intended cost — the alternative is a silently-empty section, which is the failure mode the rule exists to prevent. `render` now also throws on any `{{` left after both passes, so an unclosed `{{#lang}}` cannot reach a model as prose.
+  - **Not threaded into the concept-map call.** The map decides which concepts exist, not what a listing looks like, and that call is already the longest and most expensive in the pipeline. The task's own description scopes this to "every item and teaching call", and that is where it went. Teaching matters as much as items here: an `example_first` concept is *required* to contain a worked example, so a Python explanation followed by JavaScript questions is the same bug seen twice.
+  - **The data-notice line in both `user.md` templates now says "the text inside the tags above" instead of naming each tag.** Naming them meant the notice mentioned `<language>` even on the topics that never send one — which broke the "omits the line entirely" assertion and, more to the point, told the model about a tag that wasn't there. It also stops the notice rotting when `T-083` adds a domain fragment.
+  - **Onboarding: a seventh option, not a skip.** The language choices sit on the topic step, in the existing `choice-group--inline` row, with "Doesn't matter — you choose" as an equal member of the group and the pre-selected default. No new SCSS. Free text is deliberately not offered on the screen even though `TopicCreateSchema` accepts any string ≤ 40 characters: the schema has to stay open for the seed script and for topics created outside onboarding, but a text box here invites "whatever you think", which is the option above, worded honestly. Six languages, not a directory — two of the three pilot topics are code topics and the list only has to cover what those learners write.
+  - **The draft version went 2 → 3.** A stored draft merging forward would default to `language: ''` and put someone past a question they were never asked — the exact bug the `role` step caused, which is why the version exists.
+  - **`''` never reaches the wire.** The client sends `language: undefined` for "doesn't matter", so the field is absent from the JSON: `''` would fail `TopicCreateSchema`'s `min(1)` and 400 the whole build. Asserted on the request body, not the draft.
+  - **`listTopics` and the client's `TopicSummary` both gained the field**, so `GET /topics` and `GET /topics/:id` still describe the same shape — the drift T-072 was about.
+  - `curl` for the new field:
+    ```
+    curl -sX POST localhost:3001/topics -H 'content-type: application/json' -b cookies.txt \
+      -d '{"title":"Dynamic programming","language":"Python","startsAt":"2026-01-01T00:00:00.000Z","endsAt":"2026-01-31T00:00:00.000Z"}'
+    ```
+    Omit `language` for "doesn't matter"; the row stores null and every prompt loses the line.
+  - **Deliberately skipped:** nothing checks that generated content *obeys* the language — it is an instruction with no verifier. Logged as `T-094`.
 
 ### T-092 · Topic profile — the decisions that are per-topic, not per-concept
 - **status:** todo
@@ -1911,4 +1928,23 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A `graphBuild` item is 90 seconds and is borderline: allowed, but capped at one per test. `codeEditor` is excluded outright.
 - **acceptance:** No `codeEditor` item can be returned for a `test` surface, asserted at the repository. A generated Day-30 test's total estimated time stays under the 20 minutes plan.md's pilot design assumes.
 - **tests:** A held-out concept whose only item is a `codeEditor` yields a different item for the test, or none, never that one; a test containing two `graphBuild` items fails assembly; the extension and test surfaces share one predicate (changing it moves both, asserted).
+- **notes:**
+
+### T-094 · Nothing checks that generated content is in the language that was asked for
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-091, T-092
+- **files:** `backend/src/generator/items.ts`, `backend/src/generator/teaching.ts`, `backend/src/modules/qa/*` (T-024's), tests alongside
+- **description:** T-091 threads the learner's language into every item and teaching prompt, and that is the whole enforcement: an instruction. Every other generated artifact in this pipeline is Zod-validated and domain-checked before it is stored — a rubric over 200 characters, a `transferCount` of three, a missing `isTransfer` — and this one is not checked at all.
+  - It matters more than a style slip. The failure T-091 exists to prevent is silent: a learner asks for Python, forty independent calls mostly comply, and two concepts come back in JavaScript. Nobody sees it until Day 12, and by then the item is scheduled and its `review_events` are already in the retention measurement.
+  - **Where the check can live.** `validateItems` cannot read a language out of a prompt string today — that only becomes checkable once `T-080` puts real listings in `blocks`, where a block carries its own `language`. So the cheap, correct version is: assert every `code` block's declared language matches the topic's, at parse time, in the same place every other domain rule lives. Prose is not checked; a mention of "the JS version" in an explanation is not a defect.
+  - **The QA tool is the other half** (T-024). A topic's QA view should name the language and flag any concept whose blocks disagree, because the model *declaring* `python` on a block of JavaScript is a failure this check cannot catch and a human reading it can.
+  - Depends on T-092 as well as T-091: for a topic whose language was inferred rather than chosen, the profile's language is the one to check against, and `languageInferred` is what tells QA to look harder.
+- **acceptance:** An item whose `code` block declares a language other than the topic's is rejected inside the retry loop, so it costs one more call rather than the whole topic — the treatment T-FIX-011 established for this class. A topic with no language checks nothing and generates exactly as it does today.
+- **tests:**
+  - A generated item carrying a `code` block in the wrong language is rejected with a `GenerationError` naming the language mismatch.
+  - The same item is accepted when the topic has no language.
+  - The rejection happens inside the retry loop: a first response in the wrong language and a second in the right one succeeds, one extra call, no failed topic.
+  - Teaching content is checked the same way as items — the worked example an `example_first` concept must contain is the other place a stray language lands.
+  - QA lists the topic's language and flags a concept whose blocks disagree.
 - **notes:**
