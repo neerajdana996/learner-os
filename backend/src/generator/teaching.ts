@@ -30,6 +30,9 @@ export interface TeachingInput {
   concept: string;
   summary: string;
   teachMode: TeachMode;
+  /** The learner's chosen language (T-091). Absent drops the line entirely —
+   *  see `ItemsInput.language`. */
+  language?: string;
 }
 
 /**
@@ -108,6 +111,9 @@ export async function generateTeaching(input: TeachingInput): Promise<GeneratedT
       concept: input.concept,
       summary: input.summary,
       teachMode: input.teachMode,
+      // Empty, not omitted: the template's optional section decides whether the
+      // line appears, and `render` throws on a var it was never given.
+      language: input.language ?? '',
     });
   } catch (error) {
     // A GenerationError already carries the rule it broke — re-wrapping it

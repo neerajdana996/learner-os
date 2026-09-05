@@ -58,6 +58,31 @@ describe('POST /topics', () => {
     expect(jobs[0]?.data).toEqual({ topicId: res.body.topicId });
   });
 
+  // T-091 — the learner picks the language.
+  it('persists the language when given one, and null when not', async () => {
+    const user = await seedUser();
+    const withLanguage = await request(app)
+      .post('/topics')
+      .set('Cookie', user.cookie)
+      .send({ title: 'Dynamic programming', language: 'Python', ...validSpan });
+
+    expect(withLanguage.status).toBe(202);
+    const [chosen] = await db.select().from(topics).where(eq(topics.id, withLanguage.body.topicId));
+    expect(chosen?.language).toBe('Python');
+
+    // A second learner, because the same one cannot hold two generating topics
+    // (T-065) — the guard would hand back the first and prove nothing.
+    const other = await seedUser();
+    const without = await request(app)
+      .post('/topics')
+      .set('Cookie', other.cookie)
+      .send({ title: 'Consistency in distributed systems', ...validSpan });
+
+    expect(without.status).toBe(202);
+    const [bare] = await db.select().from(topics).where(eq(topics.id, without.body.topicId));
+    expect(bare?.language).toBeNull();
+  });
+
   it('returns the topic already generating instead of building a second one', async () => {
     const user = await seedUser();
     const body = { title: 'Dynamic programming', ...validSpan };

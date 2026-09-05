@@ -34,6 +34,7 @@ export function listTopics(userId: string) {
       id: topics.id,
       title: topics.title,
       why: topics.why,
+      language: topics.language,
       status: topics.status,
       error: topics.error,
       startsAt: topics.startsAt,

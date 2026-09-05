@@ -30,6 +30,15 @@ export const TopicCreateSchema = z
   .object({
     title: z.string().trim().min(2).max(120),
     why: z.string().trim().min(1).max(500).optional(),
+    /**
+     * The language the topic's code and examples are written in (T-091).
+     *
+     * Optional, and absent is a real answer: the learner may say "doesn't
+     * matter", and plenty of topics have no language at all. 40 characters is
+     * generous for "TypeScript" and short enough that this cannot become a
+     * paragraph of instructions smuggled into every generator prompt.
+     */
+    language: z.string().trim().min(1).max(40).optional(),
     startsAt: z.coerce.date().optional(),
     endsAt: z.coerce.date().optional(),
     dailyBudgetMin: z.number().int().min(5).max(30).default(15),

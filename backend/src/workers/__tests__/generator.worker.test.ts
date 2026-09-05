@@ -48,11 +48,11 @@ const fakeItems = (topic: string) => ({
   ],
 });
 
-async function seedTopic() {
+async function seedTopic(values: { language?: string } = {}) {
   const user = await seedUser();
   const [topic] = await db
     .insert(topics)
-    .values({ userId: user.id, title: 'React Hooks' })
+    .values({ userId: user.id, title: 'React Hooks', ...values })
     .returning({ id: topics.id });
   if (!topic) throw new Error('topic insert returned no row');
   return topic;
@@ -197,6 +197,45 @@ describe('processGenerationJob', () => {
       const row = rows.find((r) => r.title === arg.concept);
       expect(arg.teachMode).toBe(modeBySlug.get(row?.slug ?? ''));
       expect(arg.topic).toBe('React Hooks');
+    }
+  });
+
+  // T-091 — the topic's language, read from the row rather than decided forty
+  // times over. Both generators get it, because a Python explanation followed
+  // by JavaScript questions is the same bug seen twice.
+  it('passes the topic language to both generators, and undefined when there is none', async () => {
+    const withLanguage = await seedTopic({ language: 'Python' });
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    await processGenerationJob({ topicId: withLanguage.id }, seededRng(42));
+
+    expect(generateItems.mock.calls.length).toBeGreaterThan(0);
+    for (const call of generateItems.mock.calls) {
+      expect((call[0] as { language?: string }).language).toBe('Python');
+    }
+    for (const call of generateTeaching.mock.calls) {
+      expect((call[0] as { language?: string }).language).toBe('Python');
+    }
+
+    generateConceptMap.mockReset();
+    generateItems.mockReset();
+    generateTeaching.mockReset();
+    generateTeaching.mockImplementation(async ({ concept }: { concept: string }) => fakeTeaching(concept));
+
+    const bare = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    await processGenerationJob({ topicId: bare.id }, seededRng(42));
+
+    // Undefined, not '': the generator turns an absent language into an omitted
+    // prompt line, and an empty string would be indistinguishable here.
+    for (const call of generateItems.mock.calls) {
+      expect((call[0] as { language?: string }).language).toBeUndefined();
+    }
+    for (const call of generateTeaching.mock.calls) {
+      expect((call[0] as { language?: string }).language).toBeUndefined();
     }
   });
 

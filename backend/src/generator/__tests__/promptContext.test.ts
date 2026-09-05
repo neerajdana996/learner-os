@@ -77,6 +77,40 @@ describe('items prompt', () => {
     expect(sentMessages().user.toLowerCase()).toContain('topic decides what the concept means');
   });
 
+  // T-091 — asserted on the rendered prompt, not the vars object: an empty
+  // `Language: ` line is worse than no line, because it reads as a field the
+  // model is expected to fill in.
+  it('carries the language when the learner chose one', async () => {
+    create.mockResolvedValueOnce(asText(read('items.usestate.json')));
+
+    await generateItems({
+      topic: 'Dynamic programming',
+      concept: 'Memoisation',
+      summary: 'Cache a subproblem the first time it is solved.',
+      language: 'Python',
+    });
+
+    const { user, all } = sentMessages();
+    expect(user).toContain('<language>Python</language>');
+    expect(all).not.toMatch(/\{\{\s*\w+\s*\}\}/);
+  });
+
+  it('omits the language line entirely when the learner did not choose one', async () => {
+    create.mockResolvedValueOnce(asText(read('items.usestate.json')));
+
+    await generateItems({
+      topic: 'Consistency in distributed systems',
+      concept: 'Quorums',
+      summary: 'How many replicas must agree.',
+    });
+
+    const { user } = sentMessages();
+    expect(user).not.toContain('<language>');
+    expect(user).not.toMatch(/Language/i);
+    // No blank line left where the section was, either.
+    expect(user).not.toMatch(/\n\n\n/);
+  });
+
   it('still marks the concept text as data, not instructions', async () => {
     create.mockResolvedValueOnce(asText(read('items.usestate.json')));
     await generateItems({ topic: 'T', concept: 'C', summary: 'S' });
@@ -116,5 +150,31 @@ describe('teaching prompt', () => {
     // include a worked example (plan.md §3.4).
     expect(user).toContain('example_first');
     expect(all).not.toMatch(/\{\{\s*\w+\s*\}\}/);
+  });
+
+  // T-091 — the explanation is the other place a stray language shows up: the
+  // worked example an `example_first` concept is required to contain.
+  it('carries the language when set and omits the line when not', async () => {
+    create.mockResolvedValueOnce(asText(read('teaching.usestate.json')));
+    await generateTeaching({
+      topic: 'Dynamic programming',
+      concept: 'Memoisation',
+      summary: 'Cache a subproblem.',
+      teachMode: 'example_first',
+      language: 'Go',
+    });
+    expect(sentMessages().user).toContain('<language>Go</language>');
+
+    create.mockReset();
+    create.mockResolvedValueOnce(asText(read('teaching.usestate.json')));
+    await generateTeaching({
+      topic: 'Consistency in distributed systems',
+      concept: 'Quorums',
+      summary: 'How many replicas must agree.',
+      teachMode: 'try_first',
+    });
+    const { user } = sentMessages();
+    expect(user).not.toContain('<language>');
+    expect(user).not.toMatch(/Language/i);
   });
 });

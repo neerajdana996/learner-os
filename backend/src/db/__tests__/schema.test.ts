@@ -235,6 +235,28 @@ describe('schema', () => {
     }
   });
 
+  // T-091 — the learner picks the language.
+  it('leaves topics.language null rather than defaulting it, and round-trips one', async () => {
+    const user = await seedUser();
+    // Nullable and undefaulted on purpose: "the learner didn't say" and "the
+    // learner said it doesn't matter" both land here, and neither is 'JavaScript'.
+    const [bare] = await db
+      .insert(topics)
+      .values({ userId: user.id, title: 'Consistency in distributed systems' })
+      .returning({ id: topics.id });
+    if (!bare) throw new Error('topic insert returned no row');
+    const [bareRow] = await db.select().from(topics).where(eq(topics.id, bare.id));
+    expect(bareRow?.language).toBeNull();
+
+    const [chosen] = await db
+      .insert(topics)
+      .values({ userId: user.id, title: 'Dynamic programming', language: 'Python' })
+      .returning({ id: topics.id });
+    if (!chosen) throw new Error('topic insert returned no row');
+    const [chosenRow] = await db.select().from(topics).where(eq(topics.id, chosen.id));
+    expect(chosenRow?.language).toBe('Python');
+  });
+
   it('truncateAll empties the tables T-079 touched', async () => {
     const { user, concept } = await seedConcept();
     await db.insert(items).values({ conceptId: concept.id, type: 'recall', payload: {}, answerKind: 'clozeCode' });

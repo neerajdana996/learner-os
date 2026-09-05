@@ -108,9 +108,17 @@ describe('runPrompt sends the schema to the provider', () => {
     create.mockResolvedValue(asText('{"not":"valid"}'));
 
     const { runPrompt } = await import('../../llm/index.js');
-    await runPrompt(prompt as never, { topic: 'x', concept: 'y', summary: 'z', teachMode: 'try_first' } as never).catch(
-      () => undefined,
-    );
+    // Every var the three templates between them reference. `language` is
+    // supplied empty rather than omitted: it is an *optional value*, not an
+    // optional var, and `render` throws on a var it was never given — the same
+    // loud failure a renamed `{{concept}}` gets (T-091).
+    await runPrompt(prompt as never, {
+      topic: 'x',
+      concept: 'y',
+      summary: 'z',
+      teachMode: 'try_first',
+      language: '',
+    } as never).catch(() => undefined);
 
     const sent = create.mock.calls[0]?.[0];
     expect(sent?.response_format?.type).toBe('json_schema');

@@ -179,13 +179,22 @@ export interface ItemsInput {
   concept: string;
   /** One sentence on what the concept covers, from the concept map. */
   summary: string;
+  /**
+   * The language the learner chose for this topic (T-091), or absent when they
+   * said it doesn't matter and when the topic has no language at all. Absent
+   * removes the line from the prompt rather than sending an empty one.
+   */
+  language?: string;
 }
 
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */
 export async function generateItems(input: ItemsInput): Promise<GeneratedItems> {
   let response: unknown;
   try {
-    response = await runPrompt(itemsPrompt, { ...input });
+    // `language: ''` rather than omitted: the template's optional section is
+    // what decides whether the line appears, and `render` throws on a var it
+    // was never given.
+    response = await runPrompt(itemsPrompt, { ...input, language: input.language ?? '' });
   } catch (error) {
     // A GenerationError already carries the rule it broke — re-wrapping it
     // would flatten every domain reason into `invalid_shape`.

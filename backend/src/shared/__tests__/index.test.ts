@@ -27,6 +27,24 @@ describe('shared schemas', () => {
     expect(sevenDays.success).toBe(true);
   });
 
+  // T-091 — the learner picks the language.
+  it('TopicCreateSchema accepts a language, and the same body without one', () => {
+    const withLanguage = TopicCreateSchema.safeParse({ title: 'Dynamic programming', language: 'Python' });
+    expect(withLanguage.success && withLanguage.data.language).toBe('Python');
+
+    // Back-compat with the payload onboarding already sends: absent is a real
+    // answer ("doesn't matter"), not a validation failure.
+    const without = TopicCreateSchema.safeParse({ title: 'Dynamic programming' });
+    expect(without.success && without.data.language).toBeUndefined();
+  });
+
+  it('TopicCreateSchema rejects a language over 40 characters', () => {
+    expect(TopicCreateSchema.safeParse({ title: 'Dynamic programming', language: 'x'.repeat(40) }).success).toBe(true);
+    expect(TopicCreateSchema.safeParse({ title: 'Dynamic programming', language: 'x'.repeat(41) }).success).toBe(false);
+    // An empty string is not "doesn't matter" — that is the field being absent.
+    expect(TopicCreateSchema.safeParse({ title: 'Dynamic programming', language: '' }).success).toBe(false);
+  });
+
   it('TopicCreateSchema rejects dailyBudgetMin 4 and 31', () => {
     expect(TopicCreateSchema.safeParse({ title: 'React Hooks', dailyBudgetMin: 4 }).success).toBe(false);
     expect(TopicCreateSchema.safeParse({ title: 'React Hooks', dailyBudgetMin: 31 }).success).toBe(false);

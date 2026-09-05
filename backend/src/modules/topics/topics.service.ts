@@ -31,6 +31,9 @@ export async function createTopic(userId: string, body: TopicCreate) {
     userId,
     title: body.title,
     why: body.why ?? null,
+    // Null covers both "didn't say" and "doesn't matter" — T-092 is what tells
+    // them apart, by recording that it inferred the one it fills in.
+    language: body.language ?? null,
     startsAt: body.startsAt ?? null,
     endsAt: body.endsAt ?? null,
     dailyBudgetMin: body.dailyBudgetMin,

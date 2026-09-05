@@ -75,6 +75,12 @@ export const topics = pgTable('topics', {
   // Why the learner wants this topic — collected at onboarding (plan.md §4,
   // T-018) and accepted by TopicCreateSchema, so it needs somewhere to land.
   why: text('why'),
+  // The language every listing and example in this topic is written in (T-091).
+  // Nullable with NO default, because three states have to stay
+  // distinguishable: the learner named one, the learner said it doesn't matter,
+  // and the topic predates the question. The last two are both null today; the
+  // topic profile (T-092) fills a null in and records that it inferred it.
+  language: text('language'),
   startsAt: timestamp('starts_at', { withTimezone: true }),
   endsAt: timestamp('ends_at', { withTimezone: true }),
   dailyBudgetMin: integer('daily_budget_min').default(15),

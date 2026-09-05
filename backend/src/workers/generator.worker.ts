@@ -102,6 +102,9 @@ export async function processGenerationJob(
         topic: topic.title,
         concept: concept.title,
         summary: concept.summary ?? '',
+        // Null means the learner didn't name one, so nothing is asked for and
+        // each call decides for itself as it always has (T-091).
+        language: topic.language ?? undefined,
       });
       itemsBySlug.set(concept.slug, generated.items);
       teachingBySlug.set(
@@ -111,6 +114,7 @@ export async function processGenerationJob(
           concept: concept.title,
           summary: concept.summary ?? '',
           teachMode: concept.teachMode,
+          language: topic.language ?? undefined,
         }),
       );
       completed += 1;
