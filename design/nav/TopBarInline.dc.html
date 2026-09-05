@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; background: #FAF8F5; color: #2B2723; }
+    a { color: #B0552F; } a:hover { color: #8A4225; }
+    .lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .mi { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 18px; font-size: 14.5px; color: #2B2723; }
+    .mi--hot { background: #F7EDE7; }
+    .rule { height: 1px; background: #E6E1DA; }
+  </style>
+</helmet>
+
+<div style="padding: 36px 40px;">
+  <div class="lbl" style="margin-bottom: 8px;">Option T3 · the bar carries the number</div>
+  <div style="font-family: 'Newsreader', serif; font-size: 27px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 8px;">Score on the left, you on the right</div>
+  <div style="font-size: 13.5px; line-height: 1.65; color: #57504A; max-width: 620px; margin-bottom: 28px;">
+    plan.md &sect;4 asks for the knowledge score on every screen; it is on two of six. Sitting it next to the name turns the bar into something worth looking at, and the menu can then be short.
+  </div>
+
+  <div style="background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 56px; border-bottom: 1px solid #E6E1DA;">
+
+      <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="font-family: 'Newsreader', serif; font-size: 19px; font-weight: 600;">learnos</div>
+        <div style="width: 1px; height: 26px; background: #E6E1DA;"></div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 21px; font-weight: 500; letter-spacing: -0.02em;">67</span>
+          <span style="display: inline-flex; align-items: center; gap: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #4F7A5B;">
+            <svg width="8" height="8" viewBox="0 0 12 12" fill="#4F7A5B"><path d="M6 1.5l4.5 7.5h-9z"/></svg>4
+          </span>
+          <span class="lbl" style="margin-left: 4px;">React hooks · day 12</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 26px; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #2B2723; font-weight: 500;">
+          Today
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #FFF8F4; background: #B0552F; border-radius: 999px; padding: 1px 7px;">5</span>
+        </div>
+        <div style="font-size: 14px; color: #57504A;">Map</div>
+        <div style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9C2B9; color: #57504A; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 13px;">D</div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; padding: 10px 48px 40px;">
+      <div style="width: 272px; background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; box-shadow: 0 10px 30px rgba(43,39,35,.12); padding: 6px 0 8px;">
+        <div style="padding: 14px 18px 12px;">
+          <div style="font-size: 14.5px; font-weight: 500;">Dev</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #8A827A; margin-top: 2px;">dev@learnos.local</div>
+        </div>
+        <div class="rule"></div>
+
+        <!-- The one setup step that silently goes unfinished gets the accent -->
+        <div class="mi mi--hot" style="margin: 6px; border-radius: 4px; min-height: 52px;">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#B0552F" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6.5h12"/></svg>
+          <span style="flex-grow: 1;">
+            <span style="display: block; color: #8A4225; font-weight: 500;">Connect extension</span>
+            <span style="display: block; font-size: 11.5px; color: #8A827A;">Not set up yet</span>
+          </span>
+        </div>
+
+        <div class="mi">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#8A827A" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2"/></svg>
+          <span style="flex-grow: 1;">Appearance</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #8A827A;">Auto</span>
+        </div>
+        <div class="mi">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#8A827A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14H3.5A1.5 1.5 0 0 1 2 12.5v-9A1.5 1.5 0 0 1 3.5 2H6"/><path d="M10.5 11 14 8l-3.5-3M14 8H6"/></svg>
+          <span>Sign out</span>
+        </div>
+
+        <div class="rule" style="margin: 6px 0;"></div>
+        <div style="padding: 4px 18px 6px;">
+          <div class="lbl" style="color: #B0552F;">Dev only</div>
+        </div>
+        <div class="mi" style="min-height: 40px; font-size: 13.5px; color: #57504A;">Reset my progress</div>
+        <div class="mi" style="min-height: 40px; font-size: 13.5px; color: #57504A;">Delete topic &amp; start over</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 32px; margin-top: 26px; max-width: 840px;">
+    <div style="flex: 1;">
+      <div class="lbl" style="margin-bottom: 7px;">Why</div>
+      <div style="font-size: 13px; line-height: 1.7; color: #57504A;">The bar earns its height: the score, the topic, the day and what is waiting are all there. Connect extension is styled as the one unfinished thing rather than the third row down.</div>
+    </div>
+    <div style="flex: 1;">
+      <div class="lbl" style="margin-bottom: 7px;">Tradeoff</div>
+      <div style="font-size: 13px; line-height: 1.7; color: #57504A;">Busiest of the three, and a score always in view is a score you stop reading &mdash; and the wrong thing to be looking at mid-recall.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

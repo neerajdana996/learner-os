@@ -1,0 +1,108 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Pages on the bar"
+    },
+    {
+      "id": "page-2",
+      "name": "Entry & the chosen bar"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1040,
+      "h": 900,
+      "page": "page-1"
+    },
+    {
+      "file": "Today.dc.html",
+      "x": 1120,
+      "y": 0,
+      "w": 1120,
+      "h": 640,
+      "page": "page-1"
+    },
+    {
+      "file": "Session.dc.html",
+      "x": 2320,
+      "y": 0,
+      "w": 1120,
+      "h": 900,
+      "page": "page-1"
+    },
+    {
+      "file": "Map.dc.html",
+      "x": 0,
+      "y": 1020,
+      "w": 1240,
+      "h": 720,
+      "page": "page-1"
+    },
+    {
+      "file": "Diagnostic.dc.html",
+      "x": 1320,
+      "y": 1020,
+      "w": 1120,
+      "h": 780,
+      "page": "page-1"
+    },
+    {
+      "file": "Onboarding.dc.html",
+      "x": 2520,
+      "y": 1020,
+      "w": 1120,
+      "h": 800,
+      "page": "page-1"
+    },
+    {
+      "file": "Connect.dc.html",
+      "x": 0,
+      "y": 1900,
+      "w": 1120,
+      "h": 760,
+      "page": "page-1"
+    },
+    {
+      "file": "TopBarInline.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1040,
+      "h": 780,
+      "page": "page-2"
+    },
+    {
+      "file": "EntryFlow.dc.html",
+      "x": 1120,
+      "y": 0,
+      "w": 1240,
+      "h": 760,
+      "page": "page-2"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "how",
+      "x": 1200,
+      "y": 1900,
+      "w": 340,
+      "page": "page-1",
+      "text": "Each page carries its own data spec on the right.\n\nGreen = the API already returns it. Clay = has to be built.\n\nThe recurring answer: most slots are live, and the honest work is what each one does when its data is missing - which is most of the first week."
+    },
+    {
+      "id": "chosen",
+      "x": 2400,
+      "y": 0,
+      "w": 320,
+      "page": "page-2",
+      "text": "T3, chosen. The bar carries the score, the trend, the topic and the day; the menu stays short because the bar already says where you are."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

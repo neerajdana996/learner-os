@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; background: #FAF8F5; color: #2B2723; }
+    a { color: #B0552F; } a:hover { color: #8A4225; }
+    .lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .mono { font-family: "IBM Plex Mono", monospace; }
+    .rule { height: 1px; background: #E6E1DA; }
+    .frame { background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; }
+    .card { background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; }
+    .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 4px; font-size: 15px; font-weight: 500; }
+    .btn--primary { background: #B0552F; color: #FFF8F4; }
+    .btn--secondary { border: 1px solid #C9C2B9; padding: 0 21px; }
+    /* the dynamic-data spec beside each page */
+    .spec { font-size: 12px; line-height: 1.6; color: #57504A; }
+    .spec__row { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-top: 1px solid #E6E1DA; }
+    .spec__k { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: #8A827A; padding-top: 1px; }
+    .tag { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+    .tag--live { background: #E9F0EA; color: #3F6349; }
+    .tag--todo { background: #F7EDE7; color: #8A4225; }
+  </style>
+</helmet>
+
+<div style="padding: 34px 38px;">
+  <div class="lbl" style="margin-bottom: 8px;">The bar · specified</div>
+  <div style="font-family: 'Newsreader', serif; font-size: 25px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 8px;">One bar, five states</div>
+  <div style="font-size: 13px; line-height: 1.65; color: #57504A; max-width: 640px; margin-bottom: 24px;">Every slot is driven by something the API already returns, except the trend. The interesting part is what each slot does when its data is missing — which is most of the first week.</div>
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 316px; gap: 34px; align-items: start;">
+    <div class="frame"><div style="margin-bottom: 22px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px;">
+        <span class="lbl" style="color: #2B2723;">Mid-course</span>
+        <span style="font-size: 12px; color: #8A827A;">everything present</span>
+      </div>
+      <div class="frame">  <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 44px; border-bottom: 1px solid #E6E1DA;">
+    <div style="display: flex; align-items: center; gap: 20px;"><div style="font-family: 'Newsreader', serif; font-size: 19px; font-weight: 600;">learnos</div>
+        <div style="width: 1px; height: 26px; background: #E6E1DA;"></div>
+        <div style="display: flex; align-items: baseline; gap: 8px;"><span class="mono" style="font-size: 21px; font-weight: 500; letter-spacing: -0.02em;">67</span><span style="display: inline-flex; align-items: center; gap: 3px;" class="mono"><svg width="8" height="8" viewBox="0 0 12 12" fill="#4F7A5B"><path d="M6 1.5l4.5 7.5h-9z"/></svg><span style="font-size: 11px; color: #4F7A5B;">4</span></span>
+          <span class="lbl" style="margin-left: 4px;">React hooks · day 12</span>
+        </div></div>
+    <div style="display: flex; gap: 26px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #2B2723; font-weight: 500;">Today<span class="mono" style="font-size: 11px; color: #FFF8F4; background: #B0552F; border-radius: 999px; padding: 1px 7px;">5</span></div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #57504A; ">Map</div>
+      <div style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9C2B9; color: #57504A; display: flex; align-items: center; justify-content: center;" class="mono">D</div>
+    </div>
+  </div></div>
+    </div><div style="margin-bottom: 22px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px;">
+        <span class="lbl" style="color: #2B2723;">First days</span>
+        <span style="font-size: 12px; color: #8A827A;">nothing taught yet, so no score and no trend</span>
+      </div>
+      <div class="frame">  <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 44px; border-bottom: 1px solid #E6E1DA;">
+    <div style="display: flex; align-items: center; gap: 20px;"><div style="font-family: 'Newsreader', serif; font-size: 19px; font-weight: 600;">learnos</div>
+        <div style="width: 1px; height: 26px; background: #E6E1DA;"></div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span class="lbl" style="margin-left: 4px;">React hooks · day 1</span>
+        </div></div>
+    <div style="display: flex; gap: 26px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #2B2723; font-weight: 500;">Today<span class="mono" style="font-size: 11px; color: #FFF8F4; background: #B0552F; border-radius: 999px; padding: 1px 7px;">3</span></div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #57504A; ">Map</div>
+      <div style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9C2B9; color: #57504A; display: flex; align-items: center; justify-content: center;" class="mono">D</div>
+    </div>
+  </div></div>
+    </div><div style="margin-bottom: 22px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px;">
+        <span class="lbl" style="color: #2B2723;">Building</span>
+        <span style="font-size: 12px; color: #8A827A;">topic generating — the bar reports the job</span>
+      </div>
+      <div class="frame">  <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 44px; border-bottom: 1px solid #E6E1DA;">
+    <div style="display: flex; align-items: center; gap: 20px;"><div style="font-family: 'Newsreader', serif; font-size: 19px; font-weight: 600;">learnos</div>
+        <div style="width: 1px; height: 26px; background: #E6E1DA;"></div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span class="lbl" style="margin-left: 4px;">Building your map · 12 of 36</span>
+        </div></div>
+    <div style="display: flex; gap: 26px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #2B2723; font-weight: 500;">Today</div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #57504A; ">Map</div>
+      <div style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9C2B9; color: #57504A; display: flex; align-items: center; justify-content: center;" class="mono">D</div>
+    </div>
+  </div></div>
+    </div><div style="margin-bottom: 22px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px;">
+        <span class="lbl" style="color: #2B2723;">No topic</span>
+        <span style="font-size: 12px; color: #8A827A;">signed in, nothing started</span>
+      </div>
+      <div class="frame">  <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 44px; border-bottom: 1px solid #E6E1DA;">
+    <div style="display: flex; align-items: center; gap: 20px;"><div style="font-family: 'Newsreader', serif; font-size: 19px; font-weight: 600;">learnos</div></div>
+    <div style="display: flex; gap: 26px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #2B2723; font-weight: 500;">Today</div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #57504A; ">Map</div>
+      <div style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9C2B9; color: #57504A; display: flex; align-items: center; justify-content: center;" class="mono">D</div>
+    </div>
+  </div></div>
+    </div><div style="margin-bottom: 22px;">
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 7px;">
+        <span class="lbl" style="color: #2B2723;">During a session</span>
+        <span style="font-size: 12px; color: #8A827A;">score deliberately withdrawn — see the note</span>
+      </div>
+      <div class="frame">  <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 44px; border-bottom: 1px solid #E6E1DA;">
+    <div style="display: flex; align-items: center; gap: 20px;"><div style="font-family: 'Newsreader', serif; font-size: 19px; font-weight: 600;">learnos</div>
+        <div style="width: 1px; height: 26px; background: #E6E1DA;"></div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span class="lbl" style="margin-left: 4px;">React hooks · day 12</span>
+        </div></div>
+    <div style="display: flex; gap: 26px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #2B2723; font-weight: 500;">Today</div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #57504A; ">Map</div>
+      <div style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9C2B9; color: #57504A; display: flex; align-items: center; justify-content: center;" class="mono">D</div>
+    </div>
+  </div></div>
+    </div></div>
+    <div>
+      <div class="lbl" style="margin-bottom: 10px;">Where each slot comes from</div>
+      <div class="spec"><div class="spec__row"><div class="spec__k">Score</div><div><span class="tag tag--live">live</span> <code>GET /topics/:id/map</code> → <code>score</code>, 0–100. Hidden until at least one concept is taught, because a mean over nothing is 0 and a big 0 reads as failure on day one.</div></div><div class="spec__row"><div class="spec__k">Trend</div><div><span class="tag tag--todo">to build</span> No endpoint returns last week&rsquo;s score (T-077). Until it does, the caret is absent — not zero.</div></div><div class="spec__row"><div class="spec__k">Topic · day</div><div><span class="tag tag--live">live</span> <code>GET /topics</code> → <code>title</code>, <code>startsAt</code>, <code>endsAt</code>. Day 1 is the start date, clamped at the end.</div></div><div class="spec__row"><div class="spec__k">Building</div><div><span class="tag tag--live">live</span> <code>status = generating</code> replaces the score with the job&rsquo;s own progress: <code>progress.completed</code> of <code>progress.total</code>.</div></div><div class="spec__row"><div class="spec__k">Due badge</div><div><span class="tag tag--live">live</span> <code>GET /session</code> → <code>newConcepts.length + dueReviews.length</code>. Absent at zero rather than showing a 0.</div></div><div class="spec__row"><div class="spec__k">Initial</div><div><span class="tag tag--live">live</span> <code>GET /me</code> → <code>name</code>, else the first letter of <code>email</code>.</div></div><div class="spec__row"><div class="spec__k">In session</div><div><span class="tag tag--todo">to build</span> The score is withdrawn while a session is open. A number in the corner is the wrong thing to be looking at mid-recall, and watching it move is not what makes anything stick.</div></div></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: "IBM Plex Sans", system-ui, sans-serif; background: #FAF8F5; color: #2B2723; }
+    a { color: #B0552F; } a:hover { color: #8A4225; }
+    .lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: #8A827A; }
+    .mono { font-family: "IBM Plex Mono", monospace; }
+    .rule { height: 1px; background: #E6E1DA; }
+    .frame { background: #FAF8F5; border: 1px solid #E6E1DA; border-radius: 6px; overflow: hidden; }
+    .card { background: #FFFFFF; border: 1px solid #E6E1DA; border-radius: 6px; }
+    .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 4px; font-size: 15px; font-weight: 500; }
+    .btn--primary { background: #B0552F; color: #FFF8F4; }
+    .btn--secondary { border: 1px solid #C9C2B9; padding: 0 21px; }
+    /* the dynamic-data spec beside each page */
+    .spec { font-size: 12px; line-height: 1.6; color: #57504A; }
+    .spec__row { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-top: 1px solid #E6E1DA; }
+    .spec__k { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: #8A827A; padding-top: 1px; }
+    .tag { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+    .tag--live { background: #E9F0EA; color: #3F6349; }
+    .tag--todo { background: #F7EDE7; color: #8A4225; }
+  </style>
+</helmet>
+
+<div style="padding: 34px 38px;">
+  <div class="lbl" style="margin-bottom: 8px;">Page · /map</div>
+  <div style="font-family: 'Newsreader', serif; font-size: 25px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 8px;">The map</div>
+  <div style="font-size: 13px; line-height: 1.65; color: #57504A; max-width: 640px; margin-bottom: 24px;">Unchanged except at the top: the score and the day counter move into the bar, which buys back a whole band of vertical space for the thing people actually came to look at.</div>
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 316px; gap: 34px; align-items: start;">
+    <div class="frame">  <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 44px; border-bottom: 1px solid #E6E1DA;">
+    <div style="display: flex; align-items: center; gap: 20px;"><div style="font-family: 'Newsreader', serif; font-size: 19px; font-weight: 600;">learnos</div>
+        <div style="width: 1px; height: 26px; background: #E6E1DA;"></div>
+        <div style="display: flex; align-items: baseline; gap: 8px;"><span class="mono" style="font-size: 21px; font-weight: 500; letter-spacing: -0.02em;">67</span><span style="display: inline-flex; align-items: center; gap: 3px;" class="mono"><svg width="8" height="8" viewBox="0 0 12 12" fill="#4F7A5B"><path d="M6 1.5l4.5 7.5h-9z"/></svg><span style="font-size: 11px; color: #4F7A5B;">4</span></span>
+          <span class="lbl" style="margin-left: 4px;">React hooks · day 12</span>
+        </div></div>
+    <div style="display: flex; gap: 26px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #57504A; ">Today<span class="mono" style="font-size: 11px; color: #FFF8F4; background: #B0552F; border-radius: 999px; padding: 1px 7px;">5</span></div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 14px; color: #2B2723; font-weight: 500;">Map</div>
+      <div style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9C2B9; color: #57504A; display: flex; align-items: center; justify-content: center;" class="mono">D</div>
+    </div>
+  </div>
+  <div style="padding: 30px 44px 40px;">
+    <div style="display: flex; gap: 22px; align-items: center; margin-bottom: 22px; flex-wrap: wrap;">
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #57504A;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg>Solid &middot; 14</span>
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #57504A;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg>Slipping &middot; 3</span>
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #57504A;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg>Not taught yet &middot; 4</span>
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #57504A;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5" stroke-dasharray="2.5 2.5"/></svg>Held back &middot; 2</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+      <div>
+        <div class="lbl" style="margin-bottom: 10px;">Foundations</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E6E1DA;  border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #2B2723;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span style="flex-grow: 1;">What a hook is</span><span class="mono" style="font-size: 12px; color: #57504A;">0.96</span></div><div style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E6E1DA;  border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #2B2723;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span style="flex-grow: 1;">useState</span><span class="mono" style="font-size: 12px; color: #57504A;">0.94</span></div><div style="display: flex; align-items: center; gap: 10px; background: #F1EDE6; border: 1px solid #E6E1DA;  border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #8A827A;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5" stroke-dasharray="2.5 2.5"/></svg><span style="flex-grow: 1;">Held back until day 30</span><span class="mono" style="font-size: 12px; color: #A9A29B;">?</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom: 10px;">Effects</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E6E1DA;  border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #2B2723;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#4F7A5B"/></svg><span style="flex-grow: 1;">useEffect</span><span class="mono" style="font-size: 12px; color: #57504A;">0.81</span></div><div style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #B8873A; border-left: 2px solid #B8873A; border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #2B2723;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg><span style="flex-grow: 1;">Dependency arrays</span><span class="mono" style="font-size: 12px; color: #B8873A;">0.52</span></div><div style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #B8873A; border-left: 2px solid #B8873A; border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #2B2723;"><svg width="13" height="13" viewBox="0 0 14 14"><path d="M1 7a6 6 0 0 1 12 0z" fill="#B8873A"/><circle cx="7" cy="7" r="6" fill="none" stroke="#B8873A" stroke-width="1.5"/></svg><span style="flex-grow: 1;">Cleanup functions</span><span class="mono" style="font-size: 12px; color: #B8873A;">0.48</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom: 10px;">Still ahead</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; background: #F1EDE6; border: 1px solid #E6E1DA;  border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #8A827A;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg><span style="flex-grow: 1;">useMemo</span><span class="mono" style="font-size: 12px; color: #A9A29B;">—</span></div><div style="display: flex; align-items: center; gap: 10px; background: #F1EDE6; border: 1px solid #E6E1DA;  border-radius: 4px; padding: 10px 12px; font-size: 13.5px; color: #8A827A;"><svg width="13" height="13" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#A9A29B" stroke-width="1.5"/></svg><span style="flex-grow: 1;">Custom hooks</span><span class="mono" style="font-size: 12px; color: #A9A29B;">—</span></div>
+          <div style="background: #F1EDE6; border-radius: 4px; padding: 12px 13px; font-size: 12px; line-height: 1.6; color: #57504A;">
+            <strong>Why two are hidden.</strong> We never teach these. On day 30 you are tested on them alongside everything else — the difference is how we know the teaching did anything.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+    <div>
+      <div class="lbl" style="margin-bottom: 10px;">What is live</div>
+      <div class="spec"><div class="spec__row"><div class="spec__k">Concepts</div><div><span class="tag tag--live">live</span> <code>GET /topics/:id/map</code> → each with <code>state</code>, <code>mastery</code>, <code>atRisk</code>.</div></div><div class="spec__row"><div class="spec__k">Held back</div><div><span class="tag tag--live">live</span> <code>title</code> comes back <strong>null</strong> for held-out concepts — the server never sends it, so it cannot leak. The row shows &ldquo;?&rdquo;.</div></div><div class="spec__row"><div class="spec__k">Mastery</div><div><span class="tag tag--live">live</span> <code>predictedRecall(card)</code> at request time — never a stored column, so it can never drift from the scheduler.</div></div><div class="spec__row"><div class="spec__k">Groups</div><div><span class="tag tag--live">live</span> slices of five by teaching order. First is &ldquo;Foundations&rdquo;, last &ldquo;Still ahead&rdquo;; the middles are &ldquo;Part 2, 3, 4&rdquo; today, which is honest but dull — naming them needs the generator to emit group names.</div></div><div class="spec__row"><div class="spec__k">Header</div><div><span class="tag tag--todo">to build</span> score, delta and day counter leave this page for the bar.</div></div></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
