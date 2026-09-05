@@ -3,6 +3,8 @@
 import { sql } from 'drizzle-orm';
 import { db, pg } from '../db/client.js';
 import { users } from '../db/schema.js';
+import { createSession } from '../modules/auth/auth.service.js';
+import { SESSION_COOKIE } from '../modules/auth/cookie.js';
 
 export async function truncateAll(): Promise<void> {
   // table_type filter matters: information_schema.tables also lists views, and
@@ -23,6 +25,25 @@ export async function truncateAll(): Promise<void> {
   await db.execute(sql`SELECT 1;`);
 }
 
+/**
+ * A real session for `userId`, as the headers a supertest request should send
+ * (T-013). Suites use this instead of `x-user-id` so they exercise the same
+ * auth path production does — `x-user-id` is rejected under NODE_ENV=production,
+ * so a suite built on it would prove nothing about the deployed behaviour.
+ */
+export async function loginAs(userId: string, kind: 'web' | 'extension' = 'web') {
+  const session = await createSession(userId, kind);
+  return {
+    token: session.token,
+    cookie: `${SESSION_COOKIE}=${session.token}`,
+    bearer: `Bearer ${session.token}`,
+  };
+}
+
+/**
+ * Inserts a user and logs them in. `cookie` is on the returned object so a test
+ * can go straight to `.set('Cookie', user.cookie)` without a second await.
+ */
 export async function seedUser(overrides: Partial<{ email: string; name: string }> = {}) {
   const email = overrides.email ?? `user-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
   const name = overrides.name ?? 'Test User';
@@ -33,5 +54,7 @@ export async function seedUser(overrides: Partial<{ email: string; name: string 
     .returning({ id: users.id, email: users.email, name: users.name });
 
   if (!user) throw new Error('seedUser: insert returned no row');
-  return user;
+
+  const { cookie, bearer } = await loginAs(user.id);
+  return { ...user, cookie, bearer };
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import { db } from '../client.js';
 import { authTokens, cards, concepts, sessionDays, sessions, topics, users } from '../schema.js';
@@ -101,8 +101,10 @@ describe('schema', () => {
     await db.insert(sessions).values({ userId: user.id, token: 'web-1', kind: 'web', expiresAt });
     await db.insert(sessions).values({ userId: user.id, token: 'ext-1', kind: 'extension', expiresAt });
 
-    const rows = await db.select().from(sessions);
-    expect(rows).toHaveLength(2);
+    // Scoped to the two rows this test inserts — seedUser logs the user in, so
+    // an unfiltered count would also pick up their web session.
+    const rows = await db.select().from(sessions).where(inArray(sessions.token, ['web-1', 'ext-1']));
+    expect(rows.map((r) => r.kind).sort()).toEqual(['extension', 'web']);
   });
 
   it('prevents two session_days for the same (user_id, topic_id, day)', async () => {

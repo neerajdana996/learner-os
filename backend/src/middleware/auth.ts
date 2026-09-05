@@ -1,4 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { isProd } from '../lib/env.js';
+import { readCookie, SESSION_COOKIE } from '../modules/auth/cookie.js';
+import { resolveSession } from '../modules/auth/auth.service.js';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -9,26 +12,48 @@ declare global {
   }
 }
 
+function bearer(req: Request): string | null {
+  const header = req.get('authorization');
+  if (!header) return null;
+  const [scheme, value] = header.split(' ');
+  return scheme?.toLowerCase() === 'bearer' && value ? value : null;
+}
+
 /**
- * Interim auth. plan.md §5: "magic link (email); `x-user-id` header is a dev
- * shortcut only." T-013 replaces the body of this function with cookie-backed
- * sessions — routes keep calling `requireUser` unchanged.
+ * Resolves the caller from a session (plan.md §5: magic link; `x-user-id` is a
+ * dev shortcut only).
  *
- * TODO(T-013): reject `x-user-id` when NODE_ENV=production. Deliberately NOT
- * done yet: compose runs the backend with NODE_ENV=production, and until magic
- * links exist this header is the only way to authenticate, so rejecting it now
- * would break the Sprint 1 demo (`curl -X POST /topics`) that T-012 verifies
- * against compose. The guard lands together with its replacement.
+ * Two credential shapes, one `sessions` table: the web app sends an httpOnly
+ * cookie, the extension sends `Authorization: Bearer` because a cross-origin
+ * MV3 service worker cannot rely on cookies.
+ *
+ * `x-user-id` still works outside production so `docs/api.md`'s curl examples
+ * and `pnpm seed` stay usable without a mail round trip. It is rejected under
+ * `NODE_ENV=production`, which is what sprint.md's Sprint 2 exit criteria
+ * require and what T-008 deferred to this task.
  */
-export const requireUser: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
-  const header = req.get('x-user-id');
-  if (!header) {
-    res.status(401).json({ error: 'unauthorized' });
+export const requireUser: RequestHandler = async (req: Request, res: Response, next: NextFunction) => {
+  const raw = readCookie(req.get('cookie'), SESSION_COOKIE) ?? bearer(req);
+
+  if (raw) {
+    const resolved = await resolveSession(raw);
+    if (!resolved) {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+    req.userId = resolved;
+    next();
     return;
   }
 
-  req.userId = header;
-  next();
+  const devHeader = req.get('x-user-id');
+  if (devHeader && !isProd) {
+    req.userId = devHeader;
+    next();
+    return;
+  }
+
+  res.status(401).json({ error: 'unauthorized' });
 };
 
 /** Narrows `req.userId` for handlers mounted behind `requireUser`. */

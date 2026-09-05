@@ -185,5 +185,23 @@ export const WsServerMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('error'), message: z.string() }),
 ]);
 
+// ---------- Auth (T-013) ----------
+export const MagicLinkSchema = z.object({
+  // trim/lowercase run before the format check, not after: a pasted address
+  // with a trailing space is the common case, and validating first would 400 it.
+  email: z.string().trim().toLowerCase().email().max(320),
+});
+
+export const VerifyQuerySchema = z.object({ token: z.string().min(1).max(512) });
+
+/** Deliberately says nothing about whether the address is registered — a
+ *  different response for a known email would make this an account oracle. */
+export const MagicLinkResponseSchema = z.object({ ok: z.literal(true) });
+
+export const ExtensionTokenResponseSchema = z.object({
+  token: z.string(),
+  expiresAt: z.string(),
+});
+
 // ---------- Health ----------
 export const HealthResponseSchema = z.object({ ok: z.literal(true) });

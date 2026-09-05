@@ -76,7 +76,7 @@ async function seedDueConcept(
   return { concept, itemIds: inserted.map((i) => i.id) };
 }
 
-const getDue = (userId: string, query = '') => request(app).get(`/due${query}`).set('x-user-id', userId);
+const getDue = (cookie: string, query = '') => request(app).get(`/due${query}`).set('Cookie', cookie);
 
 beforeEach(async () => {
   await truncateAll();
@@ -87,7 +87,7 @@ describe('GET /due', () => {
     const { user, topic } = await seedUserWithTopic();
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1, taught: false });
 
-    const res = await getDue(user.id);
+    const res = await getDue(user.cookie);
     expect(res.status).toBe(200);
     expect(res.body.items).toEqual([]);
   });
@@ -96,21 +96,21 @@ describe('GET /due', () => {
     const { user, topic } = await seedUserWithTopic();
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 4, heldOut: true });
 
-    expect((await getDue(user.id)).body.items).toEqual([]);
+    expect((await getDue(user.cookie)).body.items).toEqual([]);
   });
 
   it('excludes topics in holdout status', async () => {
     const { user, topic } = await seedUserWithTopic('holdout');
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1 });
 
-    expect((await getDue(user.id)).body.items).toEqual([]);
+    expect((await getDue(user.cookie)).body.items).toEqual([]);
   });
 
   it('excludes cards that are not due yet', async () => {
     const { user, topic } = await seedUserWithTopic();
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1, due: future(2) });
 
-    expect((await getDue(user.id)).body.items).toEqual([]);
+    expect((await getDue(user.cookie)).body.items).toEqual([]);
   });
 
   it('returns two due cards ordered by due ascending', async () => {
@@ -118,7 +118,7 @@ describe('GET /due', () => {
     const older = await seedDueConcept(user.id, topic.id, { slug: 'older', order: 1, due: past(5) });
     const newer = await seedDueConcept(user.id, topic.id, { slug: 'newer', order: 2, due: past(1) });
 
-    const res = await getDue(user.id);
+    const res = await getDue(user.cookie);
     expect(res.body.items).toHaveLength(2);
     expect(res.body.items.map((i: { conceptId: string }) => i.conceptId)).toEqual([
       older.concept.id,
@@ -131,13 +131,13 @@ describe('GET /due', () => {
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1, due: past(5) });
     await seedDueConcept(user.id, topic.id, { slug: 'b', order: 2, due: past(4) });
 
-    expect((await getDue(user.id, '?limit=1')).body.items).toHaveLength(1);
+    expect((await getDue(user.cookie, '?limit=1')).body.items).toHaveLength(1);
   });
 
   it('rejects a limit outside the allowed range', async () => {
     const { user } = await seedUserWithTopic();
-    expect((await getDue(user.id, '?limit=0')).status).toBe(400);
-    expect((await getDue(user.id, '?limit=999')).status).toBe(400);
+    expect((await getDue(user.cookie, '?limit=0')).status).toBe(400);
+    expect((await getDue(user.cookie, '?limit=999')).status).toBe(400);
   });
 
   it('avoids an item seen in the last 3 reviews when an alternative exists', async () => {
@@ -159,7 +159,7 @@ describe('GET /due', () => {
       gapDaysSinceLast: 1,
     });
 
-    const res = await getDue(user.id);
+    const res = await getDue(user.cookie);
     expect(res.body.items).toHaveLength(1);
     expect(res.body.items[0].itemId).toBe(unseenId);
   });
@@ -179,7 +179,7 @@ describe('GET /due', () => {
       gapDaysSinceLast: 1,
     });
 
-    const res = await getDue(user.id);
+    const res = await getDue(user.cookie);
     expect(res.body.items[0].itemId).toBe(only);
   });
 
@@ -189,7 +189,7 @@ describe('GET /due', () => {
     await seedDueConcept(user.id, topic.id, { slug: 'b', order: 2, due: past(4), payloads: [recognitionPayload] });
     await seedDueConcept(user.id, topic.id, { slug: 'c', order: 3, due: past(3), payloads: [explainPayload] });
 
-    const res = await getDue(user.id);
+    const res = await getDue(user.cookie);
     expect(res.body.items).toHaveLength(3);
 
     // By key inspection, per the acceptance criterion...
@@ -215,7 +215,7 @@ describe('GET /due', () => {
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1 });
     const other = await seedUser();
 
-    expect((await getDue(other.id)).body.items).toEqual([]);
+    expect((await getDue(other.cookie)).body.items).toEqual([]);
   });
 
   it('requires a user', async () => {

@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from 'cors';
 import { env, isProd } from './lib/env.js';
 import { healthRouter } from './routes/health.js';
+import { authRouter } from './modules/auth/auth.routes.js';
 import { topicsRouter } from './modules/topics/topics.routes.js';
 import { reviewsRouter } from './modules/reviews/reviews.routes.js';
 import { dueRouter } from './modules/due/due.routes.js';
@@ -21,6 +22,7 @@ export function createApp(): Express {
   app.use(express.json({ limit: '1mb' }));
 
   app.use(healthRouter);
+  app.use(authRouter);
   app.use(topicsRouter);
   app.use(reviewsRouter);
   app.use(dueRouter);

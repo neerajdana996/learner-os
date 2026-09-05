@@ -51,7 +51,7 @@ describe('Sprint 1 integration flow', () => {
     const user = await seedUser();
     const created = await request(app)
       .post('/topics')
-      .set('x-user-id', user.id)
+      .set('Cookie', user.cookie)
       .send(validTopic);
 
     expect(created.status).toBe(202);
@@ -74,7 +74,7 @@ describe('Sprint 1 integration flow', () => {
       })),
     );
 
-    const due = await request(app).get('/due?limit=2').set('x-user-id', user.id);
+    const due = await request(app).get('/due?limit=2').set('Cookie', user.cookie);
     expect(due.status).toBe(200);
     expect(due.body.items).toHaveLength(2);
 
@@ -82,7 +82,7 @@ describe('Sprint 1 integration flow', () => {
       due.body.items.map((item: { itemId: string }) =>
         request(app)
           .post('/reviews')
-          .set('x-user-id', user.id)
+          .set('Cookie', user.cookie)
           .send({
             itemId: item.itemId,
             response: 'the answer',
@@ -100,7 +100,7 @@ describe('Sprint 1 integration flow', () => {
       .where(and(eq(cards.userId, user.id), eq(cards.conceptId, reviews[0].body.conceptId)));
     expect(reviewedCard?.due.getTime()).toBeGreaterThan(Date.now());
 
-    const afterReview = await request(app).get('/due?limit=2').set('x-user-id', user.id);
+    const afterReview = await request(app).get('/due?limit=2').set('Cookie', user.cookie);
     expect(afterReview.body.items).toEqual([]);
   });
 });

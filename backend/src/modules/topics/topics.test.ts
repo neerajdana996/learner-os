@@ -29,7 +29,7 @@ describe('POST /topics', () => {
     const user = await seedUser();
     const res = await request(app)
       .post('/topics')
-      .set('x-user-id', user.id)
+      .set('Cookie', user.cookie)
       .send({ title: 'React Hooks', startsAt: '2026-01-01T00:00:00.000Z', endsAt: '2026-01-07T00:00:00.000Z' });
 
     expect(res.status).toBe(400);
@@ -41,7 +41,7 @@ describe('POST /topics', () => {
     const user = await seedUser();
     const res = await request(app)
       .post('/topics')
-      .set('x-user-id', user.id)
+      .set('Cookie', user.cookie)
       .send({ title: 'React Hooks', why: 'to stop googling useEffect', ...validSpan });
 
     expect(res.status).toBe(202);
@@ -60,7 +60,7 @@ describe('POST /topics', () => {
 
   it('accepts the Sprint 1 demo body — title only', async () => {
     const user = await seedUser();
-    const res = await request(app).post('/topics').set('x-user-id', user.id).send({ title: 'React Hooks' });
+    const res = await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'React Hooks' });
 
     expect(res.status).toBe(202);
     expect(await getGenerationQueue().getJobs()).toHaveLength(1);
@@ -75,9 +75,9 @@ describe('POST /topics', () => {
 describe('GET /topics/:id', () => {
   it('returns status and zero counts while generating', async () => {
     const user = await seedUser();
-    const created = await request(app).post('/topics').set('x-user-id', user.id).send({ title: 'React Hooks' });
+    const created = await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'React Hooks' });
 
-    const res = await request(app).get(`/topics/${created.body.topicId}`).set('x-user-id', user.id);
+    const res = await request(app).get(`/topics/${created.body.topicId}`).set('Cookie', user.cookie);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -90,7 +90,7 @@ describe('GET /topics/:id', () => {
 
   it('counts concepts and items once generation has persisted them', async () => {
     const user = await seedUser();
-    const created = await request(app).post('/topics').set('x-user-id', user.id).send({ title: 'React Hooks' });
+    const created = await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'React Hooks' });
     const topicId = created.body.topicId;
 
     const inserted = await db
@@ -108,16 +108,16 @@ describe('GET /topics/:id', () => {
       })),
     );
 
-    const res = await request(app).get(`/topics/${topicId}`).set('x-user-id', user.id);
+    const res = await request(app).get(`/topics/${topicId}`).set('Cookie', user.cookie);
     expect(res.body.counts).toEqual({ concepts: 2, items: 2 });
   });
 
   it('404s for a topic owned by someone else', async () => {
     const owner = await seedUser();
     const other = await seedUser();
-    const created = await request(app).post('/topics').set('x-user-id', owner.id).send({ title: 'React Hooks' });
+    const created = await request(app).post('/topics').set('Cookie', owner.cookie).send({ title: 'React Hooks' });
 
-    const res = await request(app).get(`/topics/${created.body.topicId}`).set('x-user-id', other.id);
+    const res = await request(app).get(`/topics/${created.body.topicId}`).set('Cookie', other.cookie);
 
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: 'not_found' });
@@ -125,7 +125,7 @@ describe('GET /topics/:id', () => {
 
   it('400s on a malformed id instead of hitting the uuid column', async () => {
     const user = await seedUser();
-    const res = await request(app).get('/topics/not-a-uuid').set('x-user-id', user.id);
+    const res = await request(app).get('/topics/not-a-uuid').set('Cookie', user.cookie);
     expect(res.status).toBe(400);
   });
 });
@@ -135,11 +135,11 @@ describe('GET /topics', () => {
     const user = await seedUser();
     const other = await seedUser();
 
-    await request(app).post('/topics').set('x-user-id', user.id).send({ title: 'First' });
-    await request(app).post('/topics').set('x-user-id', user.id).send({ title: 'Second' });
-    await request(app).post('/topics').set('x-user-id', other.id).send({ title: 'Not mine' });
+    await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'First' });
+    await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'Second' });
+    await request(app).post('/topics').set('Cookie', other.cookie).send({ title: 'Not mine' });
 
-    const res = await request(app).get('/topics').set('x-user-id', user.id);
+    const res = await request(app).get('/topics').set('Cookie', user.cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.topics.map((t: { title: string }) => t.title)).toEqual(['Second', 'First']);
