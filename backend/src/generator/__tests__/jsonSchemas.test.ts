@@ -144,7 +144,7 @@ describe('domain validation is retried, not fatal on first offence', () => {
       .mockResolvedValueOnce(asText(JSON.stringify(itemSet('short rubric'))));
 
     const { generateItems } = await import('../items.js');
-    await expect(generateItems('useState')).resolves.toMatchObject({ topic: 'useState' });
+    await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).resolves.toMatchObject({ topic: 'useState' });
     // One over-long rubric used to fail an entire 15-minute topic outright.
     expect(create).toHaveBeenCalledTimes(2);
   });
@@ -154,7 +154,7 @@ describe('domain validation is retried, not fatal on first offence', () => {
     create.mockResolvedValue(asText(JSON.stringify(itemSet('x'.repeat(250)))));
 
     const { generateItems } = await import('../items.js');
-    await expect(generateItems('useState')).rejects.toThrow(/rubric/);
+    await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).rejects.toThrow(/rubric/);
     expect(create).toHaveBeenCalledTimes(2);
   });
 });

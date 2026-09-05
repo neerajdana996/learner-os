@@ -2,12 +2,20 @@ import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
 
 /**
- * Floor on a usable map. sprint.md's Sprint 1 demo expects 10–40 concepts; the
- * prompt asks for 20–40. Below this the course is unusable (the diagnostic,
- * session planner and ~10% held-out selection all degrade), so fail the job
- * loudly instead of enrolling someone in a 3-concept "course".
+ * Floor on a usable map. Below this the course is unusable — the diagnostic,
+ * the session planner and the ~10% held-out selection all degrade — so the job
+ * fails loudly instead of enrolling someone in a 3-concept "course".
+ *
+ * **The gap between this and the prompt's 20–40 is deliberate** (T-FIX-006).
+ * The prompt asks for the size a 30-day course actually needs; this is the line
+ * below which something is *broken*, and sprint.md's Sprint 1 demo expects
+ * 10–40, so raising it would fail that demo. A map that lands in between is
+ * thin rather than broken, so it warns instead of failing — the founder sees it
+ * during content QA (T-024) and can regenerate.
  */
 export const MIN_CONCEPTS = 10;
+/** What the prompt asks for. A map below this is thin, not broken. */
+export const EXPECTED_MIN_CONCEPTS = 20;
 
 import { GenerationError, type GenerationErrorReason } from './errors.js';
 
@@ -134,6 +142,12 @@ export async function generateConceptMap(topic: string): Promise<ConceptMap> {
     throw new GenerationError(
       'too_few_concepts',
       `got ${map.concepts.length} concepts, need at least ${MIN_CONCEPTS}`,
+    );
+  }
+  if (map.concepts.length < EXPECTED_MIN_CONCEPTS) {
+    console.warn(
+      `concept map for "${topic}" has ${map.concepts.length} concepts; the prompt asks for ` +
+        `${EXPECTED_MIN_CONCEPTS}–40. Thin for a 30-day course — worth regenerating before QA.`,
     );
   }
   return map;

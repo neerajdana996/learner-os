@@ -29,7 +29,7 @@ beforeEach(() => create.mockReset());
 describe('items generation', () => {
   it('parses the fixture, which contains all four types and 6+ items', async () => {
     create.mockResolvedValueOnce(asText(fixtureText));
-    const result = await generateItems('useState');
+    const result = await generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' });
     expect(result.items.length).toBeGreaterThanOrEqual(6);
     expect(new Set(result.items.map((item) => item.payload.type))).toEqual(
       new Set(['recall', 'recognition', 'application', 'explain']),
@@ -112,7 +112,7 @@ describe('items generation', () => {
       ],
     };
     create.mockResolvedValueOnce(asText(JSON.stringify(tooFew)));
-    await expect(generateItems('useState')).rejects.toMatchObject({
+    await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'too_few_items',
     });
@@ -120,19 +120,19 @@ describe('items generation', () => {
 
   it('retries once when the first response is not JSON, then resolves', async () => {
     create.mockResolvedValueOnce(asText('here are your questions')).mockResolvedValueOnce(asText(fixtureText));
-    await expect(generateItems('useState')).resolves.toMatchObject({ topic: 'useState' });
+    await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).resolves.toMatchObject({ topic: 'useState' });
     expect(create).toHaveBeenCalledTimes(2);
   });
 
   it('rejects with GenerationError when both attempts fail, without a third call', async () => {
     create.mockResolvedValue(asText('broken'));
-    await expect(generateItems('useState')).rejects.toMatchObject({ name: 'GenerationError' });
+    await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).rejects.toMatchObject({ name: 'GenerationError' });
     expect(create).toHaveBeenCalledTimes(2);
   });
 
   it('does not retry a truncated response', async () => {
     create.mockResolvedValue(asText('{"topic":"useState","items":[', 'length'));
-    await expect(generateItems('useState')).rejects.toMatchObject({
+    await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'truncated',
     });

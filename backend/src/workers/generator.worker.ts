@@ -96,7 +96,13 @@ export async function processGenerationJob(
     await onProgress({ stage: 'content', completed, total: teachable.length });
 
     for (const concept of teachable) {
-      const generated = await generateItems(concept.title);
+      // Topic and summary, not just the title: an ambiguous concept name
+      // otherwise gets items from the wrong domain entirely (T-FIX-006).
+      const generated = await generateItems({
+        topic: topic.title,
+        concept: concept.title,
+        summary: concept.summary ?? '',
+      });
       itemsBySlug.set(concept.slug, generated.items);
       teachingBySlug.set(
         concept.slug,

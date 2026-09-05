@@ -157,11 +157,35 @@ export const itemsPrompt = definePrompt({
   validate: (value) => void validateItems(value),
 });
 
+/**
+ * Context, not just a title (T-FIX-006).
+ *
+ * This used to be `generateItems(concept.title)`, and a bare concept name is
+ * routinely ambiguous: a real generation of "Sliding window" produced a
+ * *correct* explanation of the two-pointer array technique for
+ * "Variable-size window" and then six questions about TCP flow control, for
+ * the same concept. The learner reads about subarrays and is tested on
+ * acknowledgement windows — which scores as a failed recall and quietly
+ * corrupts the retention measurement.
+ *
+ * The teaching generator has always had the topic and summary; this is the
+ * same context, and the prompt is told explicitly that the topic decides what
+ * the concept means.
+ */
+export interface ItemsInput {
+  /** The wider course, e.g. "Sliding window". */
+  topic: string;
+  /** This concept's title, e.g. "Variable-size window". */
+  concept: string;
+  /** One sentence on what the concept covers, from the concept map. */
+  summary: string;
+}
+
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */
-export async function generateItems(topic: string): Promise<GeneratedItems> {
+export async function generateItems(input: ItemsInput): Promise<GeneratedItems> {
   let response: unknown;
   try {
-    response = await runPrompt(itemsPrompt, { topic });
+    response = await runPrompt(itemsPrompt, { ...input });
   } catch (error) {
     // A GenerationError already carries the rule it broke — re-wrapping it
     // would flatten every domain reason into `invalid_shape`.
