@@ -58,6 +58,52 @@ describe('POST /topics', () => {
     expect(jobs[0]?.data).toEqual({ topicId: res.body.topicId });
   });
 
+  it('returns the topic already generating instead of building a second one', async () => {
+    const user = await seedUser();
+    const body = { title: 'Dynamic programming', ...validSpan };
+
+    // The wait screen sits for five to ten minutes, so a second click is not a
+    // rare accident — and it used to cost a second full generation (T-065).
+    const first = await request(app).post('/topics').set('Cookie', user.cookie).send(body);
+    const second = await request(app).post('/topics').set('Cookie', user.cookie).send(body);
+
+    expect(second.status).toBe(202);
+    expect(second.body.topicId).toBe(first.body.topicId);
+    expect(await db.select().from(topics)).toHaveLength(1);
+    expect(await getGenerationQueue().getJobs()).toHaveLength(1);
+  });
+
+  it('builds a new topic once the previous one is no longer generating', async () => {
+    const user = await seedUser();
+    const first = await request(app)
+      .post('/topics')
+      .set('Cookie', user.cookie)
+      .send({ title: 'Sliding window', ...validSpan });
+    await db.update(topics).set({ status: 'active' }).where(eq(topics.id, first.body.topicId));
+
+    const second = await request(app)
+      .post('/topics')
+      .set('Cookie', user.cookie)
+      .send({ title: 'Dynamic programming', ...validSpan });
+
+    expect(second.body.topicId).not.toBe(first.body.topicId);
+    expect(await db.select().from(topics)).toHaveLength(2);
+  });
+
+  it('does not let one user block another user from creating a topic', async () => {
+    const first = await seedUser();
+    const second = await seedUser();
+    await request(app).post('/topics').set('Cookie', first.cookie).send({ title: 'A topic', ...validSpan });
+
+    const res = await request(app)
+      .post('/topics')
+      .set('Cookie', second.cookie)
+      .send({ title: 'Another topic', ...validSpan });
+
+    expect(res.status).toBe(202);
+    expect(await db.select().from(topics)).toHaveLength(2);
+  });
+
   it('accepts the Sprint 1 demo body — title only', async () => {
     const user = await seedUser();
     const res = await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'React Hooks' });
@@ -112,6 +158,50 @@ describe('GET /topics/:id', () => {
     expect(res.body.counts).toEqual({ concepts: 2, items: 2 });
   });
 
+  it('reports generation progress while the job is running', async () => {
+    const user = await seedUser();
+    const created = await request(app)
+      .post('/topics')
+      .set('Cookie', user.cookie)
+      .send({ title: 'React Hooks', ...validSpan });
+
+    const job = await getGenerationQueue().getJob(created.body.topicId);
+    await job?.updateProgress({ stage: 'content', completed: 7, total: 36, concept: 'Memoisation' });
+
+    const res = await request(app).get(`/topics/${created.body.topicId}`).set('Cookie', user.cookie);
+
+    // The counter the wait screen used to show is 0 for the whole run, because
+    // persistence is all-or-nothing (T-064). This is the number that moves.
+    expect(res.body.counts.concepts).toBe(0);
+    expect(res.body.progress).toEqual({
+      stage: 'content',
+      completed: 7,
+      total: 36,
+      concept: 'Memoisation',
+    });
+  });
+
+  it('has no progress before the job reports any, and none once terminal', async () => {
+    const user = await seedUser();
+    const created = await request(app)
+      .post('/topics')
+      .set('Cookie', user.cookie)
+      .send({ title: 'React Hooks', ...validSpan });
+
+    const fresh = await request(app).get(`/topics/${created.body.topicId}`).set('Cookie', user.cookie);
+    expect(fresh.status).toBe(200);
+    expect(fresh.body.progress).toBeNull();
+
+    // A finished topic's job is eventually evicted from Redis, so asking for it
+    // must be a normal empty answer rather than a 500.
+    await db.update(topics).set({ status: 'active' }).where(eq(topics.id, created.body.topicId));
+    await getGenerationQueue().obliterate({ force: true });
+
+    const done = await request(app).get(`/topics/${created.body.topicId}`).set('Cookie', user.cookie);
+    expect(done.status).toBe(200);
+    expect(done.body.progress).toBeNull();
+  });
+
   it('404s for a topic owned by someone else', async () => {
     const owner = await seedUser();
     const other = await seedUser();
@@ -135,7 +225,11 @@ describe('GET /topics', () => {
     const user = await seedUser();
     const other = await seedUser();
 
-    await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'First' });
+    // One at a time: a second POST while the first is still generating returns
+    // the first (T-065), so the fixture flips it out of `generating` the way a
+    // finished job would.
+    const first = await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'First' });
+    await db.update(topics).set({ status: 'active' }).where(eq(topics.id, first.body.topicId));
     await request(app).post('/topics').set('Cookie', user.cookie).send({ title: 'Second' });
     await request(app).post('/topics').set('Cookie', other.cookie).send({ title: 'Not mine' });
 

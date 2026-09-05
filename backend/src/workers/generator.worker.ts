@@ -17,6 +17,29 @@ export interface GenerationJobData {
   topicId: string;
 }
 
+/**
+ * What the onboarding wait screen shows while the job runs (T-064).
+ *
+ * It is reported through BullMQ's own job progress rather than written to the
+ * topic row, because persistence here is deliberately all-or-nothing: T-007
+ * writes every concept, item and explanation in one transaction at the end, and
+ * `getSession` relies on that to treat a concept without items as a bug rather
+ * than a race. Streaming partial rows in to animate a counter would trade a
+ * real invariant for a progress bar.
+ *
+ * `total` is known once the map returns: one call per non-held-out concept for
+ * items, and one for teaching.
+ */
+export interface GenerationProgress {
+  stage: 'map' | 'content' | 'saving';
+  completed: number;
+  total: number;
+  /** What is being worked on right now, for the wait screen's subtitle. */
+  concept?: string;
+}
+
+export type ProgressReporter = (progress: GenerationProgress) => void | Promise<void>;
+
 function required<T>(value: T | undefined, what: string): T {
   if (value === undefined) throw new Error(`generation: ${what}`);
   return value;
@@ -33,11 +56,16 @@ function required<T>(value: T | undefined, what: string): T {
 export async function processGenerationJob(
   { topicId }: GenerationJobData,
   rng: () => number = Math.random,
+  // A callback rather than the BullMQ `job`: the tests and the Sprint
+  // integration walks call this function directly, and they should not have to
+  // build a queue to run a generation.
+  onProgress: ProgressReporter = () => {},
 ): Promise<void> {
   const [topic] = await db.select().from(topics).where(eq(topics.id, topicId));
   if (!topic) throw new Error(`generation: topic ${topicId} not found`);
 
   try {
+    await onProgress({ stage: 'map', completed: 0, total: 1 });
     const map = await generateConceptMap(topic.title);
     // The generator returns concepts in teaching order; `order` is 1-based.
     const indexed = map.concepts.map((concept, index) => ({ ...concept, order: index + 1 }));
@@ -58,8 +86,11 @@ export async function processGenerationJob(
     // T-038 generates an item for them on demand.
     const itemsBySlug = new Map<string, Awaited<ReturnType<typeof generateItems>>['items']>();
     const teachingBySlug = new Map<string, Awaited<ReturnType<typeof generateTeaching>>>();
-    for (const concept of ordered) {
-      if (concept.heldOut) continue;
+    const teachable = ordered.filter((concept) => !concept.heldOut);
+    let completed = 0;
+    await onProgress({ stage: 'content', completed, total: teachable.length });
+
+    for (const concept of teachable) {
       const generated = await generateItems(concept.title);
       itemsBySlug.set(concept.slug, generated.items);
       teachingBySlug.set(
@@ -71,7 +102,16 @@ export async function processGenerationJob(
           teachMode: concept.teachMode,
         }),
       );
+      completed += 1;
+      await onProgress({
+        stage: 'content',
+        completed,
+        total: teachable.length,
+        concept: concept.title,
+      });
     }
+
+    await onProgress({ stage: 'saving', completed: teachable.length, total: teachable.length });
 
     await db.transaction(async (tx) => {
       const inserted = await tx
@@ -141,7 +181,7 @@ export { seededRng };
 export function createGenerationWorker(): Worker<GenerationJobData> {
   return new Worker<GenerationJobData>(
     GENERATION_QUEUE,
-    async (job) => processGenerationJob(job.data),
+    async (job) => processGenerationJob(job.data, Math.random, (progress) => job.updateProgress(progress)),
     { connection: { url: env.REDIS_URL } },
   );
 }

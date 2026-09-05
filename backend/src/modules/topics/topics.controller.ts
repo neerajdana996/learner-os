@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { userId } from '../../middleware/auth.js';
-import { createTopic, findTopic, listTopics } from './topics.service.js';
+import { createTopic, findTopic, generationProgress, listTopics } from './topics.service.js';
 
 export async function postTopic(req: Request, res: Response) {
   const topic = await createTopic(userId(req), req.body);
@@ -18,5 +18,8 @@ export async function getTopic(req: Request, res: Response) {
     return;
   }
   const { topic, counts } = result;
-  res.json({ ...topic, counts });
+  // Only while it is actually building: a finished topic has no job left to
+  // ask, and a progress field that lingers would read as "still working".
+  const progress = topic.status === 'generating' ? await generationProgress(topic.id) : null;
+  res.json({ ...topic, counts, progress });
 }

@@ -200,6 +200,40 @@ describe('processGenerationJob', () => {
     }
   });
 
+  // T-064 — the wait screen's counter reads `counts.concepts`, which is 0 for
+  // the whole run because persistence is one transaction at the end. Progress
+  // is reported out of band instead, so the screen has something true to show.
+  it('reports progress as it works, ending at completed = total', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    const progress: { stage: string; completed: number; total: number; concept?: string }[] = [];
+    await processGenerationJob({ topicId: topic.id }, seededRng(42), (p) => {
+      progress.push(p);
+    });
+
+    expect(progress[0]).toMatchObject({ stage: 'map', completed: 0 });
+
+    // 18 taught concepts (2 of 20 are held out), one report each, monotonic.
+    const content = progress.filter((p) => p.stage === 'content');
+    expect(content.at(-1)).toMatchObject({ completed: 18, total: 18 });
+    expect(content.map((p) => p.completed)).toEqual([0, ...Array.from({ length: 18 }, (_, i) => i + 1)]);
+    expect(content.at(-1)?.concept).toBe('Concept 20');
+
+    expect(progress.at(-1)).toMatchObject({ stage: 'saving', completed: 18, total: 18 });
+  });
+
+  it('does not require a progress reporter', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(6));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    // The Sprint walks and most unit tests call this directly; needing a queue
+    // to run a generation would be a poor trade for a progress bar.
+    await expect(processGenerationJob({ topicId: topic.id }, seededRng(42))).resolves.toBeUndefined();
+  });
+
   it('marks the topic failed and persists nothing when generation throws', async () => {
     const topic = await seedTopic();
     generateConceptMap.mockRejectedValueOnce(new Error('unknown_prereq: c9 references missing prereq nope'));

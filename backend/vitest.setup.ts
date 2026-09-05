@@ -3,7 +3,12 @@
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgres://learnos:learnos@localhost:5432/learnos_test';
-process.env.REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+// Redis database 1, never 0. Postgres is carefully isolated to `learnos_test`,
+// but Redis was shared with dev — and three suites call
+// `queue.obliterate({ force: true })` in `beforeEach`. Running `pnpm test`
+// while a real generation was in flight therefore deleted the running job, and
+// left its topic stuck on `generating` with nothing to finish it (T-068).
+process.env.REDIS_URL = process.env.TEST_REDIS_URL ?? 'redis://localhost:6379/1';
 
 // A sentinel, not the real key. `env.ts` calls process.loadEnvFile(), so without
 // this the actual key from backend/.env reaches the suite — which is how a test
