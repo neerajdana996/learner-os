@@ -1074,6 +1074,23 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** One `GenerationError` class exists; `instanceof` holds for errors thrown by any generator.
 - **tests:** Existing concept-map and items suites pass unchanged (they import via the re-export); the new teaching suite asserts `instanceof GenerationError` on errors from a third module.
 
+### T-FIX-011 · Generation fails on real content: model omits `isTransfer`
+- **status:** todo
+- **sprint:** 2
+- **severity:** high — topic generation currently fails end-to-end against the real API
+- **depends_on:** T-056
+- **files:** `backend/src/llm/index.ts`, `backend/src/llm/client.ts`, `backend/src/generator/{items,conceptMap,teaching}.ts`
+- **description:** Found by running a real topic through the live API on 2026-09-05 (the first end-to-end generation ever attempted with a working key). The job failed with `invalid_shape: explain item is missing a boolean isTransfer flag`, and it failed on **both** attempts — `runPrompt` retries once, so this is consistent model behaviour, not a fluke. `items/system.md` states "Every item needs an explicit `isTransfer` boolean" and the worked example shows it on all four types, but `gpt-5.6-luna` at effort `low` still drops it on the `explain` item.
+- **the fix is structured outputs, not a bigger model or more prompt text.** T-056 already wired `complete({ jsonSchema })` (`response_format: json_schema, strict: true`) but no prompt supplies a schema yet, so the run still went through the free-text path. With a schema the field cannot be omitted — the failure mode disappears rather than being retried. `zod/v4` is reachable from the installed zod 3.25 (`import { toJSONSchema } from 'zod/v4'`), so the JSON Schema can be derived from the Zod schema each `PromptDef` already carries, instead of hand-written and left to drift.
+- **do not "fix" this by defaulting `isTransfer` to false** — that silently mislabels transfer items and corrupts the transfer accuracy metric in plan.md §7, which is one of the pilot's headline numbers. A missing field must stay an error.
+- **watch out:** OpenAI strict mode requires every property to be listed in `required` and `additionalProperties: false` on every object. Zod `.optional()` fields and discriminated unions need checking against that — `ItemPayloadSchema` is a four-way discriminated union with per-variant fields, which is the interesting case.
+- **acceptance:** A real topic generates end to end against the live API with no shape failures; every generated item has an explicit `isTransfer`.
+- **tests:**
+  - `runPrompt` sends `response_format` with the schema derived from the prompt's Zod schema.
+  - The derived schema for `ItemPayloadSchema` satisfies strict mode (all properties required, `additionalProperties: false`).
+  - An item response missing `isTransfer` still raises `GenerationError` (the validation stays, belt and braces).
+  - Existing generator suites pass unchanged.
+
 ### T-FIX-010 · Backend could not boot: .env never loaded, LLM client built at import
 - **status:** done
 - **sprint:** 2
@@ -1118,7 +1135,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:** token minting mocked; a request builds the right Vertex URL from project+location; an expired cached token triggers a refresh rather than a 401.
 
 ### T-055 · Google + GitHub OAuth sign-in
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-013, T-054
 - **files:** `backend/src/modules/auth/oauth.{routes,controller,service}.ts`, `backend/src/db/schema.ts` (needs a schema task), `backend/src/lib/env.ts`, `backend/.env.example`, `frontend/src/pages/LoginPage.tsx`, tests
@@ -1137,6 +1154,19 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Callback with a missing/incorrect `state` → 400, no session created.
   - Two providers for the same verified email resolve to one `users` row and two `oauth_accounts` rows.
   - Provider token exchange failing → 502, no user and no session created.
+- **notes:** (2026-09-05) Built and verified. Backend suite 237 → 251 tests (14 new), lint clean in backend and frontend. Pulled forward at the founder's request; plan.md §5 still describes magic link as the pilot's auth, and this is recorded as a deliberate addition rather than a plan amendment.
+  - **This is also a schema task** — it adds `oauth_accounts` and the `oauth_provider` enum. Declared here rather than smuggled in, per loop.md.
+  - **Identity is `(provider, provider_user_id)`, never email.** The provider's subject id is immutable; an email can be changed at the provider, so keying on email would let an address change silently re-point an account. A test signs in twice with the same Google `sub` under two different addresses and asserts one user, one link.
+  - **An unverified provider email is refused outright — not linked, not used to create.** This is the account-takeover path the task flagged: GitHub lets anyone type any address onto their profile, so linking on an unverified address would mean setting a GitHub email to a victim's address hands over their account. The GitHub adapter therefore reads `GET /user/emails` and requires `verified: true`, and **never** touches the profile's `email` field; Google's adapter requires `email_verified`. Both have a test that seeds a victim account and asserts the attempt creates no link and no session.
+  - **CSRF `state` is a short-lived httpOnly cookie**, compared on the callback. Without it an attacker can hand a victim a callback URL carrying the attacker's authorization code and silently log the victim into the attacker's account. Tested three ways: mismatched state, no state cookie at all, and no code.
+  - Sessions needed no change at all — T-013 already separated *proving who you are* from *the session it mints*, so OAuth is just a third path into `createSession(userId, 'web')`. That design paid off exactly as intended.
+  - Linking runs in a transaction with `onConflictDoNothing` on the provider identity, so two callbacks racing the same code cannot 500 on the unique index.
+  - An existing name set during onboarding is never overwritten by the provider's; the provider name only fills a blank. Tested.
+  - **No new dependency:** the authorization-code flow is two `fetch` calls per provider. Google's claims come from the `userinfo` endpoint rather than by decoding the `id_token`, which avoids JWT signature verification entirely — same claims, nothing subtle to get wrong.
+  - An empty client id disables that provider with a 404 rather than failing at boot, so a deployment can run with one, both or neither configured.
+  - Tests stub `globalThis.fetch`; nothing reaches Google or GitHub (loop.md §3).
+  - Frontend: two buttons on `LoginPage`. They are plain links, not fetches — the redirect chain has to happen in the address bar, and the session returns as an httpOnly cookie the app never reads.
+  - **Not done:** unlinking a provider, and `DELETE /me` cascading to `oauth_accounts` (T-046 owns that and must include the new table).
 
 ### T-FIX-009 · Nothing stops a test from reaching the real model API
 - **status:** todo

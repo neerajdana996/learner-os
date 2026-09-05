@@ -26,7 +26,29 @@ curl -XPOST -b cookies.txt localhost:3001/auth/extension-token
 ```
 
 `POST /auth/magic` answers identically whether or not the address is
-registered, so it cannot be used to discover who has an account.
+registered, so it cannot be used to discover who has an account. It is rate
+limited to 3 requests per address per 15 minutes, and a new link invalidates
+the previous one.
+
+### Google / GitHub sign-in
+
+Full-page navigations, not fetches — the provider redirect chain has to happen
+in the browser:
+
+```
+GET /auth/oauth/google/start     -> 302 to Google, sets a state cookie
+GET /auth/oauth/google/callback  -> 302 to APP_URL, sets the session cookie
+GET /auth/oauth/github/start
+GET /auth/oauth/github/callback
+```
+
+Register these callback URLs with each provider:
+`{API_URL}/auth/oauth/google/callback` and `{API_URL}/auth/oauth/github/callback`.
+
+Google, GitHub and a magic link for the same **verified** address all resolve to
+one account. A provider email that the provider has not verified is refused
+outright rather than linked — on GitHub anyone can put any address on their
+profile, so linking an unverified one would be an account-takeover path.
 
 **Dev shortcut:** outside production you may send `x-user-id: <uuid>` instead of
 a session. It is rejected under `NODE_ENV=production`. The examples below use it
