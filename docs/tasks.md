@@ -8,11 +8,11 @@
 
 ## Where things stand — 2026-09-05
 
-**42 of 74 tasks done.** Sprints 1 and most of 2 are shipped: backend **333 tests**, frontend **21**, all lint-clean.
+**43 of 76 tasks done.** Sprints 1 and most of 2 are shipped: backend **347 tests**, frontend **21**, all lint-clean.
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
-**Next task:** `T-026` (Sprint 2 integration test). `T-024` and `T-FIX-006` are also ready and can be done in any order. Sprint 2 closes when T-026 passes.
+**Next task:** `T-026` (Sprint 2 integration test) — the last thing between here and the end of Sprint 2. `T-FIX-006` is also ready and can be done in any order.
 
 ### Run it
 
@@ -733,7 +733,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **notes:** (2026-09-05) Built. Score, days remaining, one primary action that flips to a disabled "Done for today" from T-023's `completedToday`, and the extension prompt when `hasExtensionToken` is false. Reads the map through the shared RTK Query cache, so opening the dashboard and the map costs one request rather than two.
 
 ### T-024 · Content QA tool
-- **status:** todo
+- **status:** done
 - **sprint:** 2
 - **depends_on:** T-007, T-053
 - **files:** `backend/src/scripts/qa.ts` (stub exists — replace), `backend/src/scripts/__tests__/qa.test.ts`, `backend/package.json`, `docs/qa-checklist.md`
@@ -751,6 +751,13 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - An edited concept **title** still maps to the right row (anchor is the id, not the heading text).
   - Export includes teaching content (T-053) and answer keys; held-out concepts export with their items but are clearly marked as held-out.
   - `qa:retire` excludes the item from `GET /due`.
+- **notes:** (2026-09-05) Built and verified against both the test DB and the real dev DB. `pnpm qa <topicId>` → `qa/<slug>-<id8>.md`, `pnpm qa:apply <file>`, `pnpm qa:retire <itemId>`. 14 tests (347 total).
+  - **Anchor format.** Every editable value sits between `<!-- learnos:field concept|item=<uuid> name=<field> -->` and `<!-- /learnos:field -->`. Headings, checkboxes and prose outside the markers are ignored by the parser, so retitling a concept — or the heading above it — still lands on the right row. An explicit end marker (rather than "until the next heading") is what makes a multi-paragraph explanation, or an answer containing `#` or `---`, survive the round trip; export refuses to write a value that itself contains a marker line.
+  - **Editable:** concept title/summary/tryFirstPrompt/explanationShort/explanationLong; item prompt, answer, accept-list, rubric, the four options, and the correct option number (**1-based** in the file, to match the numbered list the founder is reading). Corrections are exported read-only — see **T-063**.
+  - `qa:apply` parses and re-validates every payload against `ItemPayloadSchema` **before** the first write, then writes only changed rows in one transaction. Unedited file → `no changes`. Malformed file, out-of-range option, empty field, or an id that no longer exists → one-line error, exit 1, nothing written.
+  - **Retirement rides on `items.flagged_bad >= 3`** (`src/lib/retire.ts`), not a new column — no schema task needed, and it matches the backlog's planned auto-retire at the same threshold. `due.repository.findCandidates` now filters on it; the session, diagnostic and test item pickers still do not — **T-062**.
+  - `qa/` is gitignored in `backend/.gitignore`. An export holds every answer key for a live topic.
+  - curl-equivalent: `cd backend && pnpm qa <topicId> && pnpm qa:apply qa/<file>.md && pnpm qa:retire <itemId>`.
 
 ### T-025 · Seed script for local dev
 - **status:** done
@@ -1372,3 +1379,29 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Rendered user message for `generateConceptMap` contains the topic title.
   - A concept-map response below the enforced floor → `GenerationError`, with the floor and the prompt's asked range agreeing.
 
+### T-062 · Retired items are still served outside `/due`
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-024
+- **files:** `backend/src/modules/session/session.repository.ts`, `backend/src/modules/diagnostic/diagnostic.repository.ts`, `backend/src/modules/due/due.repository.ts`, their tests
+- **description:** T-024 made `pnpm qa:retire` exclude an item from `GET /due`, but three other paths pick items straight out of the table and ignore `flagged_bad`: the session planner's post-teaching retrieval check (`findItemsForConcepts`), the diagnostic's per-concept picker, and — when it is written — T-038's test generator. A question the founder rejected as wrong is still asked in a session, and worse, could land in the Day-30 test, where it is scored.
+  - Push the filter down to one shared helper rather than repeating `lt(items.flaggedBad, RETIRED_FLAG_THRESHOLD)` in four repositories, so T-038 gets it by default.
+  - Decide the degenerate case deliberately: a concept whose every item is retired. The session must not hand back a concept with no retrieval item (`NewConceptSchema` requires one) — either skip the concept or fail generation loudly.
+- **acceptance:** A retired item is unreachable from every surface: `/due`, `/session`, the diagnostic, and the Day-30/45 tests.
+- **tests:**
+  - A retired item never appears in `GET /session`'s `newConcepts` or `dueReviews`.
+  - A retired item is never picked by the diagnostic.
+  - A concept whose items are all retired does not produce a session entry with a missing item.
+  - The shared helper is the only place the threshold is compared.
+
+### T-063 · QA cannot fix a wrong misconception
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-024
+- **files:** `backend/src/scripts/qa.ts`, `backend/src/scripts/__tests__/qa.test.ts`
+- **description:** `concepts.corrections` (T-053's `[{ wrong, why }]`) is exported read-only, because a two-field list needs a separator that will not collide with the prose inside it. So a founder who spots a *wrong* misconception — one that teaches the learner a falsehood on the way to correcting it — has no way to fix it short of regenerating the concept. Round-trip it: one marker pair per correction field (`name=correction0.wrong`), or a small fenced block per correction with its own index. Deleting a correction must stay possible without breaking T-053's 2–4 range check.
+- **acceptance:** A corrections edit round-trips like every other field, and a file that would leave a concept outside the 2–4 correction range aborts.
+- **tests:**
+  - Editing one correction's `why` updates only that entry.
+  - Adding and removing a correction both work.
+  - Dropping below 2 or above 4 corrections aborts with nothing written.
