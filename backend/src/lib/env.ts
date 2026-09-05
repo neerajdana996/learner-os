@@ -18,6 +18,18 @@ const EnvSchema = z.object({
   // env so a test can shorten them without reaching into module internals.
   AUTH_TOKEN_TTL_MIN: z.coerce.number().int().positive().default(15),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  // SMTP. An empty SMTP_HOST selects the console transport, which is what dev
+  // and every test run on — real mail is opt-in by configuration, so a suite
+  // can never accidentally send to a learner.
+  SMTP_HOST: z.string().default(''),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_SECURE: z
+    .string()
+    .default('true')
+    .transform((s) => s.toLowerCase() !== 'false'),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  MAIL_FROM: z.string().default('learnos <no-reply@example.com>'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

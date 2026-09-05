@@ -2,7 +2,10 @@ import { createServer } from 'node:http';
 import { createApp } from './app.js';
 import { attachWebSocket } from './ws.js';
 import { env } from './lib/env.js';
+import { configureMailTransport } from './lib/mail.js';
 import { createGenerationWorker } from './workers/generator.worker.js';
+
+configureMailTransport();
 
 const app = createApp();
 const server = createServer(app);
