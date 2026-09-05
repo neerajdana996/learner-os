@@ -1013,9 +1013,13 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **status:** todo
 - **sprint:** 4
 - **depends_on:** T-001
-- **files:** `backend/src/index.ts`, `backend/src/lib/log.ts`
+- **files:** `backend/src/index.ts`, `backend/src/lib/log.ts`, `frontend/src/app/ErrorBoundary.tsx`
 - **description:** Structured JSON logging with request id; `/health` checks Postgres and Redis; worker failures logged with job data; optional Sentry DSN.
-- **tests:** `/health` returns 503 if Redis is down (mock).
+  - **The web app has no error boundary anywhere.** Found while testing T-071: a `GET /session` response missing `newConcepts` makes `DashboardPage` throw on `.length`, React unmounts the whole tree, and the learner gets a blank white page with the error only in the console. That is the worst possible failure for a pilot participant — nothing to report but "it stopped working" — and every screen has the same exposure. One boundary around the routed area, showing what broke and a way back, plus (once a DSN exists) reporting it.
+  - `/health` currently returns `{ok:true}` without touching Postgres or Redis, so it answered 200 the whole time the database was down during this session's walkthrough.
+- **tests:**
+  - `/health` returns 503 if Redis is down (mock), and 503 if Postgres is unreachable.
+  - A screen that throws renders the boundary, not a blank page, and the rest of the shell survives.
 
 ### T-048 · Deployment
 - **status:** todo
@@ -1510,4 +1514,92 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A `generating` topic with no job, older than the threshold, is marked `failed` with a reason that says so.
   - A `generating` topic **with** a live job is left alone, however long it has been running.
   - A stranded topic does not block `POST /topics` from creating a new one.
+
+### T-070 · Dev sign-in without a mail round trip
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-013
+- **files:** `backend/src/modules/auth/auth.routes.ts`, `auth.controller.ts`, `auth.service.ts`, `backend/src/lib/env.ts`, `backend/src/shared/schemas.ts`, `frontend/src/features/auth/pages/LoginPage.tsx`, `frontend/src/features/auth/authApi.ts`, `frontend/src/styles/components/_dev-panel.scss`
+- **description:** Both real sign-in paths need something outside the app — a mail round trip or a provider redirect — which is friction twenty times a day while developing. `POST /auth/dev-login` takes a fixed email/password from env and returns the same session cookie every other path produces, and the login page shows a one-click button for it.
+- **acceptance:** One click from a cold browser to a signed-in session, and the route cannot exist in production.
+- **tests:**
+  - Signs in and sets a real httpOnly session cookie that `GET /me` accepts.
+  - Creates the dev user on first use; a second sign-in reuses it.
+  - Wrong password or any other address → 401, no session.
+  - Not rate limited (three sign-ins in an afternoon is normal).
+  - Under `NODE_ENV=production` the route returns **404** — it is never registered.
+- **notes:** (2026-09-05) Defaults `dev@learnos.local` / `learnos`, overridable via `DEV_LOGIN_EMAIL` / `DEV_LOGIN_PASSWORD`.
+  - **Two independent locks.** The route is not registered when `isProd` (a stronger guarantee than a handler that checks a flag — a misconfigured secret cannot turn it back on), and `devLogin()` returns null under `isProd` regardless. On the client the whole block sits behind `import.meta.env.DEV`, a build-time constant, so the button and the credentials are dropped from the production bundle rather than hidden in it.
+  - **Deliberately not rate limited.** `limitMagicLink` allows 3 per address per 15 minutes because `/auth/magic` mails a stranger on demand; sharing that budget would lock a developer out after the third sign-in and would also 429 the real magic-link flow. On any host where this route exists, `x-user-id` already grants any account with no password.
+  - No hashing, no lockout, no reset — treating it as an authentication feature would invite someone to reach for it in production.
+
+### T-071 · Nothing routed a signed-in learner anywhere
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-018
+- **files:** `frontend/src/app/router.tsx`, `frontend/src/app/LandingRoute.tsx`, `frontend/src/app/RequireAuth.tsx`
+- **description:** `/` rendered the login page unconditionally and there was no auth guard anywhere. Every sign-in path lands on `/` — `GET /auth/verify` redirects the browser to `APP_URL` after setting the cookie, OAuth does the same — so **a learner who clicked their magic link was returned to the sign-in screen** with no sign anything had happened. Found by using the app, not by a test: every suite drives the API directly or renders one page in isolation.
+  - `LandingRoute` asks `GET /me` — the session is an httpOnly cookie the app cannot read, so "am I signed in?" is exactly "does /me return 200?" — then forwards to `/home` or `/onboarding` depending on whether this learner has a usable topic.
+  - `RequireAuth` wraps the signed-in screens. Without it, `/session` with an expired cookie rendered the player, fired four 401s and settled on an empty page that looks like a bug rather than a logged-out state.
+- **acceptance:** Signing in by any path lands on the right screen; an expired session sends you to sign-in instead of an empty page.
+- **tests:**
+  - `/` renders the login page when `/me` 401s, and redirects when it does not.
+  - A learner with no usable topic lands on onboarding; one with an active topic lands on the dashboard.
+  - A topic still `generating` counts as *not* usable — onboarding owns the wait screen.
+  - A protected route with no session redirects to `/` rather than rendering.
+
+### T-072 · `GET /topics` returned four fields while the client expected nine
+- **status:** done
+- **sprint:** 2
+- **depends_on:** T-008
+- **files:** `backend/src/modules/topics/topics.repository.ts`, `topics.controller.ts`, `backend/src/modules/topics/topics.test.ts`
+- **description:** `listTopics` selected `id`, `title`, `status`, `createdAt`. The frontend's `TopicSummary` declared those plus `why`, `error`, `startsAt`, `endsAt` and `counts`. The dashboard read `endsAt`, got `undefined`, and `daysLeft()` returned 0 — so **every learner saw "final day" from day one**, on a 30-day course.
+  - **Root cause worth naming:** `TopicSummary` is hand-written in `frontend/src/features/topics/topicsApi.ts` instead of being derived from a schema in `backend/src/shared`. TypeScript cannot see the drift, and it will happen again on the next endpoint that grows a field. A `TopicSummarySchema` in shared, with the controller parsing its own response in dev, would make this class of bug impossible — logged as **T-075**.
+- **acceptance:** The list and the single-topic endpoint return the same shape, and the dashboard's day counter is right.
+- **tests:**
+  - The list includes `endsAt`, `startsAt`, `why`, `error` and nested `counts`.
+  - Counts are per topic and correct with several topics in play.
+
+### T-073 · The session never runs the due reviews
+- **status:** todo
+- **sprint:** 2
+- **depends_on:** T-021
+- **files:** `frontend/src/features/session/pages/SessionPage.tsx`, its tests
+- **description:** `GET /session` returns `newConcepts` **and** `dueReviews`, and the session screen's own eyebrow says "Concept 1 of 1 · **then 4 reviews**" — but the player only ever walks `newConcepts`. When it runs out it renders the summary, which *counts* the reviews as "waiting". They are never asked. Found by doing a session in the browser.
+  - This is the product's core mechanism, not a nicety: retrieval practice is the highest-effect-size item in plan.md §3.2, and until the extension ships (Sprint 3) the web session is the **only** place a review can happen. As it stands a learner gets one retrieval question per new concept and nothing else, and the FSRS schedule those reviews drive never advances.
+  - The reviews phase should reuse `QuestionCard` and the same `POST /reviews` path the post-teaching check already uses, then hand off to the summary.
+  - Decide what "done for today" means when reviews were skipped — `POST /session/complete` currently only records the taught concepts.
+- **acceptance:** A session with due reviews asks every one of them, and answering advances the card schedule.
+- **tests:**
+  - A session with 2 new concepts and 4 due reviews asks 6 questions in order.
+  - Each review answer posts to `/reviews` with `surface: 'web'`.
+  - A session with no new concepts but due reviews still runs them (today it shows "Nothing due today" and stops).
+  - The summary counts what was actually answered, not what was offered.
+
+### T-074 · Nobody knew what a topic costs
+- **status:** done
+- **sprint:** 4
+- **depends_on:** T-050
+- **files:** `backend/src/llm/usage.ts`, `backend/src/llm/client.ts`, `backend/src/llm/index.ts`, `backend/src/workers/generator.worker.ts`, `backend/src/llm/__tests__/usage.test.ts`
+- **description:** Nothing recorded token counts or cost. For a product whose per-learner economics decide whether generated topics are viable at all (T-058), "what does a topic cost?" was a guess. Every call now records prompt/completion/reasoning tokens, latency and an estimated USD, and the worker prints one line per generation.
+  - Prices live in `usage.ts` as a local estimate for a log line, explicitly not billing — a stale price shows up as a slightly wrong log rather than a wrong charge, and an unknown model costs 0 instead of throwing.
+  - `LLM_LOG_CALLS=1` prints every individual call; off by default, because a generation is ~80 of them.
+- **acceptance:** A real generation prints call count, tokens and cost.
+- **tests:**
+  - Input and output are priced separately, per model.
+  - An unknown model is 0, not an exception.
+  - The collector captures only calls made inside it, releases on throw, and refuses to overlap two generations.
+
+### T-075 · Response shapes are hand-written on the client
+- **status:** todo
+- **sprint:** 3
+- **depends_on:** T-072
+- **files:** `backend/src/shared/schemas.ts`, `frontend/src/features/*/[feature]Api.ts`, `backend/src/modules/*/[module].controller.ts`
+- **description:** T-072 shipped a client type that claimed nine fields where the server sent four, and nothing caught it — because `TopicSummary` (and the same pattern elsewhere) is declared by hand in the feature's API file rather than inferred from a schema in `backend/src/shared`. plan.md §5 makes `backend/src/shared` the source of truth for shared types; response shapes quietly opted out of it.
+  - Define the response schemas in shared (`TopicSummarySchema`, `SessionResponseSchema` already exists, `MapResponseSchema` already exists) and have each feature's API type be `z.infer` of it.
+  - Have controllers parse their own response against the schema when `NODE_ENV !== 'production'`, so drift fails loudly in dev instead of arriving as `undefined` in a UI three screens away.
+- **acceptance:** No response type is written by hand on the client, and a controller that drops a field fails in dev.
+- **tests:**
+  - Each controller's response parses against its shared schema.
+  - Removing a field from a controller's select makes its test fail.
 
