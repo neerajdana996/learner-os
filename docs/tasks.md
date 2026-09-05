@@ -8,7 +8,7 @@
 
 ## Where things stand — 2026-09-05
 
-**53 of 87 tasks done.** Sprints 1 and most of 2 are shipped: backend **379 tests**, frontend **42**, extension **31**, all lint-clean.
+**55 of 94 tasks done.** Sprints 1 and most of 2 are shipped: backend **394 tests**, frontend **46**, extension **31**, all lint-clean.
 
 **Working end to end today:** magic-link + Google/GitHub sign-in · five-step onboarding · real topic generation (verified: 40 concepts / ~256 items per topic against the live API) · adaptive diagnostic · session planner with the try-first vs example-first A/B · map and knowledge score · dashboard.
 
@@ -16,7 +16,22 @@
 
 `T-073` → `T-038` → `T-039` → `T-040` → `T-041` → the rest of the extension (`T-028`…) → `T-045`, `T-044`.
 
-The teaching machine is built and the measuring instrument is not: nothing can generate a Day-30 test, score one, or compute a retention gain, so a pilot run today would produce ten learners and no answer. `T-073` leads because `GET /session` returns due reviews that the screen counts and never asks — no retrieval happens between sessions at all, and retrieval is the mechanism.
+The teaching machine is built and the measuring instrument is not: nothing can generate a Day-30 test, score one, or compute a retention gain, so a pilot run today would produce ten learners and no answer.
+
+### Sprint 5 — question formats (added 2026-09-05, designed, partly built)
+
+Every item today is a prompt string and a textarea, whatever the subject. Two of the three pilot topics are code topics and one is systems, so the format the pilot measures retention *through* is the one least suited to them. Designed in full on two canvases; the links and the reasoning are in the Sprint 5 section below.
+
+**Done:** `T-079` (schema — `concepts.domain`, `items.answer_kind`, `review_events.assisted`) · `T-090` (`shared-ui/` — one source of truth for presentation, synced into both clients).
+**Blocked on a founder call:** `T-081` — CodeMirror is a UI library and `loop.md §2` bars one. It blocks `T-088` only.
+**Next, as directed by the founder:** `T-091` (the learner picks the language). `loop.md §0`'s first-unblocked rule would pick `T-080`; the founder asked for `T-091` first, so take that unless told otherwise. Nothing in Sprint 5 jumps the measurement-first order above without a deliberate decision.
+
+**Things this sprint learned that are expensive to rediscover:**
+- **Two schemas, not one.** `ItemGenerationSchema` is what the model may return; `ItemPayloadSchema` is what we store. No model-writable field accepts markup, which closes an XSS class by construction, and the model quotes line *text* rather than line numbers — it miscounts them constantly, and the worker resolves the index.
+- **`loadTemplate()` cannot compose a prompt fragment.** It reads three fixed files from one folder. `T-083` has to extend it before `domains/code.md` means anything.
+- **Classify a concept by the shape of a correct answer, not the subject** — otherwise every concept in a topic called *Dynamic programming* comes back `code`.
+- **`pnpm lint` never compiles SCSS.** It is `tsc --noEmit` in both clients, so a broken `@use` path passes lint and fails at build. `verify.sh` and `loop.md §4` now require `pnpm build` when a stylesheet is touched.
+- **`CLAUDE.md`, `plan.md`, `loop.md` and `sprint.md` were write-protected and are now writable** (founder ran `chmod u+w` on 2026-09-05). They are still the governing documents — change them deliberately, not in passing.
 
 ### Run it
 
