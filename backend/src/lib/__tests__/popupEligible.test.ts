@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { ANSWER_BLOCK_KINDS } from '@learnos/shared';
 import {
   isPopupEligible,
+  isReviewEligible,
   POPUP_ELIGIBLE_KINDS,
   POPUP_INELIGIBLE_KINDS,
+  REVIEW_INELIGIBLE_KINDS,
 } from '../popupEligible.js';
 
 describe('isPopupEligible', () => {
@@ -36,5 +38,37 @@ describe('isPopupEligible', () => {
     // appear on the extension, and "no card right now" is also what a quiet day
     // looks like — so nobody would notice for weeks.
     expect(isPopupEligible('somethingAddedLater')).toBe(true);
+  });
+});
+
+describe('isReviewEligible', () => {
+  it('keeps a plain item', () => {
+    expect(isReviewEligible(null)).toBe(true);
+  });
+
+  it('refuses a code editor on every surface', () => {
+    // Four minutes is worth paying once, when writing the thing is the point.
+    // Paying it again for an answer already given is how a queue gets abandoned.
+    expect(isReviewEligible('codeEditor')).toBe(false);
+  });
+
+  it('leaves the cheap code formats reviewable', () => {
+    // This is what T-088's "the next review is a clozeCode, not this" means in
+    // practice — no memory of what was served last is needed.
+    expect(isReviewEligible('clozeCode')).toBe(true);
+    expect(isReviewEligible('hotspotLine')).toBe(true);
+    expect(isReviewEligible('orderLines')).toBe(true);
+  });
+
+  it('is not stricter than the popup rule', () => {
+    // A review runs on both surfaces, so anything barred from review must also
+    // be barred from the popup — never the reverse.
+    for (const kind of REVIEW_INELIGIBLE_KINDS) {
+      expect(isPopupEligible(kind)).toBe(false);
+    }
+  });
+
+  it('makes a newly added format reviewable by default', () => {
+    expect(isReviewEligible('somethingAddedLater')).toBe(true);
   });
 });

@@ -3,7 +3,7 @@ import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
 import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
 import { withinTeachingWindow } from '../../lib/courseWindow.js';
-import { popupEligible } from '../../lib/popupEligible.js';
+import { popupEligible, reviewEligible } from '../../lib/popupEligible.js';
 
 export const RECENT_WINDOW = 3;
 
@@ -39,6 +39,9 @@ export async function findCandidates(conceptIds: string[], popupOnly = false) {
       and(
         inArray(items.conceptId, conceptIds),
         lt(items.flaggedBad, RETIRED_FLAG_THRESHOLD),
+        // Everything this query returns is a review, on either surface, and a
+        // `codeEditor` is never a review (T-088).
+        reviewEligible(),
         // Asserted here rather than filtered in the client (T-089): a caller
         // that forgets cannot serve a four-minute question to a popup.
         ...(popupOnly ? [popupEligible()] : []),

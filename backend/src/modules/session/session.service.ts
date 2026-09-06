@@ -1,4 +1,5 @@
 import { isTeaching } from '../../lib/courseWindow.js';
+import { rationItems } from '../../lib/rationItems.js';
 import { planSession, remainingDays } from '../../lib/planner.js';
 import { toPublicItem } from '../../lib/publicItem.js';
 import { localDayFor } from '../../lib/today.js';
@@ -104,7 +105,15 @@ async function buildPlan(userId: string, now: Date) {
 export async function getSession(userId: string, now: Date = new Date()): Promise<SessionResponse> {
   const { topic, user, due, plan, chosen, teaching } = await buildPlan(userId, now);
   const itemRows = await findItemsForConcepts(chosen.map((c) => c.id));
-  const itemByConcept = new Map(itemRows.map((row) => [row.conceptId, row]));
+  /**
+   * One item per concept, at most one `codeEditor` in the session (T-088).
+   *
+   * This used to be `new Map(rows.map(...))`, which is last-one-wins — so which
+   * format a concept was taught with depended on the order the database
+   * returned rows in, and three four-minute items in one session was a
+   * coin-toss away.
+   */
+  const itemByConcept = rationItems(chosen.map((c) => c.id), itemRows);
 
   const newConcepts = chosen.map((concept) => {
     const item = itemByConcept.get(concept.id);

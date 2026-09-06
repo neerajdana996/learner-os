@@ -56,3 +56,30 @@ export function isPopupEligible(answerKind: string | null): boolean {
 export function popupEligible(): SQL | undefined {
   return or(isNull(items.answerKind), not(inArray(items.answerKind, [...POPUP_INELIGIBLE_KINDS])));
 }
+
+/**
+ * Formats that may never be a **review**, on any surface (T-088).
+ *
+ * A `codeEditor` is two to four minutes. It earns that once, when a concept is
+ * newly taught and writing the thing is the point. As a review it is the same
+ * four minutes for a question the learner has already answered, several times,
+ * against a ten-minute daily budget — which is how a review queue becomes a
+ * thing people stop opening.
+ *
+ * This also satisfies T-088's other acceptance line — "the same concept's next
+ * review is a `clozeCode`, not this" — without the item picker needing to
+ * remember what it served last: if the format can never be a review, the next
+ * review is necessarily something else.
+ */
+export const REVIEW_INELIGIBLE_KINDS = ['codeEditor'] as const satisfies readonly AnswerBlockKind[];
+
+/** For a row already loaded. Null is a plain prompt and always eligible. */
+export function isReviewEligible(answerKind: string | null): boolean {
+  if (answerKind === null) return true;
+  return !(REVIEW_INELIGIBLE_KINDS as readonly string[]).includes(answerKind);
+}
+
+/** SQL: the same rule, for the query that picks a due item. */
+export function reviewEligible(): SQL | undefined {
+  return or(isNull(items.answerKind), not(inArray(items.answerKind, [...REVIEW_INELIGIBLE_KINDS])));
+}

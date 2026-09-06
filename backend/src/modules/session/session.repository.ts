@@ -56,9 +56,14 @@ export async function findPrereqEdges(topicId: string) {
 export async function findItemsForConcepts(conceptIds: string[]) {
   if (conceptIds.length === 0) return [];
   return db
-    .select({ id: items.id, conceptId: items.conceptId, payload: items.payload })
+    // `answerKind` comes back so the session can ration the expensive formats
+    // (T-088). It is denormalised onto the row precisely for queries like this.
+    .select({ id: items.id, conceptId: items.conceptId, payload: items.payload, answerKind: items.answerKind })
     .from(items)
-    .where(inArray(items.conceptId, conceptIds));
+    .where(inArray(items.conceptId, conceptIds))
+    // Deterministic, so the same session rebuilt gives the same lesson — the
+    // ration would otherwise depend on whatever order the database returned.
+    .orderBy(asc(items.id));
 }
 
 /**
