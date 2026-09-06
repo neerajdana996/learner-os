@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNotNull, lt, lte } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
 import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
+import { withinTeachingWindow } from '../../lib/courseWindow.js';
 
 export const RECENT_WINDOW = 3;
 
@@ -17,7 +18,7 @@ export async function findDueCards(userId: string, now: Date, limit: number) {
         lte(cards.due, now),
         isNotNull(cards.taughtAt),
         eq(concepts.heldOut, false),
-        eq(topics.status, 'active'),
+        withinTeachingWindow(now),
       ),
     )
     .orderBy(asc(cards.due))

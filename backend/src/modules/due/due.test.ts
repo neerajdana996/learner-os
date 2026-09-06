@@ -29,9 +29,12 @@ const recognitionPayload = {
 
 const explainPayload = { type: 'explain' as const, prompt: 'Explain', rubric: 'SECRET RUBRIC' };
 
-async function seedUserWithTopic(status: 'active' | 'holdout' | 'generating' = 'active') {
+async function seedUserWithTopic(
+  status: 'active' | 'holdout' | 'generating' = 'active',
+  endsAt: Date | null = null,
+) {
   const user = await seedUser();
-  const [topic] = await db.insert(topics).values({ userId: user.id, title: 'T', status }).returning({ id: topics.id });
+  const [topic] = await db.insert(topics).values({ userId: user.id, title: 'T', status, endsAt }).returning({ id: topics.id });
   if (!topic) throw new Error('no topic');
   return { user, topic };
 }
@@ -104,6 +107,27 @@ describe('GET /due', () => {
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1 });
 
     expect((await getDue(user.cookie)).body.items).toEqual([]);
+  });
+
+  /**
+   * The extension's queue is the surface the silence has to hold. Days 8–29
+   * carry no cards at all (plan.md §2) — a review arriving on day 20 means the
+   * day-30 test is not cold, and the pilot's only number stops meaning
+   * anything. `status` alone cannot express this: it stays 'active' forever,
+   * because nothing ever writes 'done'.
+   */
+  it('excludes a topic whose end date has passed, however overdue the card is', async () => {
+    const { user, topic } = await seedUserWithTopic('active', new Date(Date.now() - 86_400_000));
+    await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1 });
+
+    expect((await getDue(user.cookie)).body.items).toEqual([]);
+  });
+
+  it('still serves a topic whose end date is ahead', async () => {
+    const { user, topic } = await seedUserWithTopic('active', new Date(Date.now() + 86_400_000));
+    await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1 });
+
+    expect((await getDue(user.cookie)).body.items).toHaveLength(1);
   });
 
   it('excludes cards that are not due yet', async () => {

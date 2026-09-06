@@ -32,6 +32,36 @@ export default function DashboardPage() {
     );
   }
 
+  /**
+   * The seven days are over and the topic has gone quiet until the day-30 test.
+   * This is not "done for today" — there is no tomorrow to come back to, and an
+   * app that keeps saying "come back tomorrow" for three weeks reads as broken.
+   *
+   * The test is deliberately not dated here. It is unannounced, and a countdown
+   * on the dashboard is exactly the revision cue that would make it measure
+   * revision instead of retention.
+   */
+  if (session?.courseComplete) {
+    return (
+      <div className="u-stack u-measure">
+        <h1>That&rsquo;s the seven days done.</h1>
+        <p className="u-muted">
+          Nothing more to do — no sessions, no cards, nothing from the extension. The point of the
+          quiet is that what you keep from here is what actually stuck.
+        </p>
+        <p className="u-muted">
+          There is one test still to come, and you won&rsquo;t be told when. Until then your map is
+          still here if you want to look at what you covered.
+        </p>
+        <div>
+          <Link className="btn btn--secondary" to="/map">
+            See your map
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const done = session?.completedToday ?? false;
   // The score and the day counter live in the bar now (T-081), so this page
   // leads with the thing worth acting on instead of repeating the number.

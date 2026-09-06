@@ -246,6 +246,13 @@ export const SessionResponseSchema = z.object({
   newConcepts: z.array(NewConceptSchema),
   dueReviews: z.array(PublicItemSchema),
   completedToday: z.boolean(),
+  /**
+   * The seven days are over and the topic has gone quiet until the day-30 test.
+   * Distinct from `completedToday`, which means "come back tomorrow" — here
+   * there is no tomorrow to come back to, and saying so is the difference
+   * between a finished course and an app that looks broken.
+   */
+  courseComplete: z.boolean(),
 });
 
 // ---------- Map & score (T-017) ----------

@@ -2187,3 +2187,23 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** (2026-09-06) The load-bearing change is not the constant, it is **the concept-map prompt**. `MAX_NEW_CONCEPTS` is 3/day, so seven days caps a map at 21 concepts — and the prompt was asking for **20–40**, sized in its own words for "a ~30-day course". A 40-concept map could not have finished, and an unfinished map makes the day-30 comparison unreadable. Now 14–18, which leaves slack for a missed day rather than requiring three new concepts every single day.
   - Also corrected four comments that asserted the old length as fact — `models.ts` ("the whole 30 days"), `generator/items.ts` and `items/domains/code.md` (both "comes back seven or eight times over thirty days", now three or four inside the week), and `score.ts`. These are the kind of stale claim that quietly teaches the next reader something false.
   - `schemas.ts` needed no change: it already enforced `endsAt >= startsAt + 7 days`, so seven sits exactly on the boundary.
+
+### T-105 · Nothing enforced the silence
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-104
+- **files:** `backend/src/lib/courseWindow.ts`, `backend/src/modules/due/due.repository.ts`, `backend/src/modules/session/session.service.ts`, `packages/shared/src/schemas.ts`, `frontend/src/features/dashboard/pages/DashboardPage.tsx`, tests alongside
+- **description:** Found while tracing the new-user journey (2026-09-06). Days 8–29 are meant to be silent — that silence *is* the measurement — and **nothing implemented it.** `topics.status` has a `'done'` value that nothing in the codebase ever writes, so a finished course stayed `'active'` for ever. Two consequences, both silent:
+  - `planSession` floors `remainingDays` at 0 and then falls back to `MAX_NEW_CONCEPTS` when it is 0, so a course past `endsAt` went on offering **three new concepts a day, indefinitely**.
+  - `findDueCards` filtered on `status = 'active'` alone, so the extension's review queue kept serving cards through the whole quiet period.
+  - The failure mode is the dangerous kind: the app keeps working, nobody notices, and the day-30 test simply is not cold. The one number the pilot exists to produce would have been worthless, and there would have been no error anywhere to explain why.
+- **acceptance:** Past `endsAt`, `GET /session` offers no new concepts and no reviews and reports `courseComplete`; `GET /due` returns nothing; the dashboard says the course is over rather than "done for today".
+- **tests:**
+  - `isTeaching` — inside the window, past it, exactly at `endsAt`, null `endsAt`, and each non-active status.
+  - `GET /session` past the end date offers nothing and sets `courseComplete`; still serves on the last day.
+  - `GET /session` past the end date serves no reviews either, with four overdue taught cards seeded.
+  - `GET /due` excludes a topic past its end date however overdue the card, and still serves one ahead of it.
+- **notes:** (2026-09-06) The rule lives in one file, `lib/courseWindow.ts`, in two forms — a Drizzle condition for queries that filter in SQL and a predicate for rows already loaded. They are together deliberately: split across two files they drift, and a drift here fails silently.
+  - `courseComplete` is a new field on `SessionResponse` rather than a reuse of `completedToday`. They mean different things — "come back tomorrow" versus "there is no tomorrow" — and an app that says the first for three weeks reads as broken.
+  - **The dashboard deliberately does not show a countdown to the test.** It is unannounced by design; a date on the dashboard is exactly the revision cue that would make it measure revision instead of retention.
+  - A null `endsAt` still counts as teaching: that is the bare Sprint 1 demo topic, which has no deadline to be past.

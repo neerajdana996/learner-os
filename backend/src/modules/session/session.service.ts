@@ -1,3 +1,4 @@
+import { isTeaching } from '../../lib/courseWindow.js';
 import { planSession, remainingDays } from '../../lib/planner.js';
 import { toPublicItem } from '../../lib/publicItem.js';
 import { localDayFor } from '../../lib/today.js';
@@ -68,6 +69,23 @@ async function buildPlan(userId: string, now: Date) {
     findUserById(userId),
   ]);
 
+  const teaching = isTeaching(topic, now);
+
+  // Past `endsAt` there is nothing to offer, and asking the planner would be
+  // worse than useless: `remainingDays` floors at 0, and planSession falls back
+  // to MAX_NEW_CONCEPTS when it is 0 — so a finished course would go on serving
+  // three new concepts a day forever.
+  if (!teaching) {
+    return {
+      topic,
+      user: await findUserById(userId),
+      due: { items: [] },
+      plan: { newConceptCount: 0, reviewCount: 0 },
+      chosen: [],
+      teaching,
+    };
+  }
+
   const ready = readyConcepts(rows, edges);
   // Ask for the cap rather than the planned count: the planner needs to know
   // how many are actually due before it can decide how many fit.
@@ -80,11 +98,11 @@ async function buildPlan(userId: string, now: Date) {
     budgetMin: topic.dailyBudgetMin ?? 15,
   });
 
-  return { topic, user, due, plan, chosen: ready.slice(0, plan.newConceptCount) };
+  return { topic, user, due, plan, chosen: ready.slice(0, plan.newConceptCount), teaching };
 }
 
 export async function getSession(userId: string, now: Date = new Date()): Promise<SessionResponse> {
-  const { topic, user, due, plan, chosen } = await buildPlan(userId, now);
+  const { topic, user, due, plan, chosen, teaching } = await buildPlan(userId, now);
   const itemRows = await findItemsForConcepts(chosen.map((c) => c.id));
   const itemByConcept = new Map(itemRows.map((row) => [row.conceptId, row]));
 
@@ -117,6 +135,7 @@ export async function getSession(userId: string, now: Date = new Date()): Promis
       topic.id,
       localDayFor(now, user?.timezone ?? null),
     ),
+    courseComplete: !teaching,
   };
 }
 

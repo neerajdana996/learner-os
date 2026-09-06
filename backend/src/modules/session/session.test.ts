@@ -202,6 +202,43 @@ describe('GET /session', () => {
   });
 });
 
+describe('GET /session — after the seven days', () => {
+  /**
+   * Days 8–29 are silent by design (plan.md §2). The silence is the
+   * measurement: if the app keeps teaching and reviewing past `endsAt`, the
+   * day-30 test is not a cold test and the pilot's only number means nothing.
+   *
+   * Nothing else in the system notices the date passing — `status` stays
+   * 'active' forever, because nothing writes 'done'. Before this, `planSession`
+   * saw `remainingDays === 0`, fell back to MAX_NEW_CONCEPTS, and served three
+   * new concepts a day for ever.
+   */
+  it('offers nothing once the end date has passed', async () => {
+    const { user } = await seed({ count: 20, days: -1 });
+    const res = await getSession(user.cookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.newConcepts).toHaveLength(0);
+    expect(res.body.courseComplete).toBe(true);
+  });
+
+  it('stops serving reviews too, not just new concepts', async () => {
+    // Four taught cards, all overdue: during the course these would be served.
+    const { user } = await seed({ count: 20, days: -1, taughtOrders: [1, 2, 3, 4] });
+    const res = await getSession(user.cookie);
+
+    expect(res.body.dueReviews).toHaveLength(0);
+  });
+
+  it('is still teaching on the last day', async () => {
+    const { user } = await seed({ count: 20, days: 1 });
+    const res = await getSession(user.cookie);
+
+    expect(res.body.courseComplete).toBe(false);
+    expect(res.body.newConcepts.length).toBeGreaterThan(0);
+  });
+});
+
 describe('POST /session/complete', () => {
   it('marks the concepts taught and schedules them for today', async () => {
     const { user, byOrder } = await seed({ count: 20, days: 10 });
