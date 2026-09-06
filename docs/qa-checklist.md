@@ -22,6 +22,10 @@ pnpm qa:retire <itemId>            # drop one question entirely
 
 ## What you are checking
 
+Per topic, before anything else — it takes one glance and it invalidates the rest if it is wrong:
+
+- [ ] **The domain split is a spread, not a single value.** Every concept carries a `domain` — `code`, `math`, `systems` or `prose` — decided by what a *correct answer* looks like, not by what subject the topic is (T-082). A topic where all forty concepts came back `code` is legal but almost always means the model classified by subject, and it silently disables every format decision downstream: rich code formats get forced onto concepts whose answer is a sentence. Roughly half of a healthy code topic is `prose`; below a third, regenerate rather than QA it. The generation log warns when a topic is 100% one domain — but it cannot see 90%, and you can.
+
 Per concept:
 
 - [ ] **Factually correct.** The short and long explanations say something true, and the long one actually adds detail rather than rewording the short one.
