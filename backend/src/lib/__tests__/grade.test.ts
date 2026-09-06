@@ -172,3 +172,48 @@ describe('application items are judged, not string-matched (T-FIX-005)', () => {
     expect(gradeExplanation).not.toHaveBeenCalled();
   });
 });
+
+describe('a numeric answer block', () => {
+  const numericItem = (answer: number, tolerance: number, unit?: string) => ({
+    type: 'recall' as const,
+    prompt: 'How much memory?',
+    answer: String(answer),
+    blocks: [{ kind: 'numeric' as const, slot: 'answer' as const, answer, tolerance, ...(unit ? { unit } : {}) }],
+  });
+
+  /**
+   * The block's own tolerance, not the fixed 1% used for text answers. A
+   * capacity question wants an order of magnitude, and 1% would mark a correct
+   * estimate wrong.
+   */
+  it('accepts an estimate inside the block’s tolerance and rejects one outside', async () => {
+    const item = numericItem(6e9, 0.5, 'bytes');
+    expect((await grade(item, '8000000000')).correct).toBe(true);
+    expect((await grade(item, '4e9')).correct).toBe(true);
+    expect((await grade(item, '20000000000')).correct).toBe(false);
+  });
+
+  it('reads the spellings that string matching could never enumerate', async () => {
+    const item = numericItem(6e9, 0.1);
+    for (const spelling of ['6000000000', '6e9', '6,000,000,000', ' 6000000000 ']) {
+      expect((await grade(item, spelling)).correct, spelling).toBe(true);
+    }
+  });
+
+  it('uses an absolute window at zero, where a relative one has none', async () => {
+    const item = numericItem(0, 0.5);
+    expect((await grade(item, '0.2')).correct).toBe(true);
+    expect((await grade(item, '2')).correct).toBe(false);
+  });
+
+  it('says so when the answer is not a number', async () => {
+    const result = await grade(numericItem(10, 0.1), 'about ten');
+    expect(result.correct).toBe(false);
+    expect(result.feedback).toMatch(/not a number/i);
+  });
+
+  it('names the unit in the feedback rather than demanding it in the answer', async () => {
+    const result = await grade(numericItem(6e9, 0.1, 'bytes'), '1');
+    expect(result.feedback).toMatch(/6000000000 bytes/);
+  });
+});

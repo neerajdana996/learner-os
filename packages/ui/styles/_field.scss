@@ -51,3 +51,21 @@
     color: var(--clay-ink);
   }
 }
+
+/// A numeric answer (T-108). The unit sits beside the field, never inside it:
+/// it is a label, not something the learner types, because grading a typed
+/// "GB" would be a spelling test rather than an estimate.
+.numeric {
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: $s-3;
+  }
+
+  &__unit {
+    font-family: $font-mono;
+    font-size: $text-sm;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+}

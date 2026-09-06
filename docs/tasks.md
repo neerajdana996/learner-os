@@ -2399,3 +2399,16 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Incremented in SQL, not read-then-written.** Two learners reporting the same item at once would otherwise both read the same value and one report would vanish; a lost complaint is a bad question that stays in circulation.
   - **Not deduplicated per learner, deliberately.** That needs a table of who-flagged-what, which is a schema task, and at ten participants it would buy nothing: reporting the same question three times means meeting it three times, days apart, and someone who does that is telling us something real. The card disables the control after one use so a single card cannot file three complaints with three taps. **Revisit before opening the pilot up.**
   - **The control appears only after answering.** Before you see the answer, a hard question and a broken one look identical.
+
+### T-113 · `numeric` was half-built — I shipped a field nothing read
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-108
+- **files:** `backend/src/lib/grade.ts`, `packages/ui/src/QuestionCard.tsx`, `packages/ui/styles/_field.scss`, tests alongside
+- **description:** Found by auditing the cards. **T-108 added the `numeric` answer block, the prompt that tells the generator to use it, and no way to answer or grade one.** `tolerance` was written by the generator and read by nothing, and an item carrying the block fell through `QuestionCard` to a free-text box graded by string matching — which is the exact failure the block exists to prevent, since `6GB`, `6e9` and `6,000,000,000` are one answer with infinitely many spellings.
+  - The near-miss that makes it worse: `grade.ts` already had a fixed 1% `NUMERIC_TOLERANCE` for text answers, so a numeric item would have *appeared* to work on an exact answer and silently marked every estimate wrong. A capacity question wants an order of magnitude; 1% is not that.
+- **acceptance:** A numeric block renders a number field with its unit beside it; grading uses the block's own tolerance rather than the fixed one.
+- **tests:** Estimate inside/outside tolerance; the four spellings string matching could never enumerate; absolute window at zero, where a relative one has none; a non-numeric answer says so; the unit appears in feedback rather than being demanded in the answer.
+- **notes:** (2026-09-06) **The block decides the surface, not the item's `type`.** Grading checks for the answer block before the type switch, and `QuestionCard` does the same — which is the shape the remaining four answer surfaces (T-086–T-088) should follow.
+  - Also fixed while in there: `recall` and `application` rendered a 2-row **textarea**, which T-029's spec calls an input. A textarea invited a paragraph for a one-word answer and wasted a third of a 380×300 popup on empty rows; an input also gets Enter-to-submit for free. `explain` keeps its textarea.
+  - **Still open, and now the only gap in the card:** `clozeCode`, `hotspotLine`, `orderLines` and `codeEditor` have schemas, generator support and prompt instructions, and **no answer surface** — they fall through to the text box. That is T-086, T-087 and T-088, all `todo`, and T-088 is blocked on the T-081 library call. Today the schema supports five answer surfaces and the UI renders one.

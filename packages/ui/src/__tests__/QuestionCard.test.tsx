@@ -50,3 +50,50 @@ describe('QuestionCard', () => {
     expect(JSON.stringify(recognition)).not.toContain('answerIndex');
   });
 });
+
+describe('answer surfaces respect the item, and the block', () => {
+  const base = { itemId: 'i1', conceptId: 'c1' } as const;
+
+  it('gives recall and application one short input, not a paragraph box', () => {
+    // A textarea invited an essay for a one-word answer and wasted a third of a
+    // 380×300 popup on empty rows.
+    for (const type of ['recall', 'application'] as const) {
+      const { unmount } = render(
+        <QuestionCard item={{ ...base, type, prompt: 'Q' }} value={null} onChange={() => {}} />,
+      );
+      expect(screen.getByRole('textbox')).toHaveAttribute('type', 'text');
+      unmount();
+    }
+  });
+
+  it('gives explain room to write', () => {
+    render(<QuestionCard item={{ ...base, type: 'explain', prompt: 'Q' }} value={null} onChange={() => {}} />);
+    expect(screen.getByRole('textbox').tagName).toBe('TEXTAREA');
+  });
+
+  /**
+   * The block decides the surface, not the item's `type`. Before this a numeric
+   * answer fell through to a text box and was graded as a string — the exact
+   * failure the block exists to prevent, since 6GB, 6e9 and 6,000,000,000 are
+   * one answer with infinitely many spellings.
+   */
+  it('gives a numeric answer block a number field with its unit beside it', () => {
+    render(
+      <QuestionCard
+        item={{
+          ...base,
+          type: 'recall',
+          prompt: 'How much memory?',
+          blocks: [{ kind: 'numeric', slot: 'answer', unit: 'bytes' }],
+        }}
+        value={null}
+        onChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole('spinbutton')).toBeInTheDocument();
+    // The unit is shown, never typed: grading a typed "GB" is a spelling test.
+    expect(screen.getByText('bytes')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+});

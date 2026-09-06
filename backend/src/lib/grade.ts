@@ -70,6 +70,33 @@ function applicationRubric(modelAnswer: string): string {
 export async function grade(payload: ItemPayload, response: string | number): Promise<Grade> {
   const text = String(response);
 
+  /**
+   * A `numeric` answer block decides how to grade, whatever the item's `type`
+   * (T-108). It carries its own `tolerance` because the question is usually an
+   * estimate: a capacity answer wants an order of magnitude, not equality, and
+   * the fixed 1% used for text answers would mark a correct estimate wrong.
+   *
+   * Checked before the switch because the block, not the type, is the answer
+   * surface. Without this the field was written by the generator and read by
+   * nothing, and a numeric answer fell through to string matching — which is
+   * the exact failure the block exists to prevent, since `6GB`, `6e9` and
+   * `6,000,000,000` are one answer with infinitely many spellings.
+   */
+  const numericBlock = payload.blocks?.find((b) => b.kind === 'numeric' && b.slot === 'answer');
+  if (numericBlock && numericBlock.kind === 'numeric') {
+    const given = Number.parseFloat(text.replace(/[\s,]/g, ''));
+    if (!Number.isFinite(given)) {
+      return { correct: false, feedback: 'That is not a number — give a figure, without units.' };
+    }
+    const { answer, tolerance, unit } = numericBlock;
+    // Relative to the expected value, so one tolerance works at every scale.
+    // An exact zero has no relative window, so fall back to absolute.
+    const allowed = answer === 0 ? tolerance : Math.abs(answer) * tolerance;
+    const correct = Math.abs(given - answer) <= allowed;
+    const shown = unit ? `${answer} ${unit}` : String(answer);
+    return { correct, feedback: correct ? 'Correct.' : `Not quite — the answer is about ${shown}.` };
+  }
+
   switch (payload.type) {
     case 'recognition': {
       const chosen = typeof response === 'number' ? response : Number.parseInt(text, 10);
