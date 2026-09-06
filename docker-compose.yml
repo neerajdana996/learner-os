@@ -25,10 +25,23 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    # Context is the repo root: a workspace package cannot be installed from
+    # inside its own directory.
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    working_dir: /app/backend
     volumes:
-      - ./backend:/app
-      - backend_node_modules:/app/node_modules
+      # The whole repo, so an edit to packages/shared is live here too.
+      - .:/app
+      # Every node_modules pnpm creates needs its own volume, or the bind mount
+      # above shadows what the image installed. They cannot be shared with the
+      # frontend service: each container installs a different dependency subset
+      # via --filter, so one root volume would leave whichever started second
+      # with the other's tree.
+      - backend_root_modules:/app/node_modules
+      - backend_app_modules:/app/backend/node_modules
+      - backend_shared_modules:/app/packages/shared/node_modules
     env_file:
       - path: ./backend/.env
         required: false
@@ -47,8 +60,11 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
-    # Push schema, then watch the API, WebSocket server, and generation worker.
-    command: sh -c "pnpm drizzle-kit push --force && pnpm dev"
+    # @learnos/shared is built, and the bind mount hides the copy the image
+    # built — so build it here, against the mounted source, before anything
+    # imports it. Then push schema and watch the API, WebSocket server and
+    # generation worker.
+    command: sh -c "pnpm --filter @learnos/shared build && pnpm drizzle-kit push --force && pnpm dev"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health | grep -q '\"ok\":true'"]
       interval: 5s
@@ -57,14 +73,19 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       target: build
+    working_dir: /app/frontend
     volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
+      - .:/app
+      - frontend_root_modules:/app/node_modules
+      - frontend_app_modules:/app/frontend/node_modules
+      - frontend_shared_modules:/app/packages/shared/node_modules
+      - frontend_ui_modules:/app/packages/ui/node_modules
     environment:
       VITE_DEV_PROXY_TARGET: http://backend:3001
-    command: pnpm dev --host 0.0.0.0
+    command: sh -c "pnpm --filter @learnos/shared build && pnpm dev --host 0.0.0.0"
     ports: ["3000:5173"]
     depends_on:
       backend: { condition: service_healthy }
@@ -72,12 +93,22 @@ services:
   # Not a long-running service. Build the extension zip with:
   #   docker compose run --rm extension
   extension:
-    build: ./extension
+    build:
+      context: .
+      dockerfile: extension/Dockerfile
     volumes:
-      - ./extension/dist:/app/dist
+      - ./extension/dist:/app/extension/dist
     profiles: ["build"]
 
+# Renamed from backend_node_modules / frontend_node_modules deliberately: a
+# named volume is seeded only when Docker first creates it, so an existing
+# checkout would have handed the workspace layout its pre-workspace tree.
 volumes:
   pgdata: {}
-  backend_node_modules: {}
-  frontend_node_modules: {}
+  backend_root_modules: {}
+  backend_app_modules: {}
+  backend_shared_modules: {}
+  frontend_root_modules: {}
+  frontend_app_modules: {}
+  frontend_shared_modules: {}
+  frontend_ui_modules: {}

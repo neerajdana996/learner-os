@@ -1,0 +1,14 @@
+# The build context is the repo root now, so keeping it small matters.
+**/node_modules
+**/dist
+**/.output
+**/.wxt
+**/.turbo
+.git
+.claude
+backend/qa
+backend/drizzle
+design
+docs
+**/*.log
+.DS_Store
