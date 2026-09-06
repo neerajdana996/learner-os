@@ -133,6 +133,22 @@ body {
     font-size: $text-sm;
     color: var(--ochre);
   }
+
+  /// The one line that explains a silence (T-030). Sits above the question
+  /// because the question is already over at that point.
+  &__backoff {
+    margin: 0 0 $s-3;
+    font-size: $text-sm;
+    color: var(--ink-2);
+  }
+
+  /// Muted, not ochre — being offline is not a warning. The answer is safe
+  /// (T-031), so this reads as a receipt rather than a problem to act on.
+  &__queued {
+    margin: 0;
+    font-size: $text-sm;
+    color: var(--muted);
+  }
 }
 
 /// Quiet on purpose. Reporting a bad question is important and rare; a control

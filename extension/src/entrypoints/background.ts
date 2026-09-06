@@ -1,5 +1,6 @@
 import { DueItemsResponseSchema, type MeResponse } from '@learnos/shared';
-import { apiFetch, NotConnectedError } from '../lib/api';
+import { apiFetch, NotConnectedError, postReview } from '../lib/api';
+import { drain } from '../lib/queue';
 import { recordShown, shouldShow, type PopDecision } from '../lib/schedule';
 import {
   getCachedMe,
@@ -43,10 +44,29 @@ async function loadMe(now: number): Promise<MeResponse | null> {
   return me;
 }
 
+/**
+ * Empties the offline queue (T-031).
+ *
+ * Runs before the tick decides anything, and unconditionally: answers already
+ * given are more valuable than a new card, and a learner who is capped, asleep
+ * or backed off still has answers owed to the server.
+ */
+async function sync(): Promise<void> {
+  if (!(await getToken())) return;
+  const report = await drain(async (answer) => {
+    await postReview(answer);
+  });
+  if (report.sent > 0 || report.dropped > 0) {
+    console.info('learnos queue', report);
+  }
+}
+
 async function tick(): Promise<void> {
   // No token means the learner has not been through "Connect extension" yet.
   // Not an error, and not worth a log line every five minutes forever.
   if (!(await getToken())) return;
+
+  await sync();
 
   const now = new Date();
   const me = await loadMe(now.getTime());
@@ -107,6 +127,17 @@ export default defineBackground(() => {
     void tick().catch((error) => {
       if (error instanceof NotConnectedError) return;
       console.warn('learnos tick failed', error);
+    });
+  });
+
+  // Best-effort, not the mechanism. An MV3 worker is killed between alarms, so
+  // this only fires when the network returns while it happens to be awake —
+  // which is worth having (it turns a five-minute wait into none) and worth
+  // nothing to rely on. The alarm is what actually guarantees the drain.
+  self.addEventListener('online', () => {
+    void sync().catch((error) => {
+      if (error instanceof NotConnectedError) return;
+      console.warn('learnos sync failed', error);
     });
   });
 

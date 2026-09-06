@@ -201,6 +201,19 @@ export const AnswerSchema = z.object({
    * graded on the server precisely because a learner could inflate it.
    */
   assisted: z.boolean().optional(),
+  /**
+   * When the learner actually answered, ISO-8601 — set only on a replay from
+   * the extension's offline queue (T-031).
+   *
+   * Without it a queued answer is recorded at the moment it *synced*, which
+   * inflates `gapDaysSinceLast` by however long the device was offline — and
+   * that gap is the pilot's primary output, not a cosmetic line on the card.
+   *
+   * Unlike `assisted`, this is **not** safe to take on trust: a longer gap
+   * flatters the learner, so a backdate has something to gain. The server
+   * clamps it (`effectiveAt`) rather than believing it.
+   */
+  answeredAt: z.string().datetime().optional(),
 });
 
 // ---------- Diagnostic ----------

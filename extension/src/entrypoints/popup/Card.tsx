@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PublicItem } from '@learnos/shared';
 import { Button, ConfidenceTap, QuestionCard } from '@learnos/ui';
-import { flagItem, postReview, type ReviewResult } from '../../lib/api';
+import { ApiError, flagItem, postReview, type ReviewResult } from '../../lib/api';
+import { enqueue } from '../../lib/queue';
 import { getPopState, setPopState } from '../../lib/storage';
 import { MIN_GAP_MS, recordAnswered, recordDismissed } from '../../lib/schedule';
 
@@ -24,6 +25,9 @@ import { MIN_GAP_MS, recordAnswered, recordDismissed } from '../../lib/schedule'
 /** Long enough to read the explanation, short enough that it closes itself. */
 const CLOSE_AFTER_MS = 6000;
 const SNOOZE_MS = 30 * 60 * 1000;
+/** Long enough to read one line. The learner pressed ✕ — this must not feel
+ *  like the card arguing back. */
+const BACKOFF_NOTICE_MS = 2500;
 
 export interface CardProps {
   item: PublicItem;
@@ -34,8 +38,9 @@ export function Card({ item, onClose }: CardProps) {
   const [value, setValue] = useState<string | number | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
   const [sending, setSending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [queued, setQueued] = useState(false);
   const [flagged, setFlagged] = useState(false);
+  const [backedOff, setBackedOff] = useState(false);
 
   /**
    * Generated once, when the card opens, not per attempt. The offline queue
@@ -46,24 +51,37 @@ export function Card({ item, onClose }: CardProps) {
   const idempotencyKey = useRef(crypto.randomUUID());
   const openedAt = useRef(Date.now());
 
-  // Auto-close once the outcome has been read. Only after an answer: a card
-  // still waiting for one must never disappear on its own, or it would count as
-  // shown and never be answered.
+  // Auto-close once the outcome has been read — or once the answer is safely
+  // queued, since no verdict is ever coming for that one. Only after an answer:
+  // a card still waiting for one must never disappear on its own, or it would
+  // count as shown and never be answered.
   useEffect(() => {
-    if (!result) return;
+    if (!result && !queued) return;
     const timer = setTimeout(onClose, CLOSE_AFTER_MS);
     return () => clearTimeout(timer);
-  }, [result, onClose]);
+  }, [result, queued, onClose]);
 
+  /**
+   * Sends, or keeps it (T-031).
+   *
+   * A network failure queues the answer and reports that honestly — the card
+   * cannot show a verdict, because grading happens on the server and there is
+   * no server right now. What it must not do is imply the answer was lost: it
+   * was not, and it will be recorded at the time it was actually given.
+   *
+   * A 4xx is different and is *not* queued: the server understood and refused,
+   * so replaying it in five minutes changes nothing.
+   */
   async function send(answer: Parameters<typeof postReview>[0]) {
     setSending(true);
-    setFailed(false);
     try {
       return await postReview(answer);
-    } catch {
-      // T-031 owns the offline queue. Until then a failed send says so rather
-      // than pretending: silently losing an answer is worse than asking again.
-      setFailed(true);
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : null;
+      if (status === null || status >= 500) {
+        await enqueue(answer);
+        setQueued(true);
+      }
       return null;
     } finally {
       setSending(false);
@@ -80,10 +98,12 @@ export function Card({ item, onClose }: CardProps) {
       surface: 'extension',
       idempotencyKey: idempotencyKey.current,
     });
+    // An answer breaks a run of refusals whether it was right, wrong, or still
+    // sitting in the queue — the learner showed up either way, and backing off
+    // because their wifi dropped would punish them for it.
+    await setPopState(recordAnswered(await getPopState()));
     if (!outcome) return;
     setResult(outcome);
-    // An answer breaks a run of refusals, whether it was right or wrong.
-    setPopState(recordAnswered(await getPopState()));
   }
 
   async function rate(confidence: 'guess' | 'think' | 'sure') {
@@ -131,7 +151,17 @@ export function Card({ item, onClose }: CardProps) {
       dismissed: true,
     });
     const state = await getPopState();
-    await setPopState(recordDismissed(state, new Date(), null));
+    const next = recordDismissed(state, new Date(), null);
+    await setPopState(next);
+
+    // The third refusal in a row stops the extension until tomorrow (T-030).
+    // Saying so is the difference between a product that took the hint and one
+    // that silently broke — and someone who thinks it broke uninstalls it.
+    if (next.backoffUntil !== null && state.backoffUntil === null) {
+      setBackedOff(true);
+      setTimeout(onClose, BACKOFF_NOTICE_MS);
+      return;
+    }
     onClose();
   }
 
@@ -149,6 +179,12 @@ export function Card({ item, onClose }: CardProps) {
       </header>
 
       <div className="card__body">
+        {backedOff ? (
+          <p className="card__backoff" role="status">
+            Okay — no more today. See you tomorrow.
+          </p>
+        ) : null}
+
         <QuestionCard item={item} value={value} onChange={setValue} />
 
         {result ? (
@@ -183,7 +219,11 @@ export function Card({ item, onClose }: CardProps) {
           </div>
         ) : (
           <div className="card__actions">
-            <Button type="button" onClick={() => void submit()} disabled={value === null || sending}>
+            <Button
+              type="button"
+              onClick={() => void submit()}
+              disabled={value === null || sending || queued}
+            >
               {sending ? 'Checking…' : 'Answer'}
             </Button>
             <Button type="button" variant="quiet" onClick={() => void snooze()} disabled={sending}>
@@ -192,9 +232,9 @@ export function Card({ item, onClose }: CardProps) {
           </div>
         )}
 
-        {failed ? (
-          <p className="card__error" role="alert">
-            Could not reach the server. Your answer was not saved — try again.
+        {queued ? (
+          <p className="card__queued" role="status">
+            Saved. You’re offline — we’ll send this the moment you’re back.
           </p>
         ) : null}
       </div>

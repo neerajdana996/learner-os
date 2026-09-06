@@ -853,7 +853,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - The web half of the connect flow — showing the token under "Connect extension" — remains **T-034**; the README documents the curl in the meantime.
 
 ### T-028 · Background scheduler — when to pop
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-027, T-010
 - **files:** `entrypoints/background.ts`, `lib/schedule.ts`, tests
@@ -864,6 +864,10 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - Inside window, 15 min since last → false; 21 min → true.
   - `backoffUntil` in future → false.
   - New local day resets `dailyCount`.
+
+- **notes:** (2026-09-06) **Status corrected, not newly done.** `lib/schedule.ts` and the worker were built when T-029 landed and the entry was never updated — every listed test case is in `schedule.test.ts` (outside windows, cap reached, 15 min vs 21, backoff running, new local day resets), plus one the task did not ask for: `idle`, because a card shown to an empty chair spends the daily cap and teaches nothing.
+  - `localDay`/`localHHMM` use `hourCycle: 'h23'`, so midnight is `00:00` and never `24:00` — the latter compares wrong against every window boundary.
+  - `rollOver` deliberately **keeps** `backoffUntil` across midnight, since a backoff set at 11pm is meant to end at the learner's own midnight, not to be erased by it.
 
 ### T-029 · Question card UI
 - **status:** done
@@ -886,7 +890,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - Flag link → POST `/items/:id/flag`.
 
 ### T-030 · Dismissal backoff
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-029
 - **files:** `lib/schedule.ts`, tests
@@ -894,8 +898,12 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **tests:**
   - D,D,D → backoff set. D,D,A,D → no backoff. D,S,D,D → counter 3 (snooze ignored) → backoff.
 
+- **notes:** (2026-09-06) **Two-thirds of this was already built and the last third was missing.** `recordDismissed` and its tests (D,D,D backs off; an answer resets the run; snooze never reaches this function so it cannot count) shipped with T-028. **The one-line notice did not** — so the extension's behaviour on the third refusal was to fall silent with no explanation, which reads as a broken extension rather than one that took the hint, and someone who thinks it broke uninstalls it.
+  - Now: the card shows "Okay — no more today. See you tomorrow." and closes after 2.5s rather than instantly. Only on the transition into backoff, never on a dismissal while one is already running.
+  - **The popup was actively lying** during a backoff — "Nothing due right now. We'll pop in when something is" — a promise the product then deliberately fails to keep. It now says it is resting until tomorrow and why.
+
 ### T-031 · Offline queue + sync
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-029
 - **files:** `lib/queue.ts`, tests
@@ -904,6 +912,16 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - Failing fetch → item queued.
   - Drain sends in order; on 500 keeps it; on 400 drops it.
   - Server receives duplicate key → one event (integration test against API from T-009).
+- **notes:** (2026-09-06) **`answeredAt` had to exist before the queue was safe to build.** `recordReview` already documented the intent — `now` is injected "so a queued offline answer (T-031) can be recorded at the time it was actually given, not the time it synced" — but `AnswerSchema` had no field to carry that time, so `now` always meant the sync clock. Shipping the queue without it would have inflated `gapDaysSinceLast` by the whole offline duration on every replayed answer, and that gap is the pilot's primary output, not a cosmetic line on the card. **This is an additive optional field on `packages/shared/src/schemas.ts`, made inside a non-schema task** — flagged rather than done quietly; no DB column and no migration, since `recordReview` already routes the clock.
+  - **Clamped, not trusted.** `assisted` is safe on the client's word because it can only ever count *against* the learner; a backdate is the opposite — a longer gap flatters the retention number. `effectiveAt` clamps to `[now - 7d, now]`, which bounds the damage to a window a real queue could span without needing to decide whether any given client is honest. A future stamp (a device with a wrong clock, which is common) collapses to now, because it would otherwise produce a negative gap.
+  - Applied **inside `recordReview`** rather than at the route, so every surface gets the same rule and no future caller can forget — the same argument as one `popupEligible` predicate for two surfaces.
+  - **A 4xx is dropped, not retried.** The queue is FIFO, so an entry the server will refuse identically in five minutes is a permanent blocker at the head with every good answer stuck behind it. A **401 stops the drain but keeps everything**: the token is dead and `apiFetch` has already cleared it, and dropping the answers would punish the learner for an expired credential.
+  - **Three attempts, then dropped** — as specified. Dropping real data is unpleasant; a queue that retries one poisoned payload forever is worse, for the same head-blocking reason.
+  - **Entries older than seven days are dropped unsent**, matching the server's clamp. Sending one would record it at a time it did not happen, and a wrong data point is worse than a missing one — missing shows up in the counts, wrong does not.
+  - **The `online` listener is a bonus, not the mechanism.** An MV3 worker is killed between alarms, so it only fires when the network returns while the worker happens to be awake. The five-minute alarm is what actually guarantees the drain; `sync()` runs before `tick()` decides anything, and unconditionally — a learner who is capped, asleep or backed off still has answers owed to the server.
+  - **The card can show no verdict for a queued answer**, because grading is server-side. It says the answer is saved and will be sent, then closes. It must not imply the answer was lost — the previous copy did, and it was right to, because it was.
+  - A queued answer still counts as *answered* for the dismissal backoff: the learner showed up, and backing off because their wifi dropped would punish them for it.
+  - **Not done:** the duplicate-key integration test against a live API. The unit tests cover the queue's own rules; `recordReview`'s idempotency path is covered by its own tests. Worth adding when the API integration suite next runs.
 
 ### T-032 · Daily mood tap
 - **status:** todo

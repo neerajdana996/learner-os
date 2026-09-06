@@ -10,12 +10,13 @@ import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { Button } from '@learnos/ui';
 import { PublicItemSchema, type PublicItem } from '@learnos/shared';
-import { getToken, takePendingCard } from '../../lib/storage';
+import { getPopState, getToken, takePendingCard } from '../../lib/storage';
 import { Card } from './Card';
 
 export function Popup() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [card, setCard] = useState<PublicItem | null>(null);
+  const [restingUntilTomorrow, setRestingUntilTomorrow] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -26,6 +27,12 @@ export function Popup() {
       const pending = await takePendingCard();
       const parsed = PublicItemSchema.safeParse(pending);
       if (parsed.success) setCard(parsed.data);
+
+      // During a backoff "we'll pop in when something is" is simply false, and
+      // a promise the product then fails to keep reads as a broken extension
+      // rather than one that took the hint (T-030).
+      const state = await getPopState();
+      setRestingUntilTomorrow(state.backoffUntil !== null && state.backoffUntil > Date.now());
     })();
   }, []);
 
@@ -37,8 +44,11 @@ export function Popup() {
     <main className="ext ext--popup">
       <h1 className="ext__title">learnos</h1>
       {connected === null ? null : connected ? (
-        // T-029 replaces this with the question card.
-        <p className="ext__muted">Nothing due right now. We’ll pop in when something is.</p>
+        <p className="ext__muted">
+          {restingUntilTomorrow
+            ? 'Resting until tomorrow — you waved off three in a row, so we’ll leave you to it.'
+            : 'Nothing due right now. We’ll pop in when something is.'}
+        </p>
       ) : (
         <>
           <p className="ext__muted">

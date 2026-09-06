@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PublicItem } from '@learnos/shared';
+import { fakeBrowser } from 'wxt/testing';
+import { readQueue } from '../../../lib/queue';
 import { Card } from '../Card';
 
 const posted: Record<string, unknown>[] = [];
@@ -9,8 +11,35 @@ const onClose = vi.fn();
 
 const flagged: string[] = [];
 
+/**
+ * Hoisted with the mock factory, which vitest lifts above every other statement
+ * — a class declared normally is not yet initialised when the factory returns
+ * it. It has to be a real class so `error instanceof ApiError` in `Card.send`
+ * behaves the way it does in Chrome.
+ */
+const { ApiError } = vi.hoisted(() => ({
+  ApiError: class ApiError extends Error {
+    constructor(
+      readonly status: number,
+      readonly body: string,
+    ) {
+      super(`${status}: ${body}`);
+      this.name = 'ApiError';
+    }
+  },
+}));
+
+/** Set by a test to make the next send fail. Null means the server answers. */
+let failNext: Error | null = null;
+
 vi.mock('../../../lib/api', () => ({
+  ApiError,
   postReview: (answer: Record<string, unknown>) => {
+    if (failNext) {
+      const error = failNext;
+      failNext = null;
+      return Promise.reject(error);
+    }
     posted.push(answer);
     return Promise.resolve({ correct: answer.response === 1, gapDaysSinceLast: 9, feedback: 'Empty means it runs once.' });
   },
@@ -20,9 +49,22 @@ vi.mock('../../../lib/api', () => ({
   },
 }));
 
+/** Mutable so a test can start the card from a state that is one refusal away
+ *  from the backoff. */
+let popState = { day: null, dailyCount: 0, lastShownAt: null, consecutiveDismissals: 0, backoffUntil: null } as {
+  day: string | null;
+  dailyCount: number;
+  lastShownAt: number | null;
+  consecutiveDismissals: number;
+  backoffUntil: number | null;
+};
+
 vi.mock('../../../lib/storage', () => ({
-  getPopState: () => Promise.resolve({ day: null, dailyCount: 0, lastShownAt: null, consecutiveDismissals: 0, backoffUntil: null }),
-  setPopState: () => Promise.resolve(),
+  getPopState: () => Promise.resolve(popState),
+  setPopState: (next: typeof popState) => {
+    popState = next;
+    return Promise.resolve();
+  },
 }));
 
 const item: PublicItem = {
@@ -36,6 +78,9 @@ const item: PublicItem = {
 beforeEach(() => {
   posted.length = 0;
   flagged.length = 0;
+  failNext = null;
+  popState = { day: null, dailyCount: 0, lastShownAt: null, consecutiveDismissals: 0, backoffUntil: null };
+  fakeBrowser.reset();
   onClose.mockReset();
 });
 
@@ -175,5 +220,102 @@ describe('the twenty-second card', () => {
     render(<Card item={item} onClose={onClose} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByText(/learnos/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('an answer given offline (T-031)', () => {
+  it('keeps the answer instead of losing it', async () => {
+    // Before the queue, this path told the learner their answer was gone — and
+    // it was. A lost answer is a missing point on the retention curve that no
+    // later session can reconstruct.
+    const user = userEvent.setup();
+    failNext = new Error('Failed to fetch');
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    expect(await screen.findByText(/we’ll send this the moment you’re back/i)).toBeTruthy();
+    const queued = await readQueue();
+    expect(queued).toHaveLength(1);
+    expect(queued[0]?.answer.response).toBe(1);
+    expect(queued[0]?.answer.surface).toBe('extension');
+  });
+
+  it('shows no verdict, because there is no server to grade it', async () => {
+    const user = userEvent.setup();
+    failNext = new Error('Failed to fetch');
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    await screen.findByText(/we’ll send this/i);
+    expect(screen.queryByText('Right')).toBeNull();
+    expect(screen.queryByText('Not this time')).toBeNull();
+  });
+
+  it('cannot be answered twice once it is queued', async () => {
+    const user = userEvent.setup();
+    failNext = new Error('Failed to fetch');
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    await screen.findByText(/we’ll send this/i);
+    expect(screen.getByRole('button', { name: 'Answer' }).hasAttribute('disabled')).toBe(true);
+    expect(await readQueue()).toHaveLength(1);
+  });
+
+  it('does not queue an answer the server understood and refused', async () => {
+    // A 400 will be refused identically in five minutes; queueing it would put
+    // a permanent blocker at the head of a FIFO queue.
+    const user = userEvent.setup();
+    failNext = new ApiError(400, 'unknown item');
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    await waitFor(async () => expect(await readQueue()).toHaveLength(0));
+    expect(screen.queryByText(/we’ll send this/i)).toBeNull();
+  });
+
+  it('queues a 500, which is the server being briefly unavailable', async () => {
+    const user = userEvent.setup();
+    failNext = new ApiError(500, 'upstream timeout');
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    await screen.findByText(/we’ll send this/i);
+    expect(await readQueue()).toHaveLength(1);
+  });
+});
+
+describe('the third refusal in a row (T-030)', () => {
+  it('says why it is going quiet, instead of just going quiet', async () => {
+    // Someone who thinks the extension broke uninstalls it. Someone told it
+    // took the hint does not.
+    const user = userEvent.setup();
+    popState = { day: null, dailyCount: 3, lastShownAt: null, consecutiveDismissals: 2, backoffUntil: null };
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(await screen.findByText(/no more today/i)).toBeTruthy();
+  });
+
+  it('says nothing on the first two, which are not a pattern yet', async () => {
+    const user = userEvent.setup();
+    popState = { day: null, dailyCount: 1, lastShownAt: null, consecutiveDismissals: 0, backoffUntil: null };
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(screen.queryByText(/no more today/i)).toBeNull();
   });
 });
