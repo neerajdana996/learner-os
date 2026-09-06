@@ -108,6 +108,11 @@ export const ReviewResultSchema = z.object({
   correct: z.boolean().nullable(),
   gapDaysSinceLast: z.number().nullable(),
   feedback: z.string().nullable(),
+  /** When FSRS will next surface the concept. Already on the wire from
+   *  `recordReview`; the card uses it to promise a return date it can keep
+   *  rather than the design canvas's flat "tomorrow". Null when the answer
+   *  moved no schedule — a snooze, a dismissal, or nothing answered. */
+  due: z.string().nullable().optional(),
 });
 
 export type ReviewResult = z.infer<typeof ReviewResultSchema>;

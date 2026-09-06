@@ -32,6 +32,9 @@ const { ApiError } = vi.hoisted(() => ({
 /** Set by a test to make the next send fail. Null means the server answers. */
 let failNext: Error | null = null;
 
+/** What the server says the next sighting is. */
+let nextDue: string | null = null;
+
 vi.mock('../../../lib/api', () => ({
   ApiError,
   postReview: (answer: Record<string, unknown>) => {
@@ -41,7 +44,12 @@ vi.mock('../../../lib/api', () => ({
       return Promise.reject(error);
     }
     posted.push(answer);
-    return Promise.resolve({ correct: answer.response === 1, gapDaysSinceLast: 9, feedback: 'Empty means it runs once.' });
+    return Promise.resolve({
+      correct: answer.response === 1,
+      gapDaysSinceLast: 9,
+      feedback: 'Empty means it runs once.',
+      due: nextDue,
+    });
   },
   flagItem: (id: string) => {
     flagged.push(id);
@@ -79,6 +87,7 @@ beforeEach(() => {
   posted.length = 0;
   flagged.length = 0;
   failNext = null;
+  nextDue = null;
   popState = { day: null, dailyCount: 0, lastShownAt: null, consecutiveDismissals: 0, backoffUntil: null };
   fakeBrowser.reset();
   onClose.mockReset();
@@ -305,7 +314,7 @@ describe('the third refusal in a row (T-030)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Dismiss' }));
 
-    expect(await screen.findByText(/no more today/i)).toBeTruthy();
+    expect(await screen.findByText(/we’ll leave you alone until tomorrow/i)).toBeTruthy();
   });
 
   it('says nothing on the first two, which are not a pattern yet', async () => {
@@ -316,6 +325,77 @@ describe('the third refusal in a row (T-030)', () => {
     await user.click(screen.getByRole('button', { name: 'Dismiss' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(screen.queryByText(/no more today/i)).toBeNull();
+    expect(screen.queryByText(/leave you alone until tomorrow/i)).toBeNull();
+  });
+});
+
+describe('the design canvas states', () => {
+  it('tells a wrong answer when the concept comes back', async () => {
+    // A bare "not this time" leaves the learner unsure whether the concept is
+    // now lost. Being wrong here is the mechanism working.
+    const user = userEvent.setup();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    nextDue = tomorrow.toISOString();
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Never run/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    expect(await screen.findByText(/Not this time/)).toBeTruthy();
+    expect(screen.getByText(/see this one again tomorrow/i)).toBeTruthy();
+  });
+
+  it('promises no return date on a right answer', async () => {
+    const user = userEvent.setup();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    nextDue = tomorrow.toISOString();
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    await screen.findByText(/Right/);
+    expect(screen.queryByText(/see this one again/i)).toBeNull();
+  });
+
+  it('asks about confidence in the past tense, because the answer is already shown', async () => {
+    // The shared component's default wording — "How sure are you?", "Required"
+    // — belongs to the web session, which asks before the answer. Here it would
+    // be asking about a moment that has passed.
+    const user = userEvent.setup();
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    expect(await screen.findByText(/how sure were you\?/i)).toBeTruthy();
+    expect(screen.queryByText(/How sure are you\?/i)).toBeNull();
+    expect(screen.queryByText(/^Required/)).toBeNull();
+  });
+
+  it('replaces the whole card when it backs off, rather than arguing with the ✕', async () => {
+    const user = userEvent.setup();
+    popState = { day: null, dailyCount: 3, lastShownAt: null, consecutiveDismissals: 2, backoffUntil: null };
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(await screen.findByText(/we’ll leave you alone until tomorrow/i)).toBeTruthy();
+    // The question, the header and the way to dismiss it are all gone.
+    expect(screen.queryByText('What does an empty dependency array mean?')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
+  });
+
+  it('says the material is not lost, which is the actual fear', async () => {
+    const user = userEvent.setup();
+    popState = { day: null, dailyCount: 3, lastShownAt: null, consecutiveDismissals: 2, backoffUntil: null };
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(await screen.findByText(/Nothing is lost/i)).toBeTruthy();
+    expect(screen.getByText(/comes back in the queue/i)).toBeTruthy();
   });
 });

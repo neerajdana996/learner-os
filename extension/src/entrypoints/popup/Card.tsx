@@ -5,6 +5,7 @@ import { ApiError, flagItem, postReview, type ReviewResult } from '../../lib/api
 import { enqueue } from '../../lib/queue';
 import { getPopState, setPopState } from '../../lib/storage';
 import { MIN_GAP_MS, recordAnswered, recordDismissed } from '../../lib/schedule';
+import { nextSighting } from '../../lib/nextSighting';
 
 /**
  * The twenty-second card (T-029).
@@ -165,6 +166,30 @@ export function Card({ item, onClose }: CardProps) {
     onClose();
   }
 
+  /**
+   * The backoff replaces the card rather than sitting on top of it.
+   *
+   * No header, no ✕, no question — the design canvas calls this "the most
+   * important card in the set", and it is the only one whose job is to say the
+   * product heard you. Leaving the question on screen underneath would be the
+   * card arguing with the third refusal that triggered it.
+   *
+   * The second line matters as much as the first: what someone waving cards
+   * away actually fears is that the material is being lost.
+   */
+  if (backedOff) {
+    return (
+      <main className="card card--notice" role="status">
+        <p className="card__backoff">
+          That’s three you’ve waved away — we’ll leave you alone until tomorrow.
+        </p>
+        <p className="card__backoff-sub">
+          Nothing is lost. Anything you missed today comes back in the queue.
+        </p>
+      </main>
+    );
+  }
+
   return (
     <main className="card">
       <header className="card__bar">
@@ -179,12 +204,6 @@ export function Card({ item, onClose }: CardProps) {
       </header>
 
       <div className="card__body">
-        {backedOff ? (
-          <p className="card__backoff" role="status">
-            Okay — no more today. See you tomorrow.
-          </p>
-        ) : null}
-
         <QuestionCard item={item} value={value} onChange={setValue} />
 
         {result ? (
@@ -199,7 +218,14 @@ export function Card({ item, onClose }: CardProps) {
             </p>
             {result.feedback ? <p className="card__why">{result.feedback}</p> : null}
 
-            <ConfidenceTap value={null} onChange={(c) => void rate(c)} />
+            {/* Being wrong here is the mechanism working, and the card says so.
+                Without this the learner is left with a bare "not this time" and
+                no idea whether the concept is now lost. */}
+            {result.correct === false && nextSighting(result.due ?? null, new Date()) ? (
+              <p className="card__again">{nextSighting(result.due ?? null, new Date())}</p>
+            ) : null}
+
+            <ConfidenceTap value={null} onChange={(c) => void rate(c)} asked="after" />
 
             {/* Offered only after the answer, because that is when you can tell
                 a bad question from a hard one. Disabled once used: the count is

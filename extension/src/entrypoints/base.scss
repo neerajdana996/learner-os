@@ -134,11 +134,43 @@ body {
     color: var(--ochre);
   }
 
-  /// The one line that explains a silence (T-030). Sits above the question
-  /// because the question is already over at that point.
+  /// The card that says the product heard you (T-030). It replaces the
+  /// question rather than sitting above it, so there is no header rule to sit
+  /// under and the padding is the card's own.
+  &--notice {
+    padding: $s-5;
+    display: flex;
+    flex-direction: column;
+    gap: $s-2;
+  }
+
   &__backoff {
-    margin: 0 0 $s-3;
+    margin: 0;
+    font-size: $text-base;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+
+  /// Quieter, and the one that does the reassuring. What someone waving cards
+  /// away is actually afraid of is that the material is being lost.
+  &__backoff-sub {
+    margin: 0;
     font-size: $text-sm;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  /// A panel, not a sentence in the flow: being told when it comes back is a
+  /// different kind of statement from being told why you were wrong.
+  &__again {
+    margin: 0;
+    padding: $s-3;
+    border-radius: $radius;
+    // `--sunken`, which is the design canvas's #F5F2ED and, unlike a hardcoded
+    // grey, still reads as a recessed panel in the dark theme.
+    background: var(--sunken);
+    font-size: $text-sm;
+    line-height: 1.55;
     color: var(--ink-2);
   }
 
