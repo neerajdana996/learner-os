@@ -1,0 +1,210 @@
+@use "../../shared-ui/styles/variables" as *;
+@use "../../shared-ui/styles/mixins" as *;
+
+/// The content blocks an item can carry (T-085).
+///
+/// Every one of these is its own BEM block rather than a modifier on `.teach`.
+/// They render inside a `.teach__card` today and inside the diagnostic and the
+/// day-30 test tomorrow — nesting them under `.teach` would tie them to one
+/// surface they are explicitly meant to outlive.
+.blocks {
+  display: flex;
+  flex-direction: column;
+  gap: $s-4;
+}
+
+/// Prose that is part of the question, not the question itself.
+.prose-block {
+  font-size: $text-base;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+/// A code listing.
+.code {
+  @include card;
+  background: var(--code-surface);
+  border-color: var(--code-border);
+  overflow: hidden;
+
+  /// The horizontal scroll lives here, so a wide listing scrolls inside itself
+  /// and the page never scrolls sideways.
+  &__scroll {
+    overflow-x: auto;
+  }
+
+  /// 36px gutter + source, so a highlighted line spans the gutter too rather
+  /// than starting after it.
+  &__grid {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    font-family: $font-mono;
+    font-size: $text-sm;
+    line-height: 1.65;
+    color: var(--code-fg);
+    min-width: max-content;
+  }
+
+  &__gutter {
+    padding: 0 $s-2;
+    text-align: right;
+    color: var(--code-gutter);
+    user-select: none;
+  }
+
+  &__line {
+    padding-right: $s-4;
+    white-space: pre;
+  }
+
+  /// The called-out line. Background, not colour: the source keeps its own
+  /// syntax colours (T-084), so tinting the text would fight them.
+  &__gutter--hit,
+  &__line--hit {
+    background: var(--code-line-hit);
+  }
+
+  /// Dimmed context. Never below 0.45 — a line you cannot read is a line that
+  /// should have been cut from the listing instead.
+  &__gutter--dim,
+  &__line--dim {
+    opacity: 0.45;
+  }
+
+  /// The notes rail, beside the code on a wide screen and beneath it on a
+  /// narrow one — squashing the listing is worse than moving the notes.
+  &__notes {
+    border-top: 1px solid var(--code-border);
+    padding: $s-3 $s-4;
+    display: flex;
+    flex-direction: column;
+    gap: $s-2;
+  }
+
+  &__note {
+    display: flex;
+    align-items: baseline;
+    gap: $s-2;
+    font-size: $text-xs;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  &__badge {
+    flex: none;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background: var(--code-line-hit);
+    border: 1px solid var(--code-border);
+    color: var(--code-fg);
+    font-family: $font-mono;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+  }
+}
+
+/// Before and after. The whole point of a concept is often the two-line change.
+.code-diff {
+  @include card;
+  background: var(--code-surface);
+  border-color: var(--code-border);
+  overflow: hidden;
+
+  &__scroll {
+    overflow-x: auto;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    font-family: $font-mono;
+    font-size: $text-sm;
+    line-height: 1.65;
+    color: var(--code-fg);
+    min-width: max-content;
+  }
+
+  /// The +/− carries the meaning as well as the colour. Same rule as the map:
+  /// never hue alone, because roughly one man in twelve cannot use it.
+  &__mark {
+    padding: 0 $s-2;
+    text-align: center;
+    color: var(--code-gutter);
+    user-select: none;
+  }
+
+  &__line {
+    padding-right: $s-4;
+    white-space: pre;
+  }
+
+  &__mark--add,
+  &__line--add {
+    background: var(--diff-add);
+  }
+
+  &__mark--del,
+  &__line--del {
+    background: var(--diff-del);
+  }
+
+  &__caption {
+    border-top: 1px solid var(--code-border);
+    padding: $s-3 $s-4;
+    font-size: $text-xs;
+    color: var(--ink-2);
+  }
+}
+
+/// A command and what it printed.
+///
+/// Always dark, whatever the surface: a terminal that follows the theme stops
+/// reading as a terminal. This is the one place the palette is pinned rather
+/// than inherited.
+.terminal {
+  // Pinned, not inherited — see above. Declared inline rather than as a mixin
+  // because it has exactly one caller.
+  --term-bg: #1c1917;
+  --term-fg: #e8e2da;
+  --term-dim: #a9a29b;
+  --term-err: #e08a72;
+
+  background: var(--term-bg);
+  color: var(--term-fg);
+  border-radius: $radius-lg;
+  padding: $s-3 $s-4;
+  overflow-x: auto;
+  font-family: $font-mono;
+  font-size: $text-sm;
+  line-height: 1.7;
+
+  &__command {
+    color: var(--term-fg);
+    white-space: pre;
+
+    &::before {
+      content: "$ ";
+      color: var(--term-dim);
+    }
+  }
+
+  &__line {
+    color: var(--term-dim);
+    white-space: pre;
+  }
+
+  /// Stderr. The colour is a hint; `role="alert"`-free plain text is the
+  /// content, and the stream is also exposed to assistive tech in the markup.
+  &__line--err {
+    color: var(--term-err);
+  }
+}
+
+@include until($breakpoint-sm) {
+  .code__grid,
+  .code-diff__grid {
+    font-size: $text-xs;
+  }
+}
