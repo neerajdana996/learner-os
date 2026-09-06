@@ -1050,12 +1050,22 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **Validation:** Root `pnpm lint`, `pnpm test` (672/672), and `pnpm build` pass. The new tests include real Postgres/Redis, an HTTP → BullMQ worker → saved-test integration, and learner-page request/retry tests.
 
 ### T-040 · Metrics queries
-- **status:** todo
+- **status:** done
 - **sprint:** 4
 - **depends_on:** T-038, T-035
 - **files:** `backend/src/lib/metrics.ts`, tests
 - **description:** Pure SQL/Drizzle functions returning JSON for: `retentionGain(userId, topicId)` (day30 − day0, taught vs heldOut), `durability` (day45/day30), `transfer`, `calibrationGapDelta`, `schedulerCalibration` (bins of `predicted_recall` 0.1 wide → actual accuracy, review surface only, `gap ≥ 1`), `teachModeComparison` (per user: mean correct on reviews with `gap ≥ 1` grouped by concept `teach_mode`), `extensionStats` (shown, answered, snoozed, dismissed, median latency).
 - **tests:** Seed a synthetic dataset with known values and assert each function's numbers exactly.
+
+- **notes:** (2026-09-06) **Every function returns `null` rather than `0` when the input is missing, and that is the whole design.** A learner who never sat the Day-45 test has *no* durability number; averaging a fabricated zero into a cohort mean manufactures a decline nobody experienced. Missing shows up in the counts, a wrong number does not. Asserted for each function separately, including the case that would be easiest to get wrong: an **unfinished test has `{}` in `scores`**, which parses as no measurement rather than as zeros.
+  - **`retentionGain` refuses to report a gain without the held-out arm.** A taught delta on its own is the number a marketing page would quote and it is not evidence — people improve over a month on their own, and the only defensible claim is the difference between concepts we taught and concepts we deliberately did not, for the same person, in the same sitting.
+  - **`durability` is a ratio, not a difference**: the question is what fraction survived, and a 10-point drop from 90 is not the same event as a 10-point drop from 20. Null when Day-30 was zero — there is no meaningful proportion of nothing.
+  - **`calibrationGapDelta` reads backwards from everything else here** and is commented as such: the gap is confidence minus accuracy, so an improvement is *negative*.
+  - **`schedulerCalibration` excludes tests and the diagnostic**, not just by convention but because scoring FSRS on questions it never chose to ask is not calibration. It also excludes `gap < 1`: answering something ten minutes after seeing it measures echo, and including it would flatter every bin.
+  - **`extensionStats` takes its denominator from `client_events`, which is why this depended on T-035.** A card nobody opened leaves no review row, so an answer rate built from review rows alone is answers over answers. `answerRate` is null when nothing was shown, because "we have not measured this yet" and "nobody answered anything" are opposite findings that must never look the same.
+  - Median latency is over answered rows only — a snooze's latency measures how long someone took to decline, which is a different quantity.
+  - **`teachModeComparison` is observational, not randomised**, and says so: concepts get a mode from the generator rather than a coin flip, so it can suggest a direction and cannot establish a cause.
+  - One test failed first time on row order. Postgres sorts a `pgEnum` by **declaration order**, not alphabetically, so `try_first` precedes `example_first`. The code was right and the assertion was wrong.
 
 ### T-041 · Metrics dashboard (founder-only)
 - **status:** todo
