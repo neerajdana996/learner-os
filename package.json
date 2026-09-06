@@ -14,7 +14,8 @@
     "check": "turbo run lint test build",
     "dev:backend": "turbo run dev --filter learner-os-backend",
     "dev:frontend": "turbo run dev --filter learner-os-frontend",
-    "dev:extension": "turbo run dev --filter learner-os-extension"
+    "dev:extension": "turbo run dev --filter learner-os-extension",
+    "dev": "turbo run dev --filter learner-os-backend --filter learner-os-frontend"
   },
   "devDependencies": {
     "turbo": "^2",
