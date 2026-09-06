@@ -6,8 +6,8 @@
 1. Read `plan.md` sections 5 and 6 (architecture + design rules). Don't skip.
 2. Read `sprint.md` to find the current sprint.
 3. Open `tasks.md`. Find the **first task with status `todo` whose `depends_on` are all `done`**. That is your task. Do not pick a later one because it looks more interesting.
-4. In the project(s) the task touches, run `pnpm install && pnpm lint`. If it fails, fixing it is your task now (log it as a new task `T-FIX-xxx`).
-5. If the task touches `backend/src/shared/` or `shared-ui/`, you must run `scripts/sync-shared.sh` before finishing and commit the synced copies.
+4. From the repo root, run `pnpm install && pnpm lint`. One install covers the whole workspace. If it fails, fixing it is your task now (log it as a new task `T-FIX-xxx`).
+5. If the task touches `packages/shared` or `packages/ui`, every app feels it immediately — there are no copies to sync, so run `pnpm test` at the root rather than in one app.
 
 ## 1. Before writing code
 - Read the task's **Description, Acceptance criteria, Test cases, Files** in full.
@@ -17,12 +17,12 @@
 
 ## 2. Writing code
 - Small commits. One task = one branch `task/T-xxx-short-name`.
-- Types from `src/shared` (backend is the source; frontend/extension use the synced copy). Never write a Zod schema anywhere else. Never edit `frontend/src/shared` or `extension/src/shared` by hand.
+- Types from `@learnos/shared` (`packages/shared`). Never write a Zod schema anywhere else. It must stay browser-safe: `zod` only, never `node:*`, drizzle, postgres, bullmq, ioredis, express or ws.
 - No `any`. No `// @ts-ignore`. If you must, write why in the same line.
-- Every API route validates input with the `validate()` middleware (`backend/src/lib/validate.ts`) and a schema from `src/shared`. WebSocket messages are validated the same way.
+- Every API route validates input with the `validate()` middleware (`backend/src/lib/validate.ts`) and a schema from `@learnos/shared`. WebSocket messages are validated the same way.
 - Every write to `review_events` must set `predicted_recall` and `gap_days_since_last` (see plan §6).
 - Never call the model API from the web app or extension. Only `backend/src/generator`, only from a BullMQ worker.
-- UI: plain React. **Zero inline styles** — SCSS classes under `frontend/src/styles/`, components take `className`. Colour tokens, the spacing/type scale and the shared mixins live in `shared-ui/styles/` and arrive in both clients through `scripts/sync-shared.sh`; never re-declare a colour or a spacing value in a component partial.
+- UI: plain React. **Zero inline styles** — SCSS classes under `frontend/src/styles/`, components take `className`. Colour tokens, the spacing/type scale and the shared mixins live in `@learnos/ui` (`packages/ui/styles/`) and are imported as `@use "@learnos/ui/styles/variables"`; never re-declare a colour or a spacing value in a component partial.
 - No UI library for the pilot. ⚠ **Open:** the `codeEditor` question format (T-088) needs CodeMirror in the browser, which is a UI library by any reading. Argued both ways in **T-081**; until that is decided, do not add one.
 - Frontend data: **all** API calls go through RTK Query (`frontend/src/store/api.ts`); all client state lives in Redux Toolkit slices. No `fetch`/`axios` in components.
 
@@ -37,8 +37,8 @@
 ## 4. Definition of done (all must be true)
 - [ ] All acceptance criteria met — check each one explicitly, don't assume.
 - [ ] All listed test cases implemented and passing.
-- [ ] `pnpm lint` and `pnpm test` pass in every project you touched.
-- [ ] If you changed `backend/src/shared/` or `shared-ui/`, `scripts/sync-shared.sh` was run and the copies are identical (`diff -r` is empty).
+- [ ] `pnpm lint` and `pnpm test` pass **from the repo root** — Turbo runs them everywhere and builds `@learnos/shared` first, which a single app's script will not do.
+- [ ] If you changed `packages/shared` or `packages/ui`, you ran the root suites: a change there lands in all three apps at once.
 - [ ] If you touched a stylesheet, `pnpm build` passed in that project — `pnpm lint` is `tsc --noEmit` and never compiles SCSS, so a broken `@use` path passes lint (T-090).
 - [ ] If the task adds a route: it's in `backend/src/index.ts` and there is a `curl` example in the task's `notes`.
 - [ ] If the task adds a page: it's in `frontend/src/App.tsx` routes.
@@ -59,6 +59,6 @@
 ## 7. Things you must not do
 - Don't add dependencies without a one-line justification in the commit message.
 - Don't rewrite files you weren't asked to touch. Refactors are their own tasks.
-- Don't introduce workspaces/monorepo tooling. Three plain projects, on purpose.
+- Don't add a third shared package without a reason in the commit. Two is the whole surface: the API contract and the design tokens.
 - Don't build ahead of the sprint. Sprint 1 is the foundation; if it's tempting to build the map UI in Sprint 1, don't.
 - Don't ask the user how they "learn best". Ever. (plan §3.1)

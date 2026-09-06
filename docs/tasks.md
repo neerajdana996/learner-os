@@ -55,7 +55,7 @@ cd frontend && pnpm dev           # :5173
 - **Tests cannot reach the network.** `vitest.setup.ts` replaces `fetch` and sets a sentinel API key. An unmocked generator fails with a message naming the boundary to mock, not a confusing 401 (T-FIX-009).
 - **`drizzle-kit push` saying "Changes applied" is not proof the schema is live.** A container restarting onto a fresh volume takes the migrations with it; the symptom surfaces later as an unrelated 500. `pnpm preflight` catches it.
 - **Never edit `schema.ts` outside a schema task** (loop.md). T-049 and T-054 are the precedent: one consolidated schema task per sprint.
-- **Never edit `frontend/src/shared` or `extension/src/shared`.** Change `backend/src/shared` and run `scripts/sync-shared.sh`.
+- **Shared code is two packages, not copies** (since 2026-09-06). Change `packages/shared` (`@learnos/shared`) or `packages/ui` (`@learnos/ui`) and every app sees it. `@learnos/shared` is built — run root `pnpm lint`/`pnpm test`, which build it first, rather than one app's script against a stale `dist`.
 - **Provider is OpenAI** with per-task model tiering in `src/llm/models.ts` — sol for the concept map, terra for teaching prose, luna for items and grading. `reasoning_effort` must always be sent explicitly: gpt-5.6 defaults to `medium` when omitted, which silently buys reasoning cost on every call. plan.md §5 is current; T-052 records why.
 - **Frontend conventions:** zero inline styles — SCSS classes under `src/styles/`, components take `className`. Each feature owns its RTK Query endpoints (`features/<name>/<name>Api.ts`) and injects them; `store/api.ts` stays endpoint-free. Redux holds only client state no server owns (theme, onboarding draft) — server state is RTK Query's.
 - **A topic costs ~$0.46 and ~9 minutes** — measured, not estimated: 73 model calls, 91k in / 48k out tokens for a 40-concept topic (T-074). `LLM_LOG_CALLS=1` prints every call.
@@ -2131,4 +2131,36 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A magic-link callback landing on `/` still forwards to onboarding or the dashboard as it does today.
   - The call to action reaches `/signin`.
   - `pnpm build` passes — the styles are new and `pnpm lint` never compiles SCSS (T-090).
+- **notes:**
+
+### T-102 · One repo, one workspace
+- **status:** done
+- **sprint:** 5
+- **depends_on:** —
+- **files:** `pnpm-workspace.yaml`, `turbo.json`, `package.json`, `packages/shared/*`, `packages/ui/*`, all three `Dockerfile`s, `docker-compose.yml`, `.github/workflows/ci.yml`, `.dockerignore`, `scripts/verify.sh`, `CLAUDE.md`, `docs/plan.md`, `docs/loop.md`, `README.md`
+- **description:** Founder decision (2026-09-06), overturning plan.md §5's "three independent projects, no monorepo". Four git repos became one; `backend/src/shared` and `shared-ui/` became `@learnos/shared` and `@learnos/ui`; `scripts/sync-shared.sh` and its test (191 lines) are gone, and so is `scripts/create-github-repos.sh`.
+  - **The merge preserved history.** Each app was cloned, rewritten with `git filter-repo --to-subdirectory-filter <app>`, and merged into the umbrella with `--allow-unrelated-histories`. `git log backend/src/db/schema.ts` still walks back to T-055. The three app repos are archived on GitHub, not deleted, and the pre-migration tree is at `../AI.before-monorepo`.
+  - **`@learnos/shared` is built, not consumed as source.** The backend resolves with NodeNext and runs `node dist/index.js`, so it needs real emitted JS. That single edge is why Turborepo is here at all.
+  - **The five-test difference is de-duplication, not loss.** 579 → 574: the shared schema tests used to run three times, once per copy, and now run once in `packages/shared`.
+- **notes:** (2026-09-06) Done in four stages, each its own commit.
+  - **Stage 0** landed the three outstanding feature branches (T-083 backend/extension, T-085 frontend — 17 commits) on their own mains first. Merging repos with feature work outstanding is how work gets lost. Eight of those seventeen commits were pure "sync shared", which is the case for this migration in one line.
+  - **Things that bit, and would bite again:**
+    - **Gitignored files do not survive a history-based merge.** `backend/.env`, `backend/qa/` and `.claude/` were left behind and had to be copied from the backup. The symptom was 12 OAuth tests failing with 404s — a provider registers only when its client id is non-empty, so no `.env` meant no routes.
+    - **Docker seeds a named volume only when it first creates it.** Reusing `backend_node_modules` handed the workspace layout the pre-workspace tree, and the container died on `Cannot find package '@learnos/shared'` while the image built fine. The volumes are renamed so an existing checkout heals itself.
+    - **Each app's per-project `pnpm-workspace.yaml` was not empty.** They carried `allowBuilds` (now unioned at the root) and, in the extension's case, `overrides`. pnpm walks up and finds the nearest one, so leaving them in place broke every `pnpm <script>` run from inside an app with "packages field missing or empty".
+    - **Sass has no node resolution.** `@use "@learnos/ui/..."` needs a `loadPaths` at `node_modules` in both `vite.config.ts` and `wxt.config.ts`. Proof it resolved identically: the extension's CSS output hash is unchanged across the migration.
+  - **Verified:** `pnpm turbo run lint test build` → 12 tasks, 574 tests, all green. Three images build; `docker compose up` reaches a healthy backend, the frontend serves the app and proxies `/api`, `learnos_test` exists, and `docker compose run --rm extension` produces the 82.68 kB zip. Turbo cache: 2.9s → 7ms warm.
+
+### T-103 · The two clients disagree about vite
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-102
+- **files:** `frontend/package.json`, `extension/package.json`, `pnpm-workspace.yaml`
+- **description:** Found by T-102. `extension/pnpm-workspace.yaml` carried `overrides: { vite: ^7.3.6, '@vitejs/plugin-react': ^4.4.1 }` while `frontend/package.json` depends on `vite: ^6.3.5`. Three lockfiles let both be true at once; one workspace cannot, because a pnpm override is workspace-global.
+  - The override is **deliberately not reproduced** at the root — applying it would drag the web app onto a new vite major nobody asked for. WXT resolves its own vite either way, and everything builds today.
+  - What is unknown is *why* the extension pinned vite 7. If it was working around a WXT bug, that workaround is currently gone. Find out before assuming this is cosmetic.
+- **acceptance:** Both clients are on the same vite major, or there is a written reason they are not.
+- **tests:**
+  - `pnpm build` passes in both clients.
+  - `docker compose run --rm extension` still produces a loadable zip.
 - **notes:**

@@ -83,34 +83,28 @@ brings compose up, and the backend's DB tests need a live `learnos_test`:
 docker compose up postgres redis -d
 cd backend && pnpm db:test:push && cd ..   # first run only, or after a schema change
 
-scripts/verify.sh              # sync test → lint+test ×3 → docker compose up → health checks
+scripts/verify.sh              # install → build/lint/test the workspace → docker compose up → health checks
 scripts/verify.sh --no-docker
 ```
 
 ## Shared code
-Two folders are copied into the projects that consume them, and neither copy is ever edited by hand:
+Two workspace packages. There are no copies — the apps depend on them like any other package:
 
-| Source | Copied to | Holds |
+| Package | Imported as | Holds |
 | --- | --- | --- |
-| `backend/src/shared/` | `frontend/src/shared/`, `extension/src/shared/` | the API contract — Zod schemas and types |
-| `shared-ui/` | `frontend/src/shared-ui/`, `extension/src/shared-ui/` | presentation — colour tokens, the scale, the mixins |
+| `packages/shared` | `@learnos/shared` | the API contract — Zod schemas and types |
+| `packages/ui` | `@learnos/ui` | presentation — colour tokens, the scale, the mixins |
 
-Edit the source, then run `scripts/sync-shared.sh`. `scripts/sync-shared.sh --check` fails on drift.
+`@learnos/shared` is **built**: the backend resolves it with NodeNext and runs compiled JS, so it emits `dist/*.js` and `*.d.ts`. That is the one ordering constraint in the repo, and it is what `turbo.json`'s `dependsOn: ["^build"]` exists to handle — so prefer `pnpm lint` / `pnpm test` at the root over a single app's script.
 
-A copy rather than a package on purpose: a package buys per-project version pinning, and drift between the web app and the extension is precisely the failure this prevents.
+It must also stay browser-safe (`zod` only — no `node:*`, drizzle, postgres, bullmq, ioredis, express or ws), because Vite and WXT compile it and neither has Node. A smoke test in each client and a grep in CI both enforce that.
 
-## GitHub repos
-All four are private under [`neerajdana996`](https://github.com/neerajdana996):
+`@learnos/ui` is plain SCSS, imported as `@use "@learnos/ui/styles/variables"`. Sass has no node resolution, so both clients set a `loadPaths` at their own `node_modules` — see `frontend/vite.config.ts` and `extension/wxt.config.ts`.
 
-| Folder | Repo |
-| --- | --- |
-| `.` (this one) | [learner-os](https://github.com/neerajdana996/learner-os) |
-| `backend/` | [learner-os-backend](https://github.com/neerajdana996/learner-os-backend) |
-| `frontend/` | [learner-os-frontend](https://github.com/neerajdana996/learner-os-frontend) |
-| `extension/` | [learner-os-extension](https://github.com/neerajdana996/learner-os-extension) |
+## GitHub
+One private repo: [learner-os](https://github.com/neerajdana996/learner-os).
 
-Each tracks `origin/main`, so day to day it's just `git push` in whichever folder you changed.
-`scripts/create-github-repos.sh` re-creates the set under a different account (needs `gh auth login`).
+It was four until 2026-09-06 — an umbrella plus one per app — and the three app repos were merged in with their history rewritten under their own subdirectories, so `git blame` and `git log` still work across the seam. `learner-os-backend`, `learner-os-frontend` and `learner-os-extension` are archived, not deleted.
 
 ## Working with an AI agent
 Open Claude Code in this folder: `claude` → "Read CLAUDE.md and start."

@@ -36,33 +36,38 @@ A platform that guarantees you'll **remember** what you learn. Not "learn" — r
 - Offline queue, sync when online.
 
 ## 5. Architecture (decided — do not re-litigate)
-Three **independent projects**, each with its own `package.json`, `tsconfig.json`, tests and Dockerfile. No monorepo, no workspaces. A root `docker-compose.yml` starts everything together.
+**One pnpm workspace**, orchestrated by Turborepo: three apps and two shared packages, each with its own `package.json`, `tsconfig.json` and tests, and one lockfile at the root. A root `docker-compose.yml` starts everything together.
+
+> **Changed 2026-09-06 (founder decision), replacing "three independent projects, no monorepo".** The original reasoning was that a package "would buy per-project version pinning, and drift between the web app and the extension is the failure this prevents". That argument does not survive contact with pnpm: `workspace:*` gives *less* version independence than three lockfiles, not more, because there is exactly one resolved copy. And the three lockfiles were already hiding real drift — `@testing-library/jest-dom` at `^6.6.3` in the frontend and `^6.9.1` in the extension, and an extension-only `vite: ^7.3.6` override against the frontend's `vite: ^6.3.5`. Eight of the seventeen commits outstanding at migration time existed only to sync copied files. The real cost of a workspace is build complexity (Docker contexts, WXT resolution), not version drift; that cost was paid once and is documented in the Dockerfiles.
 
 ```
 learnos/
 ├── docker-compose.yml    postgres, redis, backend, frontend (extension is built, not served)
 ├── CLAUDE.md
 ├── docs/                 plan.md, loop.md, sprint.md, tasks.md, api.md, ...
-├── scripts/sync-shared.sh  copies backend/src/shared and shared-ui/ into frontend/ + extension/
-├── shared-ui/            styles/ — colour tokens, scale, mixins (SOURCE OF TRUTH for both clients)
+├── pnpm-workspace.yaml   the five packages, plus allowBuilds
+├── turbo.json            the task graph — `^build` is the one edge that matters
+├── .github/workflows/    ci.yml — lint, test, build on real Postgres + Redis
+├── packages/
+│   ├── shared/           @learnos/shared — Zod schemas + TS types (SOURCE OF TRUTH for all three apps). BUILT: emits dist/*.js + *.d.ts.
+│   └── ui/               @learnos/ui — colour tokens, scale, mixins (SOURCE OF TRUTH for both clients). SCSS only, no build.
 ├── backend/              Express + ws (WebSocket) + Drizzle (Postgres) + BullMQ (Redis). Port 3001.
-│   ├── Dockerfile
+│   ├── Dockerfile        (build context is the REPO ROOT)
 │   ├── src/db/           schema.ts (SOURCE OF TRUTH), client.ts
-│   ├── src/shared/       Zod schemas + TS types (SOURCE OF TRUTH for all three projects)
 │   ├── src/scheduler/    ts-fsrs wrapper: scheduleReview, newCard, predictedRecall
 │   ├── src/llm/          one model client + file-based prompts (prompts/<name>/*.md) + typed registry (runPrompt → JSON → Zod). All model calls go through here. (T-050)
 │   ├── src/generator/    thin callers of src/llm: generateConceptMap, generateItems (strict JSON via Zod)
 │   ├── src/routes/  src/workers/  src/lib/  src/scripts/
 │   └── fixtures/         real-looking LLM outputs for tests
 ├── frontend/             React + Vite + Redux Toolkit (RTK Query for ALL API calls + state) + react-router. Port 3000.
-│   ├── Dockerfile        (vite build → nginx)
-│   └── src/shared/       SYNCED COPY — never edit by hand
+│   └── Dockerfile        (vite build → nginx; context is the REPO ROOT)
 └── extension/            WXT + React (Manifest V3).
-    ├── Dockerfile        (builds the zip into ./dist)
-    └── src/shared/       SYNCED COPY — never edit by hand
+    └── Dockerfile        (builds the zip into ./dist; context is the REPO ROOT)
 ```
-- **TypeScript everywhere. ESM. pnpm in each project (plain, no workspaces).**
-- **Shared code rule:** `backend/src/shared/` is the only place shared schemas/types are written; `shared-ui/` is the only place shared presentation is written (T-090). Run `scripts/sync-shared.sh` after changing either; frontend and extension commit the synced copies. Both synced folders must be browser-safe (no Node imports), and a `shared-ui` file must be self-contained — it may not reach outside its own folder or name a consuming project, because it lands at a different depth in each one. **A copy, not a workspace:** a package would buy per-project version pinning, and drift between the web app and the extension is the failure this prevents rather than a freedom worth having.
+- **TypeScript everywhere. ESM. One pnpm workspace, one lockfile, `pnpm install` at the root.**
+- **Shared code rule:** `packages/shared` is the only place shared schemas/types are written; `packages/ui` the only place shared presentation is written (T-090). Both are imported as packages — `@learnos/shared` and `@learnos/ui` — and there are no copies to keep in step. `@learnos/shared` must stay **browser-safe** (only `zod`; never `node:*`, drizzle, postgres, bullmq, ioredis, express or ws): it is compiled by Vite for the web app and by WXT for the extension, and neither has Node. Two guards enforce this — a smoke test in each client (`src/shared.test.ts`) and a grep in CI.
+- **`packages/shared` is built, not consumed as source.** The backend resolves with NodeNext and runs `node dist/index.js`, so it needs real emitted JS. That is the single ordering constraint in the repo and the reason Turborepo is here: `"build": { "dependsOn": ["^build"] }`.
+- **Sass has no node resolution.** Both clients set a scss `loadPaths` at their own `node_modules`, which is where pnpm links `@learnos/ui`. That is why `@use "@learnos/ui/styles/variables"` resolves.
 - **No Qdrant, no LangChain/LangGraph.** Generation is prompt → JSON → Zod → DB.
 - **Postgres tables:** users, topics, concepts, concept_prereqs, items, cards (FSRS state per user×concept), review_events (every answer), tests, daily_pulse. Schema lives at `backend/src/db/schema.ts`.
 - **Auth for pilot:** magic link (email). `x-user-id` header is a dev shortcut only.
