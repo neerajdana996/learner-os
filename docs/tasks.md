@@ -8,7 +8,7 @@
 
 ## Where things stand — 2026-09-05
 
-**64 of 112 tasks done** (1 in progress, 1 blocked, 46 todo). Sprints 1 and most of 2 are shipped: backend **407 tests**, frontend **49**, extension **31**, all lint-clean.
+**64 of 113 tasks done** (1 in progress, 1 blocked, 47 todo). Sprints 1 and most of 2 are shipped: backend **407 tests**, frontend **49**, extension **31**, all lint-clean.
 
 > The count above used to read "55 of 94" and had drifted — it is now taken from the file itself (`awk '/^### T-/{t=$2} /^- \*\*status:\*\*/{print $3}' docs/tasks.md | sort | uniq -c`), so it is worth re-deriving rather than hand-incrementing.
 
@@ -2098,10 +2098,29 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **A second sighting sharpened it.** `sprint2 > never leaks a held-out concept` failed with **401** partway through `runDiagnostic`, after `/diagnostic/:id/start` had already returned 200 with the same cookie. Both known failures are 401s, and 401 here means one thing: **the `sessions` row was gone mid-test.** Nothing in the codebase deletes or revokes a session except `endSession` (only reachable from `/auth/logout`) and `truncateAll`, which runs in a `beforeEach`.
   - **Leading hypothesis — the 5-second default timeout.** `vitest.config.ts` sets no `testTimeout`, so it is vitest's default **5000ms**, and no suite overrides it. The sprint2 tests do a great deal inside one test: `truncateAll` (13 sequential TRUNCATEs) + a Redis `obliterate` + a magic-link round trip + `processGenerationJob` inline for a 12-concept map + a 15-step diagnostic, each an HTTP round trip. Under a full run — machine busier — that plausibly crosses 5s. When it does, **vitest fails the test and moves on, but the abandoned promise chain keeps running**, because a JS promise cannot be cancelled. The next test's `beforeEach` then truncates the tables underneath that in-flight work, and it starts getting 401s. That explains every observation: intermittent, only in a full run, a different test each time, and always an auth failure rather than a data mismatch.
   - **What is already ruled out.** Not file parallelism — `fileParallelism: false` is already set precisely because these tests share one Postgres. Not the test itself: `users.test.ts` passes 8/8 when run alone. Not the rate limiter (T-FIX-007), which keys on email and `seedUser` mints a unique address per call. Not session expiry — `SESSION_TTL_DAYS` defaults to 30.
-  - **The cheap first move is a one-line change and it is also the experiment**: set an explicit `testTimeout` in `vitest.config.ts` (20s is ample; the whole suite is ~35s) and run twenty full suites. If the failures stop, the hypothesis holds and the real fix is a considered per-suite timeout plus, ideally, making the slow integration tests less slow. If they do not stop, the hypothesis is wrong and this note should say so.
-  - **A timeout raise is only a fix if the diagnosis is right.** If the failures persist, do not raise it further — that is the same mistake as `test.retry`, one step removed.
+  - ✅ **Confirmed (2026-09-06).** `testTimeout: 20_000` set in `vitest.config.ts`; the run that had just failed on `sprint2 > never leaks a held-out concept` came back **489/489**. One green run is evidence, not proof — the acceptance below still wants twenty — but the mechanism is no longer a hypothesis.
+  - **What is left.** (a) Confirm over ~20 runs. (b) The concurrency half below, which is reproducible and untouched. (c) The real fix underneath: the sprint integration tests are slow enough to approach a 5s budget in the first place, and 20s is headroom rather than a cure. **Do not raise the timeout again if something fails** — that is `test.retry` one step removed, and it would hide exactly the shared-state bug worth finding.
   - **Do not "fix" it by retrying.** `test.retry` would hide exactly the class of bug worth finding: shared state leaking between test files against one database. The pilot's whole measurement runs through this code path.
   - **Separately, and reproducibly: two `pnpm test` runs at once destroy each other.** Sixty-three tests fail with mismatched row counts and stray 401s, because every file's `beforeEach` truncates the same tables. T-068 gave Redis its own namespace for exactly this reason; Postgres never got the same treatment. Anyone running the suite in two terminals — or CI running two jobs on one database — sees what looks like sixty-three unrelated bugs. A per-run database name (or a schema per worker) would end it.
 - **acceptance:** Twenty consecutive full runs are green, and the cause is written here rather than worked around. Two concurrent `pnpm test` runs both pass.
 - **tests:** A loop of ≥20 full runs is green. Two suites started simultaneously both pass, asserted by running them.
+- **notes:**
+
+### T-101 · A stranger arrives at a sign-in form
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-071
+- **files:** `frontend/src/features/landing/*`, `frontend/src/App.tsx`, `frontend/src/styles/components/_landing.scss`, tests alongside
+- **description:** Raised by the founder (2026-09-06). `/` is the sign-in form today, so someone following a link from a recruitment email is asked for their address **before being told what this is or what it costs them** — and the ask is thirty days of their attention plus a surprise test. The pilot needs ten people to say yes to that; the current root route gives them nothing to say yes to.
+  - **Already designed, never built.** The artboard is `design/Main.dc.html` and the flow is `design/nav/EntryFlow.dc.html`. The copy in the design is the pitch, verbatim: *"Learn something for 30 days. Then let me test you on it."* · *"Ten people, one topic each, a test on day 30 you won't see coming."* · one call to action, "Take one of the ten places".
+  - **The routing decision is already recorded** on the EntryFlow artboard and should not be re-litigated: `/` is the landing page for a signed-out visitor; sign-in moves to **`/signin`**, reached from the landing page's call to action rather than by hitting the root URL cold. Signed in, `/` keeps forwarding to the dashboard, so nothing changes for a learner mid-course. Magic-link and OAuth redirects keep landing on `/` and are forwarded from there, exactly as today (T-071).
+  - **Honesty is the conversion mechanism here, not a constraint on it.** The page has to say the uncomfortable parts — a surprise test, concepts deliberately never taught, thirty days — because a participant who feels tricked on day 30 is a participant who drops out, and a dropout costs a tenth of the result. It is also what onboarding already does on every step (`Step.because`), so the tone exists.
+  - **Open, for the founder:** whether the call to action goes straight to `/signin` or collects an email for a waitlist first (the pilot recruits in a 3-day window, so a waitlist may be more friction than it is worth); and whether ten places is stated as a live count or as copy.
+- **acceptance:** A signed-out visitor to `/` sees the landing page, never the sign-in form. A signed-in learner at `/` still lands on the dashboard. Magic-link and OAuth callbacks still work end to end. Nothing is re-declared that `shared-ui/` already owns (T-090).
+- **tests:**
+  - `/` signed out renders the landing page; `/signin` renders the sign-in form.
+  - `/` signed in redirects to the dashboard (regression on T-071).
+  - A magic-link callback landing on `/` still forwards to onboarding or the dashboard as it does today.
+  - The call to action reaches `/signin`.
+  - `pnpm build` passes — the styles are new and `pnpm lint` never compiles SCSS (T-090).
 - **notes:**
