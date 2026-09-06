@@ -55,6 +55,10 @@ vi.mock('../../../lib/api', () => ({
     flagged.push(id);
     return Promise.resolve({ retired: false });
   },
+  postPulse: (pulse: { day: string; mood: number }) => {
+    pulsed.push(pulse);
+    return Promise.resolve({ ok: true as const });
+  },
 }));
 
 /** Mutable so a test can start the card from a state that is one refusal away
@@ -67,10 +71,19 @@ let popState = { day: null, dailyCount: 0, lastShownAt: null, consecutiveDismiss
   backoffUntil: number | null;
 };
 
+/** The last local day the mood tap was answered. Null = owed today. */
+let pulseDay: string | null = null;
+const pulsed: { day: string; mood: number }[] = [];
+
 vi.mock('../../../lib/storage', () => ({
   getPopState: () => Promise.resolve(popState),
   setPopState: (next: typeof popState) => {
     popState = next;
+    return Promise.resolve();
+  },
+  getPulseDay: () => Promise.resolve(pulseDay),
+  setPulseDay: (day: string) => {
+    pulseDay = day;
     return Promise.resolve();
   },
 }));
@@ -88,6 +101,8 @@ beforeEach(() => {
   flagged.length = 0;
   failNext = null;
   nextDue = null;
+  pulseDay = null;
+  pulsed.length = 0;
   popState = { day: null, dailyCount: 0, lastShownAt: null, consecutiveDismissals: 0, backoffUntil: null };
   fakeBrowser.reset();
   onClose.mockReset();
@@ -397,5 +412,62 @@ describe('the design canvas states', () => {
 
     expect(await screen.findByText(/Nothing is lost/i)).toBeTruthy();
     expect(screen.getByText(/comes back in the queue/i)).toBeTruthy();
+  });
+});
+
+describe('the daily mood tap (T-032)', () => {
+  it('is asked after the first answered card of the day', async () => {
+    const user = userEvent.setup();
+    render(<Card item={item} onClose={onClose} />);
+
+    // Not before the answer: it must not compete with the question.
+    expect(screen.queryByText(/How’s the week going/)).toBeNull();
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    expect(await screen.findByText(/How’s the week going/)).toBeTruthy();
+  });
+
+  it('is not asked again the same day', async () => {
+    const user = userEvent.setup();
+    pulseDay = new Date().toISOString().slice(0, 10);
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    await screen.findByText(/Right/);
+    expect(screen.queryByText(/How’s the week going/)).toBeNull();
+  });
+
+  it('sends the tap and stops asking', async () => {
+    const user = userEvent.setup();
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    await user.click(await screen.findByRole('button', { name: /Good/ }));
+
+    await waitFor(() => expect(pulsed).toHaveLength(1));
+    expect(pulsed[0]?.mood).toBe(3);
+    expect(pulsed[0]?.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(screen.queryByText(/How’s the week going/)).toBeNull();
+  });
+
+  it('names each face in words, because an emoji is not a label', async () => {
+    const user = userEvent.setup();
+    render(<Card item={item} onClose={onClose} />);
+
+    await user.click(screen.getByRole('radio', { name: /Run once/ }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+
+    await screen.findByText(/How’s the week going/);
+    // A screen reader reading "weary face" is describing a glyph, not offering
+    // a choice — and the same three faces mean different things to different
+    // people anyway.
+    expect(screen.getByRole('button', { name: /Rough/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Fine/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Good/ })).toBeTruthy();
   });
 });

@@ -1,7 +1,15 @@
 import { DueItemsResponseSchema, type MeResponse } from '@learnos/shared';
-import { apiFetch, NotConnectedError, postReview } from '../lib/api';
+import { apiFetch, NotConnectedError, postReview, postTelemetry } from '../lib/api';
 import { drain } from '../lib/queue';
-import { recordShown, shouldShow, type PopDecision } from '../lib/schedule';
+import { recordDismissed, recordShown, shouldShow, type PopDecision } from '../lib/schedule';
+import {
+  clearCardOpen,
+  isAbandoned,
+  readBuffer,
+  readCardOpen,
+  record,
+  TELEMETRY_KEY,
+} from '../lib/telemetry';
 import {
   getCachedMe,
   getPopState,
@@ -61,6 +69,41 @@ async function sync(): Promise<void> {
   }
 }
 
+/**
+ * A card that was opened and never acted on (T-035).
+ *
+ * Chrome destroys an extension popup the moment it loses focus, so this cannot
+ * be observed from the popup — there is no reliable unload in which to send
+ * anything. The card leaves a marker when it mounts and clears it on any
+ * action; a marker still here on a later alarm means the question was put in
+ * front of someone and abandoned.
+ *
+ * It counts as a dismissal, because that is what it is: the task says so, and
+ * the backoff exists to notice exactly this pattern. Someone who opens three
+ * cards and walks away from all three is telling us the same thing as someone
+ * who presses ✕ three times.
+ */
+async function sweepOpenCard(now: Date, timezone: string | null): Promise<void> {
+  const open = await readCardOpen();
+  if (!isAbandoned(open, now.getTime())) return;
+
+  await record('card_closed_no_action', { itemId: open?.itemId ?? 'unknown' }, now.getTime());
+  await clearCardOpen();
+  await setPopState(recordDismissed(await getPopState(), now, timezone));
+}
+
+/** Sends whatever the popup buffered. Cleared only on success — a failed flush
+ *  keeps the events for the next alarm, the same rule the answer queue uses. */
+async function flushTelemetry(): Promise<void> {
+  const buffered = await readBuffer();
+  if (buffered.length === 0) return;
+
+  const batch = buffered.slice(0, 50);
+  await postTelemetry(batch);
+  const rest = (await readBuffer()).slice(batch.length);
+  await browser.storage.local.set({ [TELEMETRY_KEY]: rest });
+}
+
 async function tick(): Promise<void> {
   // No token means the learner has not been through "Connect extension" yet.
   // Not an error, and not worth a log line every five minutes forever.
@@ -71,6 +114,11 @@ async function tick(): Promise<void> {
   const now = new Date();
   const me = await loadMe(now.getTime());
   if (!me) return;
+
+  // Before the decision, because an abandoned card is a dismissal and a
+  // dismissal can be the third one — which is what stops the day.
+  await sweepOpenCard(now, me.timezone);
+  await flushTelemetry();
 
   // `idle` and `locked` are both "not at the keyboard". A card shown to an
   // empty chair spends the daily cap and teaches nothing.
@@ -99,6 +147,10 @@ async function tick(): Promise<void> {
   if (!item) return;
 
   await setPendingCard(item);
+  // The denominator of the answer rate. Recorded at the notification, not at
+  // the /due fetch: what was served and what was shown are different numbers,
+  // and only this one is a card a human saw.
+  await record('card_shown', { itemId: item.itemId }, now.getTime());
   // The counters move when the card is offered, not when it is answered:
   // otherwise an ignored notification would let the next tick offer another one
   // twenty minutes later, and another, until the cap was spent on a stack of

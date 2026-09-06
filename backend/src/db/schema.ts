@@ -257,6 +257,45 @@ export const dailyPulse = pgTable(
   }),
 );
 
+/**
+ * What the client says about itself (T-035).
+ *
+ * The server knows what it *served*; only the client knows what was actually
+ * put in front of someone and what happened to it. Without `card_shown` the
+ * answer rate has no denominator, and without `card_closed_no_action` the
+ * biggest category of non-answer is invisible — Chrome closes an extension
+ * popup the instant it loses focus, silently.
+ *
+ * `event` is text, not a pgEnum, on purpose: telemetry is the thing that grows,
+ * and a new event name should not need a migration. `ClientEventNameSchema`
+ * validates it at the route, so nothing unrecognised is written — the integrity
+ * lives at the boundary rather than in the column type.
+ *
+ * **`meta` must never carry an answer.** It is for an item id, an error string,
+ * a surface. This table is not access-controlled the way `review_events` is
+ * and is meant to be cheap to read in bulk.
+ */
+export const clientEvents = pgTable(
+  'client_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    event: text('event').notNull(),
+    meta: jsonb('meta'),
+    /** When it happened on the device — the worker batches on a five-minute
+     *  alarm, so this is not the time the row was written. */
+    at: timestamp('at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Every query this table exists for is "how many of X did this user
+    // produce, over a window".
+    userEventIdx: index('client_events_user_id_event_idx').on(table.userId, table.event, table.at),
+  }),
+);
+
 // Magic-link tokens (T-013). Stored as a SHA-256 hash, never the raw value a
 // learner receives — a leaked dump otherwise hands over live login links.
 export const authTokens = pgTable('auth_tokens', {

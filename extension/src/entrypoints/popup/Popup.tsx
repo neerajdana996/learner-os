@@ -11,6 +11,7 @@ import { browser } from 'wxt/browser';
 import { Button } from '@learnos/ui';
 import { PublicItemSchema, type PublicItem } from '@learnos/shared';
 import { getPopState, getToken, takePendingCard } from '../../lib/storage';
+import { Boundary } from './Boundary';
 import { Card } from './Card';
 
 export function Popup() {
@@ -38,7 +39,13 @@ export function Popup() {
 
   // The card owns the whole popup when there is one: no nav, no branding, no
   // score. It has one job and then it goes away.
-  if (card) return <Card item={card} onClose={() => window.close()} />;
+  if (card) {
+    return (
+      <Boundary>
+        <Card item={card} onClose={() => window.close()} />
+      </Boundary>
+    );
+  }
 
   return (
     <main className="ext ext--popup">

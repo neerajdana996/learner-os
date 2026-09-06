@@ -485,3 +485,49 @@ export const ExtensionTokenResponseSchema = z.object({
 
 // ---------- Health ----------
 export const HealthResponseSchema = z.object({ ok: z.literal(true) });
+
+// ---------- Daily pulse (T-032) ----------
+
+/** `PulseCreateSchema` (above) is the request. This is all the answer needs to
+ *  be: the tap is fire-and-forget, and a failed one must never cost the learner
+ *  anything, so there is nothing here worth reading. */
+export const PulseResponseSchema = z.object({ ok: z.literal(true) });
+
+// ---------- Client telemetry (T-035) ----------
+
+/**
+ * What the extension reports about its own behaviour.
+ *
+ * - `card_shown` — a card was offered. The **denominator** of the answer rate,
+ *   and the only place it can be counted: the server knows what it served, not
+ *   what was put in front of anyone.
+ * - `card_closed_no_action` — the popup went away with the question unanswered.
+ *   Chrome closes a popup the moment it loses focus, so this is silent
+ *   otherwise, and it is the single largest hole in the answer rate.
+ * - `popup_error` — the card failed to render. Invisible in a popup, which has
+ *   no console anyone will look at.
+ *
+ * Free text validated by this union rather than a Postgres enum: telemetry is
+ * exactly the thing that grows, and a new event should not need a migration.
+ * The union still means nothing unrecognised can be written.
+ */
+export const CLIENT_EVENTS = ['card_shown', 'card_closed_no_action', 'popup_error'] as const;
+export const ClientEventNameSchema = z.enum(CLIENT_EVENTS);
+
+export const ClientEventSchema = z.object({
+  event: ClientEventNameSchema,
+  /** Small and free-form: an item id, an error message, a surface. Never an
+   *  answer — this table is not a place to accidentally store one. */
+  meta: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  /** When it happened on the device. The worker flushes in batches on a
+   *  five-minute alarm, so the receive time is not the event time. */
+  at: z.string().datetime().optional(),
+});
+
+/** Batched: the worker flushes whatever accumulated since the last alarm, and
+ *  one request for five events beats five requests. */
+export const TelemetrySchema = z.object({
+  events: z.array(ClientEventSchema).min(1).max(50),
+});
+
+export const TelemetryResponseSchema = z.object({ stored: z.number().int().nonnegative() });

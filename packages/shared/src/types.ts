@@ -30,6 +30,11 @@ import type {
   TestNextSchema,
   TestAvailabilitySchema,
   PulseCreateSchema,
+  PulseResponseSchema,
+  ClientEventSchema,
+  ClientEventNameSchema,
+  TelemetrySchema,
+  TelemetryResponseSchema,
   ActiveWindowSchema,
   ActiveWindowsSchema,
   UserUpdateSchema,
@@ -84,6 +89,14 @@ export type TestNext = z.infer<typeof TestNextSchema>;
 export type TestAvailability = z.infer<typeof TestAvailabilitySchema>;
 
 export type PulseCreate = z.infer<typeof PulseCreateSchema>;
+/** 1 = rough, 2 = fine, 3 = good. Coarse on purpose: a ten-point scale invites
+ *  deliberation, and this has to cost less than the card did (T-032). */
+export type Mood = PulseCreate['mood'];
+export type PulseResponse = z.infer<typeof PulseResponseSchema>;
+export type ClientEvent = z.infer<typeof ClientEventSchema>;
+export type ClientEventName = z.infer<typeof ClientEventNameSchema>;
+export type Telemetry = z.infer<typeof TelemetrySchema>;
+export type TelemetryResponse = z.infer<typeof TelemetryResponseSchema>;
 
 export type ActiveWindow = z.infer<typeof ActiveWindowSchema>;
 export type ActiveWindows = z.infer<typeof ActiveWindowsSchema>;

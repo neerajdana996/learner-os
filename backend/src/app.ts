@@ -13,6 +13,8 @@ import { dueRouter } from './modules/due/due.routes.js';
 import { devRouter } from './modules/dev/dev.routes.js';
 import { testsRouter } from './modules/tests/tests.routes.js';
 import { itemsRouter } from './modules/items/items.routes.js';
+import { pulseRouter } from './modules/pulse/pulse.routes.js';
+import { telemetryRouter } from './modules/telemetry/telemetry.routes.js';
 
 /**
  * Builds the Express app without binding a port, so tests can mount it with
@@ -39,6 +41,8 @@ export function createApp(): Express {
   app.use(topicsRouter);
   app.use(reviewsRouter);
   app.use(itemsRouter);
+  app.use(pulseRouter);
+  app.use(telemetryRouter);
   app.use(dueRouter);
   // Empty in production: the router registers no routes when isProd.
   app.use(devRouter);

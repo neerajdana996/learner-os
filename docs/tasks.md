@@ -924,12 +924,19 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **Not done:** the duplicate-key integration test against a live API. The unit tests cover the queue's own rules; `recordReview`'s idempotency path is covered by its own tests. Worth adding when the API integration suite next runs.
 
 ### T-032 · Daily mood tap
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-029
 - **files:** `components/Pulse.tsx`, `backend/src/routes/pulse.ts`, tests
 - **description:** After the **first answered** card of the local day, show 😩 😐 🙂 once. `POST /pulse {day, mood}`, upsert.
 - **tests:** Shown once per day; second card same day → not shown; API upsert idempotent.
+
+- **notes:** (2026-09-06) **The table and its unique index already existed** — `daily_pulse` was added with a comment naming this task, and `PulseCreateSchema` was already in `packages/shared`. What was missing was the route, the surface, and the once-a-day rule. I nearly added a second `PulseSchema` before checking; the types barrel was what caught it.
+  - **The day comes from the client**, because only the client knows it. A card answered at 11pm in Kolkata is already tomorrow in UTC, and "once a day" has to mean the learner's day or the tap appears twice on one evening and not at all on another.
+  - **After the first *answered* card, not the first card shown.** A mood tap on a question someone ignored is asked of an empty chair, and it would also be the second interruption in a row for someone who was already not answering.
+  - **A word under every face.** An emoji is not an accessible name — a screen reader reads "weary face", which describes a glyph rather than offering a choice — and the same three faces mean different things to different people. `MoodTap` lives in `@learnos/ui` beside `ConfidenceTap`, because the web session will want it on the same terms.
+  - Idempotent by the unique index rather than by a read-then-write: the tap is fire-and-forget from a popup that may be closing, so a double send is the normal case. The last tap of a day wins.
+  - Failing to send is **silent**. A check-in that interrupts the card with an error has cost more than it is worth.
 
 ### T-033 · Extension never leaks answers / never shows wrong content
 - **status:** done
@@ -959,12 +966,22 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **Still open:** the "pause for today" switch, which needs T-030's backoff state to exist first. Kept in T-030's scope rather than stubbed here.
 
 ### T-035 · Extension telemetry hooks
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-029
 - **files:** `backend/src/routes/telemetry.ts`
 - **description:** `POST /telemetry {event, meta}` for: `card_shown`, `card_closed_no_action` (auto-closed unanswered → counts as dismissal), `popup_error`. Stored in a new `client_events` table. Needed for answer-rate metrics.
 - **tests:** Each event type stores; unanswered auto-close increments consecutive dismissals client-side.
+
+- **notes:** (2026-09-06) **This is a schema task by necessity** — `client_events` is new, and T-035 is the task that introduces it. `event` is `text`, not a `pgEnum`, deliberately: telemetry is the thing that grows, and a new event name should not need a migration. `ClientEventNameSchema` validates at the route, so the integrity lives at the boundary rather than in the column type, and a test asserts an unknown name is refused and nothing is written.
+  - **Nothing is sent from the popup, and that is the whole design.** Chrome destroys an extension popup the instant it loses focus — clicking back into the page is enough — and an in-flight `fetch` dies with it. The single most valuable event fires exactly as the popup is being destroyed, so posting directly would lose precisely the measurement this exists to take. Events are written to `chrome.storage.local`, which wins that race, and the five-minute alarm flushes them in batches.
+  - **`card_closed_no_action` is inferred, not reported.** There is no reliable unload event to send it from, so the card writes an "open and unanswered" marker on mount and clears it on any action; a marker that survives to a later alarm *is* the event. It counts as a dismissal, because it is one — someone who opens three cards and walks away is telling us the same thing as someone who presses ✕ three times. **This was the largest hole in the answer rate and it was completely invisible.**
+  - `ABANDONED_AFTER_MS` is five minutes, far longer than a twenty-second question, because the cost of being wrong is asymmetric: calling a live card abandoned records a false non-answer *and* a dismissal against someone who is mid-thought, and three of those stop their day.
+  - **`card_shown` is recorded at the notification, not at the `/due` fetch.** What was served and what was put in front of a human are different numbers, and only the second one is the denominator of an answer rate.
+  - **`popup_error` needed a surface that did not exist.** A React error in the popup was a blank 380×300 rectangle with no console anyone would open — the learner closes it and nothing records that the question was lost. `Boundary` catches it, reports it, and says so. It deliberately offers no retry: the same item through the same code fails the same way, and a button that does nothing twice is worse than an honest dead end.
+  - The device clock is not trusted: a future `at` is clamped to now, because it would otherwise sit beyond the end of every window a metric asks for and vanish from the counts it feeds. An unusable stamp becomes now rather than failing the batch — losing a metric because one row had a bad timestamp is worse than a slightly imprecise one.
+  - `truncateAll` needed no change: it discovers tables from `information_schema` rather than listing them.
+  - **`meta` must never carry an answer** — noted on the table. It is for an item id, an error string, a surface.
 
 ### T-036 · Extension build + load doc
 - **status:** todo

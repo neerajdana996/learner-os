@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PublicItem } from '@learnos/shared';
-import { Button, ConfidenceTap, QuestionCard } from '@learnos/ui';
-import { ApiError, flagItem, postReview, type ReviewResult } from '../../lib/api';
+import type { Mood } from '@learnos/shared';
+import { Button, ConfidenceTap, MoodTap, QuestionCard } from '@learnos/ui';
+import { ApiError, flagItem, postPulse, postReview, type ReviewResult } from '../../lib/api';
 import { enqueue } from '../../lib/queue';
-import { getPopState, setPopState } from '../../lib/storage';
+import { getPopState, getPulseDay, setPopState, setPulseDay } from '../../lib/storage';
+import { clearCardOpen, markCardOpen } from '../../lib/telemetry';
+import { localDay } from '../../lib/schedule';
 import { MIN_GAP_MS, recordAnswered, recordDismissed } from '../../lib/schedule';
 import { nextSighting } from '../../lib/nextSighting';
 
@@ -42,6 +45,9 @@ export function Card({ item, onClose }: CardProps) {
   const [queued, setQueued] = useState(false);
   const [flagged, setFlagged] = useState(false);
   const [backedOff, setBackedOff] = useState(false);
+  /** Whether today's mood tap is still owed. Decided once, when the card opens,
+   *  so answering cannot make it appear and disappear mid-read. */
+  const [askMood, setAskMood] = useState(false);
 
   /**
    * Generated once, when the card opens, not per attempt. The offline queue
@@ -51,6 +57,20 @@ export function Card({ item, onClose }: CardProps) {
    */
   const idempotencyKey = useRef(crypto.randomUUID());
   const openedAt = useRef(Date.now());
+
+  /**
+   * Leave a marker saying a card is open and unanswered (T-035).
+   *
+   * The worker turns a marker that outlives the popup into
+   * `card_closed_no_action`. It cannot be done on unload: Chrome destroys an
+   * extension popup the instant it loses focus, and nothing async survives that.
+   */
+  useEffect(() => {
+    void markCardOpen(item.itemId);
+    void (async () => {
+      setAskMood((await getPulseDay()) !== localDay(new Date(), null));
+    })();
+  }, [item.itemId]);
 
   // Auto-close once the outcome has been read — or once the answer is safely
   // queued, since no verdict is ever coming for that one. Only after an answer:
@@ -99,6 +119,7 @@ export function Card({ item, onClose }: CardProps) {
       surface: 'extension',
       idempotencyKey: idempotencyKey.current,
     });
+    await clearCardOpen();
     // An answer breaks a run of refusals whether it was right, wrong, or still
     // sitting in the queue — the learner showed up either way, and backing off
     // because their wifi dropped would punish them for it.
@@ -131,6 +152,7 @@ export function Card({ item, onClose }: CardProps) {
       idempotencyKey: idempotencyKey.current,
       snoozed: true,
     });
+    await clearCardOpen();
     // Not a dismissal: someone asking for it later has not refused it, and
     // counting it as one would back the extension off for the whole day.
     //
@@ -151,6 +173,7 @@ export function Card({ item, onClose }: CardProps) {
       idempotencyKey: idempotencyKey.current,
       dismissed: true,
     });
+    await clearCardOpen();
     const state = await getPopState();
     const next = recordDismissed(state, new Date(), null);
     await setPopState(next);
@@ -226,6 +249,22 @@ export function Card({ item, onClose }: CardProps) {
             ) : null}
 
             <ConfidenceTap value={null} onChange={(c) => void rate(c)} asked="after" />
+
+            {/* After the first *answered* card of the day, never the first card
+                shown: a mood tap on a question someone ignored is asked of an
+                empty chair. Failing to send is silent — a check-in that
+                interrupts the card with an error has cost more than it is
+                worth. */}
+            {askMood ? (
+              <MoodTap
+                onChange={(mood: Mood) => {
+                  const day = localDay(new Date(), null);
+                  setAskMood(false);
+                  void setPulseDay(day);
+                  void postPulse({ day, mood }).catch(() => {});
+                }}
+              />
+            ) : null}
 
             {/* Offered only after the answer, because that is when you can tell
                 a bad question from a hard one. Disabled once used: the count is

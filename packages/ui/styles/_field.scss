@@ -69,3 +69,39 @@
     white-space: nowrap;
   }
 }
+
+/// The daily mood tap (T-032). Three targets, equal width, each one a whole
+/// tap area rather than a glyph you have to hit — the point of the control is
+/// that it costs less than the card did.
+.mood {
+  display: flex;
+  gap: $s-2;
+
+  &__pick {
+    @include control;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: $s-2;
+    background: none;
+    border: 1px solid var(--border-strong);
+    border-radius: $radius;
+    color: var(--ink-2);
+
+    &:hover {
+      border-color: var(--clay);
+      color: var(--clay-ink);
+    }
+  }
+
+  &__face {
+    font-size: 20px;
+    line-height: 1.1;
+  }
+
+  &__label {
+    font-size: $text-xs;
+  }
+}

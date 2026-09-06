@@ -12,7 +12,15 @@
  * reaching the card UI.
  */
 import { z, type output, type ZodTypeAny } from 'zod';
-import { MeResponseSchema, type Answer, type MeResponse } from '@learnos/shared';
+import {
+  MeResponseSchema,
+  PulseResponseSchema,
+  TelemetryResponseSchema,
+  type Answer,
+  type ClientEvent,
+  type MeResponse,
+  type PulseCreate,
+} from '@learnos/shared';
 import { clearToken, getToken } from './storage';
 
 /** Set at build time from `WXT_API_URL` (see `.env.example`). The manifest's
@@ -137,4 +145,27 @@ export function postReview(answer: Answer): Promise<ReviewResult> {
  */
 export function flagItem(itemId: string): Promise<{ retired: boolean }> {
   return apiJson(z.object({ retired: z.boolean() }), `/items/${itemId}/flag`, { method: 'POST' });
+}
+
+/**
+ * The daily mood tap (T-032). `day` is the learner's own local date, because
+ * only the client knows it.
+ */
+export function postPulse(pulse: PulseCreate): Promise<{ ok: true }> {
+  return apiJson(PulseResponseSchema, '/pulse', {
+    method: 'POST',
+    body: JSON.stringify(pulse),
+  });
+}
+
+/**
+ * A batch of client events (T-035). Sent by the worker on its alarm, never by
+ * the popup — see `lib/telemetry.ts` for why that distinction is the whole
+ * design.
+ */
+export function postTelemetry(events: ClientEvent[]): Promise<{ stored: number }> {
+  return apiJson(TelemetryResponseSchema, '/telemetry', {
+    method: 'POST',
+    body: JSON.stringify({ events }),
+  });
 }

@@ -95,3 +95,17 @@ export async function takePendingCard(): Promise<unknown | null> {
   if (item !== null) await browser.storage.local.remove(PENDING_CARD_KEY);
   return item;
 }
+
+/** The last learner-local day the mood tap was answered (T-032). One tap per
+ *  day, and the day is theirs, not the server's. */
+export const PULSE_DAY_KEY = 'learnos.pulseDay';
+
+export async function getPulseDay(): Promise<string | null> {
+  const stored = await browser.storage.local.get(PULSE_DAY_KEY);
+  const value = stored[PULSE_DAY_KEY];
+  return typeof value === 'string' ? value : null;
+}
+
+export async function setPulseDay(day: string): Promise<void> {
+  await browser.storage.local.set({ [PULSE_DAY_KEY]: day });
+}

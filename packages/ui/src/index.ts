@@ -11,6 +11,7 @@ export { Button, type ButtonProps } from './Button.js';
 export { Choice, type ChoiceProps } from './Choice.js';
 export { ConceptDot, ConceptLegend } from './ConceptDot.js';
 export { ConfidenceTap, type ConfidenceTapProps } from './ConfidenceTap.js';
+export { MoodTap } from './MoodTap.js';
 export { Field, type FieldProps } from './Field.js';
 export { Prose, renderCodeSpans } from './Prose.js';
 export { QuestionCard, type QuestionCardProps } from './QuestionCard.js';
