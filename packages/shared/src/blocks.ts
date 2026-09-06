@@ -65,7 +65,7 @@ export const LangSchema = z.enum([
 export const BlockSlotSchema = z.enum(['context', 'answer', 'reveal']);
 
 /** Kinds whose slot must be `answer`. Everything else is content. */
-export const ANSWER_BLOCK_KINDS = ['clozeCode', 'hotspotLine', 'orderLines', 'codeEditor'] as const;
+export const ANSWER_BLOCK_KINDS = ['clozeCode', 'hotspotLine', 'orderLines', 'codeEditor', 'numeric'] as const;
 export type AnswerBlockKind = (typeof ANSWER_BLOCK_KINDS)[number];
 
 const MAX_SRC = 1200;
@@ -132,6 +132,75 @@ const codeFields = {
   /** ≤8 lines, for the extension popup. Identifiers may be elided to `…`;
    *  the line the question is about may not be. */
   short: opt(z.string().min(1).max(MAX_SHORT)),
+};
+
+/**
+ * ---------- systems blocks (T-108) ----------
+ *
+ * Two content blocks and one answer block. They follow the discipline the code
+ * blocks established: **the model emits meaning, the worker renders it.** A
+ * model asked for SVG writes bad SVG; a model asked for "a client, two replicas
+ * and the arrows between them" writes that reliably. So generation carries
+ * nodes and edges, and the stored form gains the `svg` the worker drew — which
+ * is why a diagram costs no graph library on the client.
+ */
+
+/** Five, not more. The extension popup is 380×300 and the design puts a
+ *  readable diagram at ≤5 nodes there. Capping here rather than adding a second
+ *  `short` variant means every diagram is extension-safe by construction — and
+ *  a concept needing six boxes is a concept that has not been split yet. */
+export const DIAGRAM_MAX_NODES = 5;
+export const SEQUENCE_MAX_LANES = 3;
+
+const NodeSchema = z.object({
+  id: z.string().trim().min(1).max(24),
+  label: z.string().trim().min(1).max(28),
+});
+
+const EdgeSchema = z.object({
+  from: z.string().trim().min(1),
+  to: z.string().trim().min(1),
+  /** "writes", "replicates async", "reads". Short enough to sit on an arrow. */
+  label: opt(z.string().trim().min(1).max(24)),
+});
+
+const diagramCommon = {
+  nodes: z.array(NodeSchema).min(2).max(DIAGRAM_MAX_NODES),
+  edges: z.array(EdgeSchema).min(1).max(8),
+  /** Read aloud instead of the drawing. Not optional: a diagram with no text
+   *  equivalent is unreadable to a screen reader, and the extension is a
+   *  notification-driven surface people reach with a keyboard. */
+  alt: z.string().trim().min(1).max(200),
+};
+
+const MessageSchema = z.object({
+  from: z.string().trim().min(1),
+  to: z.string().trim().min(1),
+  label: z.string().trim().min(1).max(32),
+  /** A message that arrives after a later one was sent — how a stale read is
+   *  drawn. Without it the block can only show the happy path, which is the
+   *  half of distributed systems that is never the question. */
+  delayed: opt(z.boolean()),
+});
+
+const sequenceCommon = {
+  lanes: z.array(z.string().trim().min(1).max(20)).min(2).max(SEQUENCE_MAX_LANES),
+  messages: z.array(MessageSchema).min(2).max(8),
+  alt: z.string().trim().min(1).max(200),
+};
+
+const numericFields = {
+  answer: z.number(),
+  /**
+   * Fractional, not absolute: `0.1` accepts ±10%. A capacity estimate wants an
+   * order of magnitude rather than equality, and `accept: string[]` cannot
+   * express that — `6GB`, `6e9` and `6,000,000,000` are one answer with
+   * infinitely many spellings.
+   */
+  tolerance: z.number().min(0).max(10),
+  /** Shown beside the input, never parsed out of the learner's typing. Asking
+   *  someone to type "GB" and then grading the string is a spelling test. */
+  unit: opt(z.string().trim().min(1).max(12)),
 };
 
 const codeDiffFields = {
@@ -303,6 +372,11 @@ export const BlockSchema = z
     HotspotLineBlockSchema,
     OrderLinesBlockSchema,
     CodeEditorBlockSchema,
+    // The worker draws the SVG at generation time, so reading a diagram costs
+    // no graph library on the client (T-108).
+    block('diagram', { ...diagramCommon, svg: z.string().min(1) }),
+    block('sequence', { ...sequenceCommon, svg: z.string().min(1) }),
+    block('numeric', numericFields),
   ])
   .superRefine(blockRules);
 
@@ -333,6 +407,12 @@ export const BlockGenerationSchema = z
       lines: z.array(z.string().trim().min(1).max(200)).min(4).max(6),
     }),
     genBlock('codeEditor', codeEditorCommon),
+    // No `svg` here: `.strict()` rejects it, which is the point. A model asked
+    // for SVG writes bad SVG; asked for "a client, two replicas and the arrows
+    // between them" it writes that reliably.
+    genBlock('diagram', diagramCommon),
+    genBlock('sequence', sequenceCommon),
+    genBlock('numeric', numericFields),
   ])
   .superRefine(blockRules);
 
@@ -361,6 +441,14 @@ export const PublicBlockSchema = z.discriminatedUnion('kind', [
     starter: z.string(),
     cases: z.array(PublicCodeEditorCaseSchema),
   }),
+  // Content blocks: the drawing and its text equivalent. `nodes` and `edges`
+  // are not carried — the client has nothing to do with them once the SVG
+  // exists, and shipping them would be shipping the diagram twice.
+  block('diagram', { svg: z.string(), alt: z.string() }),
+  block('sequence', { svg: z.string(), alt: z.string() }),
+  // `answer` and `tolerance` are the answer key and stay on the server, the
+  // same way `answerIndex` and `rubric` do (T-010).
+  block('numeric', { unit: opt(z.string()) }),
 ]);
 
 export type Block = z.infer<typeof BlockSchema>;
@@ -416,6 +504,18 @@ export function toPublicBlock(b: Block): PublicBlock {
         starter: b.starter,
         cases: b.cases.map((c) => ({ name: c.name, call: c.call })),
       };
+    // `nodes` and `edges` stay behind. The worker already drew them into `svg`
+    // at generation time, and shipping both would be shipping the diagram twice
+    // — once as a picture and once as the data to redraw it, which is exactly
+    // the client graph library this design exists to avoid.
+    case 'diagram':
+      return { ...base, kind: 'diagram', svg: b.svg, alt: b.alt };
+    case 'sequence':
+      return { ...base, kind: 'sequence', svg: b.svg, alt: b.alt };
+    // `answer` and `tolerance` are the answer key. Grading stays server-side,
+    // the same as `answerIndex` and `rubric` (T-010). `unit` is a label.
+    case 'numeric':
+      return { ...base, kind: 'numeric', unit: b.unit };
   }
 }
 

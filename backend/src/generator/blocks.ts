@@ -19,6 +19,7 @@
 //     for a permutation of its own list is a needless way to get an off-by-one.
 import { ItemGenerationSchema, type Block, type BlockGeneration, type ItemGeneration } from '@learnos/shared';
 import { GenerationError } from './errors.js';
+import { renderDiagram, renderSequence } from './systemsSvg.js';
 
 /**
  * Finds the 1-based index of the single line matching `quote`.
@@ -108,6 +109,15 @@ function resolveBlock(b: BlockGeneration, where: string): Block {
       }
       return { ...b, lines: shuffled, order: b.lines.map((line) => shuffled.indexOf(line)) };
     }
+
+    // The worker draws these once, here, so reading one costs no graph library
+    // on the client (T-108). `.strict()` on the generation form means the model
+    // could not have sent an `svg` even if it tried.
+    case 'diagram':
+      return { ...b, svg: renderDiagram(b.nodes, b.edges) };
+
+    case 'sequence':
+      return { ...b, svg: renderSequence(b.lanes, b.messages) };
 
     default:
       return b;

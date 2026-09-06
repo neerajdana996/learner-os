@@ -136,9 +136,16 @@ describe('JSON schemas do not drift from the Zod schemas', () => {
   it('never offers the model a line number — only quotes', () => {
     // The failure this prevents is silent: a wrong line number stores fine and
     // a learner sees an annotation pointing at the wrong line on day six.
-    const json = JSON.stringify(blockJsonSchemas);
-    expect(json).not.toMatch(/"(line|from|to)":/);
-    expect(json).toContain('lineQuote');
+    //
+    // Scoped to the variants that carry a listing. `diagram.edges` and
+    // `sequence.messages` also use `from`/`to`, but those name a node or a lane
+    // and a dangling one is dropped when the drawing is rendered (T-108) — a
+    // visible absence, not a silently wrong annotation. Matching the whole blob
+    // would fail on those and say nothing about line numbers.
+    const listings = blockJsonSchemas.filter((v) => 'src' in ((v as JsonSchema).properties ?? {}));
+    expect(listings.length).toBeGreaterThan(0);
+    expect(JSON.stringify(listings)).not.toMatch(/"(line|from|to)":/);
+    expect(JSON.stringify(blockJsonSchemas)).toContain('lineQuote');
   });
 
   it('every item variant requires isTransfer — the field that broke real generation', () => {

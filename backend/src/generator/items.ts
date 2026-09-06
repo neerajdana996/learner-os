@@ -236,6 +236,33 @@ export const blockJsonSchemas = [
       },
     },
   }),
+  // Systems (T-108). No `svg` on any of these: the worker draws it, and the
+  // Zod generation form is `.strict()` so a model that sent one is rejected.
+  blockVariant('diagram', {
+    nodes: {
+      type: 'array',
+      items: { type: 'object', additionalProperties: false, required: ['id', 'label'], properties: { id: str, label: str } },
+    },
+    edges: {
+      type: 'array',
+      items: { type: 'object', additionalProperties: false, required: ['from', 'to', 'label'], properties: { from: str, to: str, label: nullable(str) } },
+    },
+    alt: str,
+  }),
+  blockVariant('sequence', {
+    lanes: strArray,
+    messages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['from', 'to', 'label', 'delayed'],
+        properties: { from: str, to: str, label: str, delayed: { type: ['boolean', 'null'] } },
+      },
+    },
+    alt: str,
+  }),
+  blockVariant('numeric', { answer: { type: 'number' }, tolerance: { type: 'number' }, unit: nullable(str) }),
 ] as const;
 
 /** Optional, so nullable — see `nullable`. A plain-prompt item sends `null`. */
@@ -348,13 +375,15 @@ export interface ItemsInput {
 /**
  * Which fragment a concept gets, if any.
  *
- * Only `code` today. `math` and `systems` are designed but unwritten, and
- * naming them here would be worse than useless — `loadTemplate` treats a
- * missing fragment as a no-op, so they would silently get today's prompt while
- * the code claimed otherwise. Add the name when the file exists.
+ * `code` (T-083) and `systems` (T-108). `math` is designed but unwritten and is
+ * deliberately absent — `loadTemplate` treats a missing fragment as a no-op, so
+ * naming it here would silently give a maths concept today's generic prompt
+ * while the code claimed otherwise. Add the name when the file exists.
  */
+const DOMAIN_FRAGMENTS = new Set(['code', 'systems']);
+
 export function domainFragment(domain: string | undefined): string | undefined {
-  return domain === 'code' ? 'code' : undefined;
+  return domain !== undefined && DOMAIN_FRAGMENTS.has(domain) ? domain : undefined;
 }
 
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */

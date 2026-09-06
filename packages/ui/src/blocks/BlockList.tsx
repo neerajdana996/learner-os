@@ -1,6 +1,7 @@
 import type { PublicBlock } from '@learnos/shared';
 import { CodeBlock } from './CodeBlock.js';
 import { CodeDiffBlock } from './CodeDiffBlock.js';
+import { DrawingBlock } from './DrawingBlock.js';
 import { TerminalBlock } from './TerminalBlock.js';
 
 /**
@@ -45,6 +46,11 @@ function renderBlock(block: PublicBlock) {
       return <CodeDiffBlock block={block} />;
     case 'terminal':
       return <TerminalBlock block={block} />;
+    // One component for both: the difference between a topology and an
+    // interleaving is entirely in what the worker drew (T-108).
+    case 'diagram':
+    case 'sequence':
+      return <DrawingBlock block={block} />;
     default:
       return null;
   }

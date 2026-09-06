@@ -208,3 +208,24 @@
     font-size: $text-xs;
   }
 }
+
+/// A worker-drawn diagram or sequence (T-108).
+///
+/// The SVG carries no colours of its own — it references the five `--node-*`
+/// and `--edge-*` names from `_code-palette.scss`, so one stored drawing is
+/// correct on paper and on ink. Nothing here sets a size: the SVG is
+/// `width: 100%` with a viewBox, so it scales to the card it lands in, which
+/// is how the same drawing fits a session page and a 380px popup.
+.drawing {
+  margin: 0;
+
+  &__svg {
+    overflow-x: auto;
+
+    svg {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+  }
+}

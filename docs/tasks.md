@@ -2246,7 +2246,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **Open, not fixed:** `gradeExplanation` is the only generation prompt with **no `example.md`**, and it is the one in the request path with a learner waiting. Worth one before the pilot.
 
 ### T-108 · The systems category — the answer is a shape
-- **status:** todo
+- **status:** done (graphBuild deferred)
 - **sprint:** 5
 - **depends_on:** T-085
 - **files:** `packages/shared/src/blocks.ts`, `backend/src/llm/prompts/items/domains/systems.md`, `packages/ui/styles/_code-palette.scss`, `packages/ui/src/blocks/*`, worker SVG renderer, tests
@@ -2261,7 +2261,14 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Everything else ports unchanged**: `hotspot` targets a node or an edge instead of a line, `orderLines` orders protocol steps instead of statements, and `recognition`, `explain` and the whole reveal slot are identical.
 - **acceptance:** A `systems` concept generates items using the new blocks; a diagram renders from worker-generated SVG with no client graph library; `pnpm build` passes.
 - **tests:** Generation schema accepts the four new blocks and rejects a `graphBuild` in a non-answer slot; the worker's SVG output and the live renderer read the same five token names; `numeric` accepts a value inside tolerance and rejects one outside.
-- **notes:** ⚠ **`graphBuild` needs a graph/canvas library in the browser, which `loop.md §2` bars.** That is the same decision as **T-081** (CodeMirror), which is logged as blocking `T-088` only — it does not: it gates this too, and unlike T-088 this category is in the pilot. **T-081's scope is wrong and its priority is understated.**
+- **notes:** (2026-09-06) **Three of four built; `graphBuild` deferred** on the founder's call, because it is the only one needing a canvas in the browser. `diagram`, `sequence` and `numeric` need none, so the category produces real content today.
+  - **The model emits meaning; the worker draws.** Generation carries nodes and edges, or lanes and messages; `generator/systemsSvg.ts` renders the SVG into the stored form. A model asked for SVG writes bad SVG. This is the same discipline as T-084's highlighting, and it is why reading a diagram costs no graph library.
+  - **The SVG uses `var(--…)`, never literals.** Five token names from `_code-palette.scss`, so one stored drawing is correct on paper and on ink. A hardcoded `#c9c2b9` would be a light-mode diagram burned into the database. Asserted by a test that rejects any hex in the output.
+  - **Five nodes is a schema cap, not a suggestion.** Capping there rather than adding a second `short` variant makes every diagram extension-safe by construction — and a concept needing six boxes has not been split into one idea yet.
+  - **Three guards caught real gaps while wiring it**, all working as designed: the exhaustive `toPublicBlock` switch refused to compile until each new kind declared what reaches the client; the JSON-schema drift test refused until the provider was offered the same kinds Zod accepts; and `.strict()` on the generation union rejects an `svg` from the model, which is tested directly.
+  - **One guard was over-broad and is now scoped.** "Never offers the model a line number" matched `"from"`/`"to"` anywhere in the blob, and `diagram.edges` uses those for node ids. A dangling node reference is dropped when the drawing renders — a visible absence, not a silently wrong annotation — so the guard now checks only the variants carrying a listing, which is what its own comment says it protects.
+  - `domainFragment` now names `systems`; `math` stays absent on purpose, with a test asserting the file does not exist, because `loadTemplate` treats a missing fragment as a no-op and naming it early would silently serve the generic prompt while the code claimed otherwise.
+- **Still open:** ⚠ **`graphBuild` needs a graph/canvas library in the browser, which `loop.md §2` bars.** That is the same decision as **T-081** (CodeMirror), which is logged as blocking `T-088` only — it does not: it gates this too, and unlike T-088 this category is in the pilot. **T-081's scope is wrong and its priority is understated.**
   - The build spec says tokens append to `src/styles/_code-palette.scss`. That path is now `packages/ui/styles/_code-palette.scss` (T-090 → the design-system move). The design predates it.
 
 ### T-109 · The maths category
