@@ -23,7 +23,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Me', 'Topic', 'Map', 'Session', 'Due', 'Diagnostic'],
+  tagTypes: ['Me', 'Topic', 'Map', 'Session', 'Due', 'Diagnostic', 'Test'],
   // Declared empty; features add to it. `overrideExisting` stays false so a
   // duplicate endpoint name is a loud dev-time warning rather than a silent
   // replacement.

@@ -1,0 +1,41 @@
+import { readFileSync } from 'node:fs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
+const create = vi.fn();
+vi.mock('openai', () => ({ default: class { chat = { completions: { create } }; } }));
+const { processTestJob } = await import('../tests.worker.js');
+const { db } = await import('../../db/client.js');
+const { cards, items, tests, topics } = await import('../../db/schema.js');
+const { truncateAll } = await import('../../test/db.js');
+const { NOW, seedColdTopic } = await import('../../modules/tests/tests.fixtures.js');
+const fixture = readFileSync(new URL('../../../fixtures/items.usestate.json', import.meta.url), 'utf8');
+beforeEach(async () => { await truncateAll(); create.mockReset(); });
+describe('held-out test generation', () => {
+  it('replaces a control whose only question is codeEditor, caches one question and reuses the test on retry', async () => {
+    const seed = await seedColdTopic();
+    const control = seed.concepts.find((c) => c.heldOut)!;
+    await db.update(items).set({ answerKind: 'codeEditor' }).where(eq(items.conceptId, control.id));
+    create.mockResolvedValue({ choices: [{ message: { content: fixture }, finish_reason: 'stop' }] });
+    const result = await processTestJob({ userId: seed.user.id, topicId: seed.topic.id }, NOW);
+    expect(create).toHaveBeenCalledTimes(1);
+    const cached = await db.select().from(items).where(eq(items.conceptId, control.id));
+    expect(cached).toHaveLength(2);
+    const [test] = await db.select().from(tests).where(eq(tests.id, result.testId));
+    const newItem = cached.find((i) => i.answerKind === null)!;
+    expect(test!.itemIds).toContain(newItem.id);
+    expect(test!.itemIds).not.toContain(cached.find((i) => i.answerKind === 'codeEditor')!.id);
+    expect(await db.select().from(cards).where(eq(cards.conceptId, control.id))).toHaveLength(0);
+    expect(await processTestJob({ userId: seed.user.id, topicId: seed.topic.id }, NOW)).toEqual(result);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+  it('leaves the test unpublished and the topic silent if generation fails', async () => {
+    const seed = await seedColdTopic();
+    const control = seed.concepts.find((c) => c.heldOut)!;
+    await db.update(items).set({ flaggedBad: 3 }).where(eq(items.conceptId, control.id));
+    create.mockResolvedValue({ choices: [{ message: { content: '{broken' }, finish_reason: 'stop' }] });
+    await expect(processTestJob({ userId: seed.user.id, topicId: seed.topic.id }, NOW)).rejects.toThrow();
+    expect(await db.select().from(tests)).toHaveLength(0);
+    expect((await db.select().from(topics))[0]!.status).toBe('active');
+    expect((await db.select().from(items).where(eq(items.conceptId, control.id)))).toHaveLength(1);
+  });
+});

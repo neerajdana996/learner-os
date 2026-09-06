@@ -1,3 +1,4 @@
+import { useTopicTestQuery } from '../../tests/testsApi';
 import { Link } from 'react-router-dom';
 import { useMeQuery } from '../../users/usersApi';
 import { useMapQuery } from '../../map/mapApi';
@@ -12,8 +13,11 @@ function minutes(newConcepts: number, reviews: number): number {
 
 export default function DashboardPage() {
   const { data: me } = useMeQuery();
-  const { data: topics } = useTopicsQuery();
+  const { data: topics } = useTopicsQuery(undefined, { refetchOnFocus: true });
   const topic = topics?.topics[0];
+  const { data: coldTest } = useTopicTestQuery(topic?.id ?? '', {
+    skip: !topic || !['testing', 'done'].includes(topic.status), refetchOnFocus: true,
+  });
   // Shares the cache with the map page, so visiting both costs one request.
   const { data: map } = useMapQuery(topic?.id ?? '', { skip: !topic });
   const { data: session } = useSessionQuery();
@@ -41,6 +45,14 @@ export default function DashboardPage() {
    * on the dashboard is exactly the revision cue that would make it measure
    * revision instead of retention.
    */
+  if (coldTest?.testId) return <div className="u-stack u-measure">
+    <h1>{topic.status === 'done' ? 'Your recall check is complete' : 'Your recall check is ready'}</h1>
+    <p>{topic.status === 'done' ? 'Your answers and results are saved.' : 'Allow up to 20 minutes. Answer from memory, without reviewing first.'}</p>
+    <Link className="btn btn--primary" to={`/tests/${coldTest.testId}`}>
+      {topic.status === 'done' ? 'See results' : 'Open recall check'}
+    </Link>
+  </div>;
+
   if (session?.courseComplete) {
     return (
       <div className="u-stack u-measure">

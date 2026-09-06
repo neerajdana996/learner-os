@@ -26,6 +26,9 @@ import type {
   MapResponseSchema,
   TestStartSchema,
   TestSubmitSchema,
+  TestScoresSchema,
+  TestNextSchema,
+  TestAvailabilitySchema,
   PulseCreateSchema,
   ActiveWindowSchema,
   ActiveWindowsSchema,
@@ -76,6 +79,9 @@ export type MapResponse = z.infer<typeof MapResponseSchema>;
 
 export type TestStart = z.infer<typeof TestStartSchema>;
 export type TestSubmit = z.infer<typeof TestSubmitSchema>;
+export type TestScores = z.infer<typeof TestScoresSchema>;
+export type TestNext = z.infer<typeof TestNextSchema>;
+export type TestAvailability = z.infer<typeof TestAvailabilitySchema>;
 
 export type PulseCreate = z.infer<typeof PulseCreateSchema>;
 

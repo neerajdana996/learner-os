@@ -48,18 +48,19 @@ export async function recordReview(
   userId: string,
   answer: Answer,
   now: Date = new Date(),
+  database: Pick<typeof db, 'select' | 'transaction'> = db,
 ): Promise<RecordReviewResult> {
   // Idempotency first: the extension retries from an offline queue (T-031), and
   // a retry must not schedule the card a second time. Scoped by user as well as
   // key so one user's retry can never read back another's event.
   if (answer.idempotencyKey) {
-    const [existing] = await db
+    const [existing] = await database
       .select()
       .from(reviewEvents)
       .where(and(eq(reviewEvents.idempotencyKey, answer.idempotencyKey), eq(reviewEvents.userId, userId)));
 
     if (existing) {
-      const [card] = await db
+      const [card] = await database
         .select()
         .from(cards)
         .where(and(eq(cards.userId, userId), eq(cards.conceptId, existing.conceptId)));
@@ -78,7 +79,7 @@ export async function recordReview(
     }
   }
 
-  const [item] = await db
+  const [item] = await database
     .select({ conceptId: items.conceptId, payload: items.payload })
     .from(items)
     .where(eq(items.id, answer.itemId));
@@ -98,13 +99,14 @@ export async function recordReview(
   // A grader failure on an `explain` item propagates: a 500 makes the
   // extension's offline queue retry (T-031), which preserves the answer
   // without handing out a free pass.
-  const graded =
-    answer.response === null || answer.response === undefined
+  const graded = answer.surface === 'test' && (answer.response === null || answer.response === '')
+    ? { correct: false, feedback: 'No answer recorded.' }
+    : answer.response === null || answer.response === undefined
       ? null
       : await grade(ItemPayloadSchema.parse(item.payload), answer.response);
   const correct = graded?.correct ?? null;
 
-  const [existingCard] = await db
+  const [existingCard] = await database
     .select()
     .from(cards)
     .where(and(eq(cards.userId, userId), eq(cards.conceptId, conceptId)));
@@ -119,7 +121,7 @@ export async function recordReview(
   // snooze or dismissal involves no retrieval, so counting from one would
   // understate the true gap and drop genuine data points out of T-040's
   // "did it stick" (correct with gap >= 1) bucket.
-  const [previous] = await db
+  const [previous] = await database
     .select({ createdAt: reviewEvents.createdAt })
     .from(reviewEvents)
     .where(
@@ -151,7 +153,7 @@ export async function recordReview(
     ? scheduleReview(fsrsCard, correct ? Rating.Good : Rating.Again, now)
     : null;
 
-  return db.transaction(async (tx) => {
+  return database.transaction(async (tx) => {
     let cardId = existingCard?.id ?? null;
 
     if (scheduledCard) {

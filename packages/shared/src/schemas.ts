@@ -284,16 +284,41 @@ export const MapResponseSchema = z.object({
   edges: z.array(z.object({ from: z.string().uuid(), to: z.string().uuid() })),
 });
 
-// ---------- Tests (Day-30 / Day-45) ----------
+// ---------- Cold test (Day-30; plan.md drops Day-45) ----------
 export const TestStartSchema = z.object({
-  kind: z.enum(['day30', 'day45']),
-});
+  kind: z.literal('day30'),
+}).strict();
 
 export const TestSubmitSchema = z.object({
   itemId: z.string().uuid(),
-  response: z.union([z.string(), z.number().int()]).nullable(),
-  confidence: ConfidenceSchema,
+  response: z.union([z.string().max(10_000), z.number().finite()]).nullable(),
+  confidence: ConfidenceSchema.unwrap(),
   latencyMs: z.number().int().nonnegative(),
+});
+
+export const TestScoresSchema = z.object({
+  overall: z.number().min(0).max(1),
+  taught: z.number().min(0).max(1).nullable(),
+  heldOut: z.number().min(0).max(1).nullable(),
+  transfer: z.number().min(0).max(1).nullable(),
+  calibrationGap: z.number().min(-1).max(1),
+  perConcept: z.record(z.string().uuid(), z.number().min(0).max(1)),
+});
+
+export const TestNextSchema = z.object({
+  testId: z.string().uuid(),
+  done: z.boolean(),
+  completed: z.boolean(),
+  item: PublicItemSchema.nullable(),
+  progress: z.object({ answered: z.number().int().nonnegative(), total: z.number().int().positive() }),
+  estimatedSeconds: z.number().int().positive(),
+  scores: TestScoresSchema.optional(),
+});
+
+export const TestAvailabilitySchema = z.object({
+  testId: z.string().uuid().nullable(),
+  state: z.string(),
+  jobId: z.string().optional(),
 });
 
 // ---------- Daily pulse ----------

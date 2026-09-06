@@ -1,0 +1,62 @@
+import { beforeEach, afterAll, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { db } from '../../db/client.js';
+import { cards, topics } from '../../db/schema.js';
+import { truncateAll } from '../../test/db.js';
+import { seedColdTopic, DAY, NOW } from '../../modules/tests/tests.fixtures.js';
+import { answerTestItem, completeTest, nextTestItem } from '../../modules/tests/tests.service.js';
+import { findDueCards } from '../../modules/due/due.repository.js';
+import { getTestQueue, closeTestQueue } from '../tests.queue.js';
+import { processTestJob } from '../tests.worker.js';
+import { processLifecycle, processLifecycleJob, getLifecycleQueue, closeLifecycleQueue } from '../lifecycle.worker.js';
+import { consoleTransport, setMailTransport } from '../../lib/mail.js';
+
+beforeEach(async () => {
+  await truncateAll();
+  await getTestQueue().obliterate({ force: true });
+  await getLifecycleQueue().obliterate({ force: true });
+});
+afterAll(async () => { await closeTestQueue(); await closeLifecycleQueue(); setMailTransport(consoleTransport); });
+describe('pilot lifecycle', () => {
+  it('runs teaching → silence → cold test → done, without a Day-45 job or duplicate notices', async () => {
+    const seed = await seedColdTopic();
+    const data = { userId: seed.user.id, topicId: seed.topic.id };
+    const end = seed.topic.endsAt!;
+    await db.update(cards).set({ due: new Date(end.getTime() - DAY) }).where(eq(cards.userId, seed.user.id));
+    expect(await findDueCards(seed.user.id, new Date(end.getTime() - 1), 50)).toHaveLength(14);
+    await processLifecycle(new Date(end.getTime() - 1));
+    expect((await db.select().from(topics))[0]!.status).toBe('active');
+    await processLifecycle(end);
+    expect((await db.select().from(topics))[0]!.status).toBe('holdout');
+    expect(await findDueCards(seed.user.id, new Date(end.getTime() + DAY), 50)).toEqual([]);
+    expect(await getTestQueue().getJobs()).toHaveLength(0);
+    await processLifecycle(new Date('2026-10-01T05:59:59Z'));
+    expect(await getTestQueue().getJobs()).toHaveLength(0);
+    await Promise.all([processLifecycle(NOW), processLifecycle(NOW)]);
+    expect(await getTestQueue().getJobs()).toHaveLength(1);
+    const { testId } = await processTestJob(data, NOW);
+    expect((await db.select().from(topics))[0]!.status).toBe('testing');
+    expect(await findDueCards(seed.user.id, NOW, 50)).toEqual([]);
+    await processLifecycle(NOW);
+    await processLifecycle(NOW);
+    const notifications = await getLifecycleQueue().getJobs();
+    expect(notifications).toHaveLength(1);
+    const send = vi.fn().mockResolvedValue(undefined);
+    setMailTransport({ send });
+    await processLifecycleJob(notifications[0]!.data);
+    expect(send.mock.calls[0]![0]).toMatchObject({ to: seed.user.email, subject: 'Your learnos recall check is ready' });
+    let next = await nextTestItem(seed.user.id, testId);
+    while (next.item) next = await answerTestItem(seed.user.id, testId, { itemId: next.item.itemId, response: 'yes', confidence: 'sure', latencyMs: 1 }, NOW);
+    await completeTest(seed.user.id, testId);
+    await processLifecycle(new Date(NOW.getTime() + 15 * DAY));
+    expect((await db.select().from(topics).where(eq(topics.id, seed.topic.id)))[0]!.status).toBe('done');
+    expect(await findDueCards(seed.user.id, new Date(NOW.getTime() + 15 * DAY), 50)).toEqual([]);
+    expect(await getTestQueue().getJobs()).toHaveLength(1);
+    const notices = await getLifecycleQueue().getJobs();
+    expect(notices).toHaveLength(2);
+    await processLifecycleJob(notices.find((job) => job.data.event === 'completed')!.data);
+    expect(send).toHaveBeenCalledTimes(2);
+    await processLifecycleJob(notifications[0]!.data); // stale ready email gets suppressed
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+});

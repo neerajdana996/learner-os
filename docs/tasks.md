@@ -962,11 +962,11 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 
 ## Sprint 4 — Tests, metrics, dry run
 
-### T-038 · Test generator (Day-30 / Day-45)
-- **status:** todo
+### T-038 · Day-30 cold test generator
+- **status:** done
 - **sprint:** 4
 - **depends_on:** T-015, T-017
-- **files:** `backend/src/lib/testGen.ts`, `backend/src/routes/tests.ts`, tests
+- **files:** `backend/src/lib/testGen.ts`, `backend/src/modules/tests/*`, `backend/src/workers/tests.*`, tests
 - ⚠ **See T-093 before building the item picker.** The test draws from the same pool as the session, which now contains four-minute `codeEditor` items; three of them is twelve minutes of a surprise test, and an abandoned test produces no Day-30 number at all.
 - **description:** `POST /topics/:id/tests {kind}` builds a test: 25–30 items — every held-out concept (generate 1 item each on demand via generator, cached in `items`), a stratified sample of taught concepts (low/mid/high mastery), and 3–5 `is_transfer` items. Never reuse an item the user answered in the last 7 days. Store `tests.itemIds`. `GET /tests/:id/next`, `POST /tests/:id/answer` (confidence required, recorded with `surface='test'`, **no scheduling**), `POST /tests/:id/complete` computes `scores`: `overall, taught, heldOut, transfer, calibrationGap, perConcept`.
 - **tests:**
@@ -976,13 +976,37 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - `calibrationGap` = mean(confidence numeric) − accuracy, with guess=0.33, think=0.66, sure=1.0.
   - Test answers create no card changes.
 
+- **Implementation plan (2026-09-06):** Follow plan.md’s revised pilot: seven teaching days, silence, Day-30 cold test, then done; no Day-45 scheduling.
+  Assemble 25 eligible questions with all held-out concepts, balanced taught mastery strata, four transfer items, and a seven-day exclusion window.
+  Generate missing held-out questions only in a BullMQ worker; persist a resumable test and record idempotent, non-scheduling answers.
+  Register authenticated routes and a local-time lifecycle worker; verify scoring, ownership, retries, silence, and time bounds with real-DB tests.
+
+- **Delivery notes (2026-09-06):** Creation is asynchronous (`202` + job ID); `GET /topics/:id/tests` reports readiness/failure and gives the saved test ID. A repeated `POST` returns the existing test or explicitly retries a failed build. Model calls run only in the cold-test worker; missing controls cache one eligible question each, with no teaching content or cards.
+  - Exactly 25 items; all controls, a low/mid/high predicted-recall rotation across taught concepts, and 3–4 transfer items. Taught scores cover non-transfer treatment questions; transfer is its own category. Insufficient eligible content fails assembly rather than shrinking the instrument.
+  - Answers lock the test row and call `recordReview` inside the same transaction. Server keys `test/<testId>/<itemId>` tie events to this test; public `/reviews` accepts only UUID keys, so it cannot impersonate one. The first answer wins, including concurrent retries. Null answers count as incorrect. No answer feedback is returned during the test.
+  - `scores` remains `{}` until all 25 answers exist, then stores `overall`, `taught`, `heldOut`, `transfer`, `calibrationGap`, and `perConcept`. A valid score object marks completion; no schema migration was needed. T-040 can join events with the server key and saved `itemIds`.
+  - API examples (authenticated cookie, a topic due for its test): `curl -b cookies.txt -H 'Content-Type: application/json' -d '{"kind":"day30"}' http://localhost:3001/topics/<topicId>/tests`; `curl -b cookies.txt http://localhost:3001/topics/<topicId>/tests`; `curl -b cookies.txt http://localhost:3001/tests/<testId>/next`; `curl -b cookies.txt -H 'Content-Type: application/json' -d '{"itemId":"<itemId>","response":"answer","confidence":"sure","latencyMs":1200}' http://localhost:3001/tests/<testId>/answer`; `curl -b cookies.txt -X POST http://localhost:3001/tests/<testId>/complete`.
+
+- **Validation:** Root `pnpm lint`, `pnpm test` (672/672), and `pnpm build` pass. The new tests include real Postgres/Redis, an HTTP → BullMQ worker → saved-test integration, and learner-page request/retry tests.
+
 ### T-039 · Test scheduling jobs + holdout period
-- **status:** todo
+- **status:** done
 - **sprint:** 4
 - **depends_on:** T-038
 - **files:** `backend/src/workers/lifecycle.worker.ts`, tests
-- **description:** Daily job at 06:00 user-local: on `endsAt` day → create Day-30 test, set `topics.status='testing'`; when Day-30 completed → `status='holdout'` for 15 days (extension `/due` returns empty — already enforced by T-010); at `endsAt + 15d` → create Day-45 test; when completed → `status='done'`. Email (console in dev) on each.
+- **description:** **Updated to plan.md’s 2026-09-06 pilot decision:** at `endsAt`, move active topics to `holdout`; at 06:00 user-local, 30 calendar days after the `startsAt` Day-0 baseline, create the cold test and move to `testing`; completion moves to `done`. Seven teaching days leave 23 silent days. No Day-45 test. Queue test-ready and completion email through the configured transport.
 - **tests:** Time-travel through the lifecycle; assert statuses and that `/due` is empty during holdout.
+
+- **Implementation plan (2026-09-06):** Follow plan.md’s revised pilot: seven teaching days, silence, Day-30 cold test, then done; no Day-45 scheduling.
+  Assemble 25 eligible questions with all held-out concepts, balanced taught mastery strata, four transfer items, and a seven-day exclusion window.
+  Generate missing held-out questions only in a BullMQ worker; persist a resumable test and record idempotent, non-scheduling answers.
+  Register authenticated routes and a local-time lifecycle worker; verify scoring, ownership, retries, silence, and time bounds with real-DB tests.
+
+- **Delivery notes (2026-09-06):** `index.ts` starts the cold-test worker and a persistent BullMQ lifecycle scheduler. A minute tick evaluates each learner’s calendar date and 06:00, including half/quarter-hour zones and DST, and catches up after downtime. Existing `withinTeachingWindow` still enforces silence even if Redis/the lifecycle worker is unavailable.
+  - Completed/ready notification jobs have stable IDs and bounded backoff; failed jobs are retained and logged for operator inspection. SMTP delivery is at-least-once if a process dies after sending but before acknowledging the job. No email is sent on the start of silence; delayed ready mail is suppressed once the test is completed.
+  - The former endsAt-day test and Day-45 lifecycle were deliberately removed from the task description to follow plan.md. Storage still accepts historical day45 rows, but the new API and scheduler never create one. Test-ready/completion links resolve to T-112’s page; T-043’s Day-14 check-in remains separate.
+
+- **Validation:** Root `pnpm lint`, `pnpm test` (672/672), and `pnpm build` pass. The new tests include real Postgres/Redis, an HTTP → BullMQ worker → saved-test integration, and learner-page request/retry tests.
 
 ### T-040 · Metrics queries
 - **status:** todo
@@ -1983,7 +2007,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:**
 
 ### T-093 · The Day-30 test must not contain a four-minute question
-- **status:** todo
+- **status:** done
 - **sprint:** 5
 - **depends_on:** T-089
 - **files:** `backend/src/modules/tests/*` (T-038's), `backend/src/modules/due/due.repository.ts`, tests alongside
@@ -1993,6 +2017,16 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** No `codeEditor` item can be returned for a `test` surface, asserted at the repository. A generated Day-30 test's total estimated time stays under the 20 minutes plan.md's pilot design assumes.
 - **tests:** A held-out concept whose only item is a `codeEditor` yields a different item for the test, or none, never that one; a test containing two `graphBuild` items fails assembly; the extension and test surfaces share one predicate (changing it moves both, asserted).
 - **notes:**
+
+- **Implementation plan (2026-09-06):** Follow plan.md’s revised pilot: seven teaching days, silence, Day-30 cold test, then done; no Day-45 scheduling.
+  Assemble 25 eligible questions with all held-out concepts, balanced taught mastery strata, four transfer items, and a seven-day exclusion window.
+  Generate missing held-out questions only in a BullMQ worker; persist a resumable test and record idempotent, non-scheduling answers.
+  Register authenticated routes and a local-time lifecycle worker; verify scoring, ownership, retries, silence, and time bounds with real-DB tests.
+
+- **Delivery notes (2026-09-06):** The tests repository imports the same `popupEligible()` SQL function as the extension; both creation and saved-item retrieval apply it. Integration tests compare the two surfaces across all currently excluded formats and several eligible ones. Retirement and the seven-day answered-item cutoff are applied in SQL too.
+  - Assembly rejects more than one graphBuild and estimates 30s for short questions, 45s for application/explain, 90s for graphBuild, with a strict <1,200s total. This is a conservative estimate, not a measured completion-time guarantee. GraphBuild remains unimplemented under T-108; the cap is ready for it.
+
+- **Validation:** Root `pnpm lint`, `pnpm test` (672/672), and `pnpm build` pass. The new tests include real Postgres/Redis, an HTTP → BullMQ worker → saved-test integration, and learner-page request/retry tests.
 
 ### T-094 · Nothing checks that generated content is in the language that was asked for
 - **status:** todo
@@ -2317,3 +2351,30 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** The backend suite passes twenty consecutive runs.
 - **tests:** —
 - **notes:**
+
+
+- **Additional observation (2026-09-06, before day-30 changes):** The unchanged baseline failed `auth.test.ts > rejects a malformed email` with `socket hang up`; 649/650 tests passed. The later full workspace run passed all 670 tests. This is recorded as another observation, not a claim that the flake is fixed.
+
+### T-112 · A learner can open and finish the cold test
+- **status:** done
+- **sprint:** 4
+- **depends_on:** T-038, T-039
+- **files:** `frontend/src/features/tests/*`, dashboard, router, store
+- **description:** The lifecycle email requires an actual destination. Add a minimal authenticated, resumable test page with required confidence, server grading without mid-test feedback, completion and scores; show a dashboard link when ready.
+- **tests:** Confidence is required, a failed request preserves the draft, the next question resets it, completion displays server scores, and resume uses server progress.
+- **notes:** Implemented with existing shared UI and RTK Query; no new dependency or styling system.
+
+- **Delivery notes (2026-09-06):** `/tests/:testId` is authenticated, lazy loaded, and reachable from the ready-test dashboard link and notification email. Submitted progress lives on the server; the current unsent draft lives in Redux. Required confidence has no default; request failures retain the draft and retry the same item. Completion displays the server’s direct, control and transfer scores without calling them a retention gain (T-040 is still open).
+
+- **Validation:** Root `pnpm lint`, `pnpm test` (672/672), and `pnpm build` pass. The new tests include real Postgres/Redis, an HTTP → BullMQ worker → saved-test integration, and learner-page request/retry tests.
+
+
+### T-113 · Day-0 controls are unmeasured, so a held-out change score would be invented
+- **status:** todo
+- **sprint:** 4
+- **depends_on:** T-015, T-038
+- **files:** `backend/src/modules/diagnostic/*`, future T-040 metrics, pilot protocol in `docs/plan.md`
+- **description:** Found while wiring the cold-test scores. T-015 explicitly never asks held-out concepts, and its `day0.scores.perConcept` contains only non-held-out concepts (with adaptive estimates for some). Plan.md asks for held-out concepts to stay flat from Day-0 to Day-30; that baseline was never observed. T-040 must not manufacture it from zero or a default estimate. Resolve the pilot protocol: either retain a Day-30 taught-vs-control comparison and report held-out change as unmeasured, or explicitly revise baseline assessment and its tests before a new cohort starts.
+- **acceptance:** The metric/protocol clearly distinguishes observed answers, inferred diagnostic mastery and missing control baselines. No missing baseline becomes a zero score or claimed improvement.
+- **tests:** A diagnostic with no held-out answers yields null/unmeasured held-out change; observed and inferred baseline values are distinguishable; a synthetic measured baseline produces the expected change only if the chosen protocol collects it.
+- **notes:** Logged without changing T-015’s existing held-out protection. The new learner page labels its output as cold recall scores, not retention gain.
