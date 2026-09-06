@@ -80,6 +80,20 @@ export function lineCount(src: string): number {
   return src.split('\n').length;
 }
 
+/**
+ * An optional field that also accepts `null`.
+ *
+ * The provider's strict mode requires *every* property to be listed in
+ * `required`, so an absent optional arrives as an explicit `null` rather than
+ * by omission (T-083) — and `.optional()` on its own rejects null. Normalised
+ * back to `undefined` here so one shape covers what the model sends and what we
+ * store, instead of the two drifting apart.
+ */
+export const optionalOrNull = <T extends z.ZodTypeAny>(schema: T) =>
+  schema.nullish().transform((v) => v ?? undefined);
+
+const opt = optionalOrNull;
+
 // ---------- line references ----------
 // Payload form: a 1-based index the renderer can use directly.
 const NoteSchema = z.object({
@@ -108,7 +122,7 @@ const codeFields = {
   src: z.string().min(1).max(MAX_SRC),
   /** ≤8 lines, for the extension popup. Identifiers may be elided to `…`;
    *  the line the question is about may not be. */
-  short: z.string().min(1).max(MAX_SHORT).optional(),
+  short: opt(z.string().min(1).max(MAX_SHORT)),
 };
 
 const codeDiffFields = {
@@ -117,11 +131,11 @@ const codeDiffFields = {
    *  way it computes highlighting. The model writes two listings. */
   before: z.string().min(1).max(MAX_SRC),
   after: z.string().min(1).max(MAX_SRC),
-  caption: z.string().trim().min(1).max(160).optional(),
+  caption: opt(z.string().trim().min(1).max(160)),
 };
 
 const terminalFields = {
-  command: z.string().trim().min(1).max(200).optional(),
+  command: opt(z.string().trim().min(1).max(200)),
   lines: z
     .array(
       z.object({
@@ -171,6 +185,10 @@ const hotspotLineCommon = {
   src: z.string().min(1).max(MAX_SRC),
   /** Shown after answering. */
   why: z.string().trim().min(1).max(240),
+  /** Required, for the same reason `clozeCode.failure` is (T-083): the concrete
+   *  input where the marked line actually breaks. Falsifiable, so a model that
+   *  picked the line because it looked complicated cannot write it. */
+  failure: z.string().trim().min(1).max(240),
   /**
    * The honest catch in this format: when the fix is an *insertion*, the line
    * that "has to change" is an absence, and you cannot click a line that is not
@@ -182,6 +200,14 @@ const hotspotLineCommon = {
 
 const orderLinesCommon = {
   lang: LangSchema,
+  /**
+   * Which two lines, swapped, break it — and what breaks (T-083).
+   *
+   * An ordering question is only worth 30 seconds if the order matters. If no
+   * pair can be named, the lines are independent and this should have been a
+   * plain item.
+   */
+  swapBreaks: z.string().trim().min(1).max(240),
 };
 
 const codeEditorCommon = {
@@ -197,6 +223,15 @@ const codeEditorCommon = {
    * as a shock. Never in the public payload; it is fetched when taken (T-088).
    */
   skeleton: z.string().min(1).max(MAX_SRC),
+  /**
+   * What writing the whole function tests that a blank would not (T-083).
+   *
+   * Four minutes is a quarter of the daily budget, so this block has to earn
+   * it. "Could you actually do it" is the only answer that does; if the real
+   * question is whether they remember a keyword, a `clozeCode` costs twenty
+   * seconds and measures the same thing.
+   */
+  whyWhole: z.string().trim().min(1).max(240),
   cases: z
     .array(
       z.object({
@@ -228,7 +263,7 @@ const ProseBlockSchema = block('prose', proseFields);
 const CodeBlockSchema = block('code', {
   ...codeFields,
   notes: z.array(NoteSchema).max(3).default([]),
-  dim: LineRangeSchema.optional(),
+  dim: opt(LineRangeSchema),
 });
 const CodeDiffBlockSchema = block('codeDiff', codeDiffFields);
 const TerminalBlockSchema = block('terminal', terminalFields);
@@ -275,7 +310,7 @@ export const BlockGenerationSchema = z
     genBlock('code', {
       ...codeFields,
       notes: z.array(NoteGenerationSchema).max(3).default([]),
-      dim: LineRangeGenerationSchema.optional(),
+      dim: opt(LineRangeGenerationSchema),
     }),
     genBlock('codeDiff', codeDiffFields),
     genBlock('terminal', terminalFields),
@@ -301,7 +336,7 @@ const PublicCodeEditorCaseSchema = z.object({ name: z.string(), call: z.string()
 
 export const PublicBlockSchema = z.discriminatedUnion('kind', [
   block('prose', proseFields),
-  block('code', { ...codeFields, notes: z.array(NoteSchema).max(3), dim: LineRangeSchema.optional() }),
+  block('code', { ...codeFields, notes: z.array(NoteSchema).max(3), dim: opt(LineRangeSchema) }),
   block('codeDiff', codeDiffFields),
   block('terminal', terminalFields),
   block('clozeCode', {
@@ -353,7 +388,8 @@ export function toPublicBlock(b: Block): PublicBlock {
         src: b.src,
         holes: b.holes.map((h) => ({ id: h.id, width: h.width })),
       };
-    // `line`, `acceptAdjacent` and `why` stay behind — grading is server-side.
+    // `line`, `acceptAdjacent`, `why` and `failure` stay behind — grading is
+    // server-side and `failure` is the hint, shown after answering.
     case 'hotspotLine':
       return { ...base, kind: 'hotspotLine', lang: b.lang, src: b.src };
     case 'orderLines':
