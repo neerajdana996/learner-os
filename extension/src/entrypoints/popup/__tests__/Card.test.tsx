@@ -7,10 +7,16 @@ import { Card } from '../Card';
 const posted: Record<string, unknown>[] = [];
 const onClose = vi.fn();
 
+const flagged: string[] = [];
+
 vi.mock('../../../lib/api', () => ({
   postReview: (answer: Record<string, unknown>) => {
     posted.push(answer);
     return Promise.resolve({ correct: answer.response === 1, gapDaysSinceLast: 9, feedback: 'Empty means it runs once.' });
+  },
+  flagItem: (id: string) => {
+    flagged.push(id);
+    return Promise.resolve({ retired: false });
   },
 }));
 
@@ -29,6 +35,7 @@ const item: PublicItem = {
 
 beforeEach(() => {
   posted.length = 0;
+  flagged.length = 0;
   onClose.mockReset();
 });
 
@@ -130,6 +137,38 @@ describe('the twenty-second card', () => {
     await waitFor(() => expect(posted).toHaveLength(1));
     expect(posted[0]).toMatchObject({ dismissed: true, surface: 'extension' });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe('reporting a bad question', () => {
+    async function answerIt(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('radio', { name: /run once/i }));
+      await user.click(screen.getByRole('button', { name: 'Answer' }));
+      await screen.findByText(/Right —/);
+    }
+
+    it('is offered only after the answer — that is when you can judge it', async () => {
+      const user = userEvent.setup();
+      render(<Card item={item} onClose={onClose} />);
+
+      // Before answering, a hard question and a bad one look the same.
+      expect(screen.queryByRole('button', { name: /report a bad question/i })).not.toBeInTheDocument();
+      await answerIt(user);
+      expect(screen.getByRole('button', { name: /report a bad question/i })).toBeInTheDocument();
+    });
+
+    it('reports the item, once', async () => {
+      const user = userEvent.setup();
+      render(<Card item={item} onClose={onClose} />);
+      await answerIt(user);
+
+      await user.click(screen.getByRole('button', { name: /report a bad question/i }));
+
+      expect(await screen.findByText(/Reported/)).toBeInTheDocument();
+      expect(flagged).toEqual([item.itemId]);
+      // The count is not deduplicated per learner, so the control has to stop
+      // one person filing three complaints with three taps.
+      expect(screen.queryByRole('button', { name: /report a bad question/i })).not.toBeInTheDocument();
+    });
   });
 
   it('carries no navigation, branding or score — it has one job', () => {

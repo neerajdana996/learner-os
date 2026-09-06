@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PublicItem } from '@learnos/shared';
 import { Button, ConfidenceTap, QuestionCard } from '@learnos/ui';
-import { postReview, type ReviewResult } from '../../lib/api';
+import { flagItem, postReview, type ReviewResult } from '../../lib/api';
 import { getPopState, setPopState } from '../../lib/storage';
 import { MIN_GAP_MS, recordAnswered, recordDismissed } from '../../lib/schedule';
 
@@ -35,6 +35,7 @@ export function Card({ item, onClose }: CardProps) {
   const [result, setResult] = useState<ReviewResult | null>(null);
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [flagged, setFlagged] = useState(false);
 
   /**
    * Generated once, when the card opens, not per attempt. The offline queue
@@ -163,6 +164,22 @@ export function Card({ item, onClose }: CardProps) {
             {result.feedback ? <p className="card__why">{result.feedback}</p> : null}
 
             <ConfidenceTap value={null} onChange={(c) => void rate(c)} />
+
+            {/* Offered only after the answer, because that is when you can tell
+                a bad question from a hard one. Disabled once used: the count is
+                not deduplicated per learner, so a double tap would be two
+                complaints from one person. */}
+            {flagged ? (
+              <p className="card__flagged">Reported. Thank you — it will not come back.</p>
+            ) : (
+              <button
+                type="button"
+                className="card__report"
+                onClick={() => void flagItem(item.itemId).then(() => setFlagged(true)).catch(() => setFlagged(true))}
+              >
+                Report a bad question
+              </button>
+            )}
           </div>
         ) : (
           <div className="card__actions">

@@ -134,3 +134,27 @@ body {
     color: var(--ochre);
   }
 }
+
+/// Quiet on purpose. Reporting a bad question is important and rare; a control
+/// competing with the confidence tap would get pressed by mistake.
+.card__report,
+.card__flagged {
+  align-self: flex-start;
+  font-size: $text-xs;
+  color: var(--muted);
+}
+
+.card__report {
+  background: none;
+  border: 0;
+  padding: $s-2 0;
+  min-height: $tap;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ink-2);
+  }
+
+  @include focus-ring;
+}

@@ -123,3 +123,13 @@ export function postReview(answer: Answer): Promise<ReviewResult> {
     body: JSON.stringify(answer),
   });
 }
+
+/**
+ * Reports a bad question (T-029). Three reports retire it, using the same
+ * `flagged_bad` count `pnpm qa:retire` writes — so a question the founder
+ * rejected and one three learners reported leave circulation by exactly the
+ * same rule.
+ */
+export function flagItem(itemId: string): Promise<{ retired: boolean }> {
+  return apiJson(z.object({ retired: z.boolean() }), `/items/${itemId}/flag`, { method: 'POST' });
+}

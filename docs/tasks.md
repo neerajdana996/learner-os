@@ -881,7 +881,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **The verdict leads with the gap**: "Right — 9 days since you last saw this". `recordReview` already returned `gapDaysSinceLast`; nothing needed adding. A right answer after nine days is the thing being measured, and the same answer after ten minutes is not.
   - **Snooze pushes `lastShownAt` forward, not back.** `shouldShow` gates on `now - lastShownAt < MIN_GAP_MS`, so a snooze is expressed by advancing the stamp until the 20-minute gap expires 30 minutes out. The first version rewound it, which would have made the next card arrive *sooner* — the opposite of "later".
   - Snooze is deliberately **not** a dismissal: someone asking for it later has not refused it, and counting it as one would back the extension off for the whole day.
-  - **Deferred, deliberately:** "Report bad question" and `POST /items/:id/flag` are not built. The route does not exist and `flagged_bad` has no writer, so `RETIRED_FLAG_THRESHOLD` in the due query currently guards a column nothing increments. Worth its own task rather than a stub here. The concept name in the card header is also missing — `PublicItem` carries only `conceptId`, and the title is withheld from the client on purpose for held-out concepts (T-010).
+  - **"Report bad question" and `POST /items/:id/flag` landed in T-112**, immediately after. Until then `RETIRED_FLAG_THRESHOLD` guarded a column nothing incremented. The concept name in the card header is also missing — `PublicItem` carries only `conceptId`, and the title is withheld from the client on purpose for held-out concepts (T-010).
   - Same card retry uses the same `idempotencyKey`.
   - Flag link → POST `/items/:id/flag`.
 
@@ -2382,3 +2382,20 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** The metric/protocol clearly distinguishes observed answers, inferred diagnostic mastery and missing control baselines. No missing baseline becomes a zero score or claimed improvement.
 - **tests:** A diagnostic with no held-out answers yields null/unmeasured held-out change; observed and inferred baseline values are distinguishable; a synthetic measured baseline produces the expected change only if the chosen protocol collects it.
 - **notes:** Logged without changing T-015’s existing held-out protection. The new learner page labels its output as cold recall scores, not retention gain.
+
+### T-112 · The flag route — a threshold nothing could reach
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-029
+- **files:** `backend/src/modules/items/*`, `backend/src/app.ts`, `extension/src/lib/api.ts`, `extension/src/entrypoints/popup/Card.tsx`, `extension/src/entrypoints/base.scss`, tests alongside
+- **description:** `RETIRED_FLAG_THRESHOLD` was read in three places — the due query, the day-30 test assembly, and `qa.ts` — and **nothing in the product ever incremented `flagged_bad`.** Only `pnpm qa:retire` wrote it, straight to the threshold. A learner meeting a broken question had no way to say so, and the auto-retire the column exists for could never fire.
+- **acceptance:** A learner report increments the count; the third retires the item; a retired item leaves the extension queue and the day-30 pool by the predicate that already existed.
+- **tests:**
+  - First report counts and does not retire; the third retires.
+  - A retired item disappears from `/due` — the point of the count.
+  - 404 for an unknown item, 400 for a malformed id, 401 with no session.
+  - The card offers the control only after the answer, reports once, and then stops offering it.
+- **notes:** (2026-09-06) **The count is shared with `qa:retire` on purpose**, which is why retirement rode on `flagged_bad` rather than a new column (T-024's note). A question the founder rejected in content QA and one three learners reported are excluded by exactly the same `flagged_bad < 3` predicate, in the queries that already had it — the route needed no new filtering anywhere.
+  - **Incremented in SQL, not read-then-written.** Two learners reporting the same item at once would otherwise both read the same value and one report would vanish; a lost complaint is a bad question that stays in circulation.
+  - **Not deduplicated per learner, deliberately.** That needs a table of who-flagged-what, which is a schema task, and at ten participants it would buy nothing: reporting the same question three times means meeting it three times, days apart, and someone who does that is telling us something real. The card disables the control after one use so a single card cannot file three complaints with three taps. **Revisit before opening the pilot up.**
+  - **The control appears only after answering.** Before you see the answer, a hard question and a broken one look identical.
