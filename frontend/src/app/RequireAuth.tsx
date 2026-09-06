@@ -13,6 +13,9 @@ export function RequireAuth() {
   const { isLoading, isError } = useMeQuery();
 
   if (isLoading) return <RouteFallback />;
-  if (isError) return <Navigate to="/" replace />;
+  // To the form, not to `/`: someone whose cookie expired mid-session has
+  // already read the pitch, and bouncing them to it reads as being logged out
+  // twice (T-101).
+  if (isError) return <Navigate to="/signin" replace />;
   return <Outlet />;
 }

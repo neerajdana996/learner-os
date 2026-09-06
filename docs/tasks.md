@@ -2115,7 +2115,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:**
 
 ### T-101 · A stranger arrives at a sign-in form
-- **status:** todo
+- **status:** done
 - **sprint:** 5
 - **depends_on:** T-071
 - **files:** `frontend/src/features/landing/*`, `frontend/src/App.tsx`, `frontend/src/styles/components/_landing.scss`, tests alongside
@@ -2131,7 +2131,13 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A magic-link callback landing on `/` still forwards to onboarding or the dashboard as it does today.
   - The call to action reaches `/signin`.
   - `pnpm build` passes — the styles are new and `pnpm lint` never compiles SCSS (T-090).
-- **notes:**
+- **notes:** (2026-09-06) Built. `/` is the landing page signed out, `/signin` is the form, and `RequireAuth` bounces to `/signin` rather than `/` — someone whose cookie expired mid-session has already read the pitch.
+  - **Product first, pilot second** (founder decision, 2026-09-06). The designed artboard sold the experiment: it opened on "ten people, a test on day 30" and never showed the product. This opens on the promise — *Learn it once. Still know it a month later.* — and the pilot is one inverted band near the foot. The research is unanimous that benefit-led headlines beat problem statements, and the artboard's own best line (*"Understood in the video, gone by Friday"*) was buried in a topic card three screens down; it is now the second sentence.
+  - **The timeline changed with it: 10 days of teaching, then 20 days of silence, then one cold test on day 30** — replacing 30 days of teaching plus tests on 30 and 45. The participant ask drops from thirty days to ten, which is the real threat to n=10, and the retention interval *grows* from zero days of silence to twenty. The day-45 test is no longer needed to separate "still practising" from "cold". **This makes `conceptMap/system.md`'s 20–40 concepts wrong** — `MAX_NEW_CONCEPTS` is 3/day, so ten days caps the map at 30. Logged as a follow-up in the sprint notes rather than changed here, because it is a generation task.
+  - **The hero is a real question, answerable on the page** (`SampleCard`). It renders the same `Choice` from `@learnos/ui` the session player uses, so what a visitor tries is what they get on day one. Not wired to the API on purpose: it has to work for someone with no session, and an anonymous `/due` is a 401.
+  - **The honesty requirements have tests.** Free text not being open, the unannounced test, the held-back concepts, and "I don't know yet whether this works" each have an assertion. They are load-bearing — a participant who feels tricked on day 30 drops out and costs a tenth of the result — so deleting one to make the page read better should have to be a deliberate act.
+  - **Three bugs the tests could not have caught, found by looking at it:** each `<li>` in the loop was a two-column grid with three children, so the paragraph fell into the 30px counter column and wrapped one word per line; `.landing__grid--thirds` inherited the bento's `span 2`, leaving one card per row; and `.landing__tile p` beat `.landing__section--invert p` on source order, painting the light theme's `--ink-2` onto the dark band. Rendered checks are not optional for a page like this.
+  - **Two founder questions in the task are still open, and were answered conservatively:** ten places is stated as copy, not a live count (a `[N]` placeholder has no business in production and nothing serves that number yet), and the call to action goes straight to `/signin` rather than collecting an email — a 3-day recruitment window makes a waitlist more friction than it is worth. The pilot start date is simply not mentioned.
 
 ### T-102 · One repo, one workspace
 - **status:** done

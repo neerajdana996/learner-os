@@ -73,10 +73,29 @@ const topic = (status: string) => ({
 });
 
 describe('landing route', () => {
-  it('shows the sign-in page when there is no session', async () => {
+  it('shows the landing page when there is no session, never the sign-in form', async () => {
     server({ me: 401 });
     renderAt('/');
+    // T-101: `/` used to be the form, so a stranger from a recruitment email
+    // was asked for their address before being told what this is.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /still know it/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument();
+  });
+
+  it('puts the sign-in form on /signin', async () => {
+    server({ me: 401 });
+    renderAt('/signin');
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('points the call to action at /signin', async () => {
+    server({ me: 401 });
+    renderAt('/');
+    const cta = await screen.findAllByRole('link', { name: /take one of the ten places/i });
+    expect(cta.length).toBeGreaterThan(0);
+    for (const link of cta) expect(link).toHaveAttribute('href', '/signin');
   });
 
   it('sends a signed-in learner with no topic to onboarding', async () => {
@@ -99,11 +118,13 @@ describe('landing route', () => {
 });
 
 describe('protected routes', () => {
-  it('redirects to sign-in instead of rendering an empty screen', async () => {
+  it('redirects to the sign-in form instead of rendering an empty screen', async () => {
     server({ me: 401 });
     renderAt('/session');
     // Before T-071 this rendered the player, fired 401s, and settled on a blank
-    // page that looks like a bug rather than a logged-out state.
+    // page that looks like a bug rather than a logged-out state. Since T-101 it
+    // lands on /signin rather than `/`: someone whose cookie expired mid-session
+    // has already read the pitch.
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
 

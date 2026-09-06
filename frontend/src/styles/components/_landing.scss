@@ -1,0 +1,610 @@
+@use "@learnos/ui/styles/variables" as *;
+@use "@learnos/ui/styles/mixins" as *;
+
+/// Two colours the token set has no name for, because only this page inverts a
+/// whole section. Both are mixed from the two grounds rather than hardcoded, so
+/// they follow the theme: in dark mode `--ink` is the light one and the band
+/// flips, and a literal `rgba(255,255,255,…)` would then be a white line on a
+/// white card.
+$band-ink-2: color-mix(in srgb, var(--paper) 78%, var(--ink));
+$band-line: color-mix(in srgb, var(--paper) 22%, var(--ink));
+
+/// The signed-out `/` (T-101).
+///
+/// Web only: the extension has no landing page and never will, so none of this
+/// belongs in `@learnos/ui`. Everything it draws with — tokens, the scale, the
+/// `.btn`, the `.choice` in the sample card — comes from there and is not
+/// redeclared here.
+.landing {
+  --landing-gutter: #{$s-4};
+
+  background: var(--paper);
+  color: var(--ink);
+
+  @include from($breakpoint-md) {
+    --landing-gutter: #{$s-7};
+  }
+
+  &__inner {
+    max-width: 1120px;
+    margin-inline: auto;
+    padding-inline: var(--landing-gutter);
+  }
+
+  &__section {
+    padding-block: $s-8;
+    /// The nav is sticky, so an anchor that lands flush with the viewport top
+    /// puts its own eyebrow underneath it.
+    scroll-margin-top: 72px;
+
+    @include from($breakpoint-md) {
+      padding-block: $s-9;
+    }
+
+    /// Sections rest visible; `useReveal` opts into the animation and only
+    /// when motion is welcome. See the note in that hook — a page parked at
+    /// opacity 0 shows a stranger nothing if the observer never runs.
+    &.is-pending {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+
+    &.is-revealed {
+      opacity: 1;
+      transform: none;
+      transition:
+        opacity 600ms $ease,
+        transform 600ms $ease;
+    }
+
+    &--tint {
+      background: var(--surface);
+      border-block: 1px solid var(--border);
+    }
+
+    /// Inverted rather than "dark": in dark mode this is the light band. The
+    /// pilot is the part a reader has to slow down for, and a change of ground
+    /// is what makes them.
+    &--invert {
+      background: var(--ink);
+      color: var(--paper);
+
+      h2,
+      h3 {
+        color: var(--paper);
+      }
+
+      .u-eyebrow {
+        color: var(--stone);
+      }
+
+      p {
+        color: $band-ink-2;
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------- nav
+  &__nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $s-4;
+    min-height: 64px;
+  }
+
+  &__brand {
+    font-family: $font-display;
+    font-size: $text-lg;
+    font-weight: $weight-semibold;
+    letter-spacing: -0.01em;
+  }
+
+  &__nav-links {
+    display: flex;
+    align-items: center;
+    gap: $s-5;
+
+    a:not(.btn) {
+      font-size: $text-base;
+      color: var(--ink-2);
+      text-decoration: none;
+
+      &:hover {
+        color: var(--ink);
+      }
+
+      /// Below the medium breakpoint only the call to action survives: four
+      /// anchors and a button do not fit, and the anchors are the ones a
+      /// reader can reach by scrolling anyway.
+      @include until($breakpoint-md) {
+        display: none;
+      }
+    }
+  }
+
+  &__nav-cta {
+    min-height: 40px;
+    padding-inline: $s-4;
+    font-size: $text-base;
+  }
+
+  // ------------------------------------------------------------------ hero
+  &__hero {
+    padding-block: $s-8 $s-7;
+  }
+
+  &__hero-grid {
+    display: grid;
+    gap: $s-8;
+    align-items: start;
+
+    @include from($breakpoint-lg) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: $s-9;
+      align-items: center;
+    }
+  }
+
+  &__headline {
+    margin: 0;
+    font-family: $font-display;
+    font-size: clamp(#{$display-md}, 5vw, #{$display-xl});
+    font-weight: $weight-medium;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+
+    em {
+      font-style: normal;
+      color: var(--clay);
+    }
+  }
+
+  &__lede {
+    margin: 0;
+    font-size: $text-lg;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 60ch;
+    text-wrap: pretty;
+  }
+
+  /// The honest line, at the call to action rather than buried at the foot.
+  /// Someone who finds out at signup that "any topic" meant three is someone
+  /// who feels tricked, and this page cannot afford that.
+  &__disclose {
+    margin: 0;
+    padding: $s-3 $s-4;
+    border-left: 2px solid var(--ochre);
+    background: var(--sunken);
+    border-radius: 0 $radius $radius 0;
+    font-size: $text-base;
+    line-height: 1.6;
+    color: var(--ink-2);
+    max-width: 56ch;
+  }
+
+  /// A pre-launch product has no logos and no testimonials, and inventing
+  /// either would be a lie. The evidence it is built on is the honest
+  /// equivalent, so it sits where the trust signal would.
+  &__evidence {
+    margin: 0;
+    padding-top: $s-4;
+    border-top: 1px solid var(--border);
+    font-size: $text-sm;
+    line-height: 1.65;
+    color: var(--muted);
+    max-width: 58ch;
+
+    strong {
+      color: var(--ink-2);
+      font-weight: $weight-medium;
+    }
+  }
+
+  // --------------------------------------------------------------- headings
+  &__head {
+    max-width: 64ch;
+    margin-bottom: $s-7;
+
+    h2 {
+      margin: $s-3 0 $s-3;
+      font-family: $font-display;
+      font-size: clamp(#{$display-sm}, 3.4vw, #{$display-md});
+      font-weight: $weight-medium;
+      line-height: 1.14;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    &--tight {
+      margin-block: $s-8 $s-4;
+    }
+  }
+
+  &__subhead {
+    margin: $s-3 0;
+    font-family: $font-display;
+    font-size: $display-sm;
+    font-weight: $weight-medium;
+    letter-spacing: -0.02em;
+  }
+
+  // ----------------------------------------------------------------- steps
+  &__steps {
+    list-style: none;
+    counter-reset: step;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0;
+
+    @include from($breakpoint-md) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 $s-7;
+    }
+
+    li {
+      counter-increment: step;
+      padding-block: $s-4;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: #{$s-6} minmax(0, 1fr);
+      gap: $s-4;
+
+      /// The numbering is information, not decoration: this is a loop with an
+      /// order, and step three only makes sense after step two.
+      &::before {
+        content: "0" counter(step);
+        font-family: $font-mono;
+        font-size: $text-xs;
+        color: var(--clay);
+        padding-top: 3px;
+      }
+    }
+
+    h3 {
+      margin: 0 0 3px;
+      font-size: $text-md;
+      font-weight: $weight-semibold;
+      font-family: $font-ui;
+    }
+
+    p {
+      margin: 0;
+      font-size: $text-base;
+      line-height: 1.62;
+      color: var(--ink-2);
+    }
+  }
+
+  // ------------------------------------------------------------------ grid
+  &__grid {
+    display: grid;
+    gap: $s-4;
+
+    @include from($breakpoint-md) {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    /// Three equal columns, not the six-column bento. The tiles default to
+    /// spanning two of six; in a three-column track that same span leaves one
+    /// tile per row, which is how this first shipped.
+    &--thirds {
+      @include from($breakpoint-md) {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+
+        .landing__tile {
+          grid-column: span 1;
+        }
+      }
+    }
+  }
+
+  &__tile {
+    @include card;
+    padding: $s-5;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    transition:
+      transform $duration $ease,
+      border-color $duration $ease;
+
+    @include from($breakpoint-md) {
+      grid-column: span 2;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+    }
+
+    h3 {
+      margin: 0;
+      font-family: $font-display;
+      font-size: $text-lg;
+      font-weight: $weight-medium;
+      line-height: 1.25;
+      letter-spacing: -0.015em;
+    }
+
+    p {
+      margin: 0;
+      font-size: $text-base;
+      line-height: 1.6;
+      color: var(--ink-2);
+    }
+
+    &--wide {
+      @include from($breakpoint-md) {
+        grid-column: span 3;
+      }
+    }
+
+    /// Inside the inverted band the tiles are already on ink; a second surface
+    /// would be a card on a card.
+    ///
+    /// The colours have to be restated rather than inherited from the section:
+    /// `.landing__section--invert p` and `.landing__tile p` have the same
+    /// specificity, so source order decides, and the tile is written later.
+    /// Left alone it paints the light theme's secondary ink onto the dark band.
+    &--plain {
+      background: transparent;
+      border-color: $band-line;
+
+      &:hover {
+        transform: none;
+      }
+
+      h3 {
+        color: var(--paper);
+      }
+
+      p {
+        color: $band-ink-2;
+      }
+    }
+
+    &--invert {
+      background: var(--ink);
+      border-color: var(--ink);
+
+      h3 {
+        color: var(--paper);
+      }
+
+      p {
+        color: $band-ink-2;
+      }
+
+      .u-eyebrow {
+        color: var(--stone);
+      }
+    }
+  }
+
+  &__figure {
+    margin: 0;
+    font-size: $display-sm;
+    font-weight: $weight-medium;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--clay);
+  }
+
+  // -------------------------------------------------------------- timeline
+  &__timeline {
+    margin: 0 0 $s-7;
+  }
+
+  &__timeline-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  &__axis {
+    stroke: var(--stone);
+    stroke-width: 1;
+    opacity: 0.4;
+  }
+
+  &__tick {
+    fill: var(--clay);
+  }
+
+  &__quiet {
+    stroke: var(--stone);
+    stroke-width: 1.25;
+    stroke-dasharray: 3 4;
+    fill: none;
+  }
+
+  &__testline {
+    stroke: var(--sage);
+    stroke-width: 1.5;
+  }
+
+  &__testdot {
+    fill: var(--sage);
+  }
+
+  &__tl-day {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    fill: var(--stone);
+  }
+
+  &__tl-key {
+    font-family: $font-ui;
+    font-size: 13px;
+    fill: $band-ink-2;
+  }
+
+  // ------------------------------------------------------------------- ask
+  &__ask {
+    display: grid;
+    gap: $s-4;
+    margin: 0;
+
+    @include from($breakpoint-sm) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @include from($breakpoint-md) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    > div {
+      border: 1px solid $band-line;
+      border-radius: $radius-lg;
+      padding: $s-4;
+    }
+
+    dt {
+      font-size: $text-lg;
+      font-weight: $weight-medium;
+      letter-spacing: -0.02em;
+      color: var(--clay);
+      margin-bottom: $s-2;
+    }
+
+    dd {
+      margin: 0;
+      font-size: $text-sm;
+      line-height: 1.6;
+      color: $band-ink-2;
+
+      strong {
+        color: var(--paper);
+        font-weight: $weight-semibold;
+      }
+    }
+  }
+
+  &__topics {
+    margin: $s-5 0 0;
+    max-width: 74ch;
+    font-size: $text-base;
+    line-height: 1.65;
+
+    strong {
+      color: var(--paper);
+      font-weight: $weight-medium;
+    }
+  }
+
+  // ----------------------------------------------------------------- close
+  &__close {
+    text-align: center;
+
+    h2 {
+      margin: $s-3 auto;
+      max-width: 20ch;
+      font-family: $font-display;
+      font-size: clamp(#{$display-md}, 4vw, #{$display-lg});
+      font-weight: $weight-medium;
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      text-wrap: balance;
+    }
+
+    .landing__lede {
+      margin-inline: auto;
+    }
+  }
+
+  &__close-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $s-3;
+    margin-top: $s-6;
+  }
+
+  // ------------------------------------------------------------------ foot
+  &__foot {
+    border-top: 1px solid var(--border);
+    padding-block: $s-5 $s-6;
+    font-size: $text-sm;
+    color: var(--muted);
+  }
+
+  &__foot-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $s-3 $s-5;
+    justify-content: space-between;
+  }
+}
+
+/// The sample question. It is the real `.choice` control from `@learnos/ui`
+/// inside a card, so only the card is described here.
+.sample {
+  @include card;
+  overflow: hidden;
+  box-shadow: 0 6px 22px rgba(43, 39, 35, 0.1);
+
+  &__bar {
+    padding: $s-3 $s-4;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__body {
+    padding: $s-4;
+    display: flex;
+    flex-direction: column;
+    gap: $s-4;
+  }
+
+  &__prompt {
+    margin: 0;
+    font-family: $font-display;
+    font-size: $text-lg;
+    line-height: 1.35;
+  }
+
+  &__verdict {
+    border-top: 1px solid var(--border);
+    padding-top: $s-3;
+    display: flex;
+    flex-direction: column;
+    gap: $s-2;
+  }
+
+  &__result {
+    margin: 0;
+    font-size: $text-md;
+    font-weight: $weight-semibold;
+
+    &--right {
+      color: var(--sage);
+    }
+  }
+
+  &__why,
+  &__hint,
+  &__after {
+    margin: 0;
+    font-size: $text-base;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  &__hint,
+  &__after {
+    font-size: $text-sm;
+  }
+}

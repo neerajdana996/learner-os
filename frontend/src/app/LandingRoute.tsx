@@ -4,15 +4,21 @@ import { useMeQuery } from '../features/users/usersApi';
 import { useTopicsQuery } from '../features/topics/topicsApi';
 import { RouteFallback } from './RouteFallback';
 
-const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
+const LandingPage = lazy(() => import('../features/landing/pages/LandingPage'));
 
 /**
- * What `/` means, which until now was always "the sign-in page" (T-071).
+ * What `/` means.
  *
  * Every sign-in path lands here: `GET /auth/verify` redirects the browser to
  * `APP_URL` after setting the cookie, OAuth does the same, and dev sign-in
  * navigates here. Without this, all three deposited a freshly signed-in learner
- * back on the sign-in screen with no indication anything had worked.
+ * back on the sign-in screen with no indication anything had worked (T-071).
+ *
+ * Signed out it is the landing page, not the sign-in form (T-101). The form
+ * moved to `/signin` and is reached from the landing page's call to action
+ * rather than by hitting the root URL cold, because someone arriving from a
+ * recruitment email needs to be told what this is before being asked for their
+ * address.
  *
  * The decision is made from the server's answer, never from client state: the
  * session is an httpOnly cookie the app cannot read, so "am I signed in?" is
@@ -29,7 +35,7 @@ export function LandingRoute() {
   if (isError || !me) {
     return (
       <Suspense fallback={<RouteFallback />}>
-        <LoginPage />
+        <LandingPage />
       </Suspense>
     );
   }

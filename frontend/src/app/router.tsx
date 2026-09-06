@@ -13,6 +13,7 @@ import { RouteFallback } from './RouteFallback';
  * being able to type an email. Each of these becomes its own chunk, fetched
  * when its route is first visited.
  */
+const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
 const OnboardingPage = lazy(() => import('../features/onboarding/pages/OnboardingPage'));
 const DiagnosticPage = lazy(() => import('../features/diagnostic/pages/DiagnosticPage'));
 const SessionPage = lazy(() => import('../features/session/pages/SessionPage'));
@@ -23,10 +24,22 @@ const ConnectExtensionPage = lazy(() => import('../features/extension/pages/Conn
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Signed out this is the login screen — no shell, no score badge,
-          nothing to distract from one action. Signed in it forwards to
-          whichever screen this learner is actually up to. */}
+      {/* Signed out this is the landing page; signed in it forwards to
+          whichever screen this learner is actually up to (T-101, T-071). */}
       <Route path="/" element={<LandingRoute />} />
+
+      {/* The sign-in form, reached from the landing page's call to action and
+          from every guard that finds no session. Deliberately not `/`: a
+          stranger has to be told what this is before being asked for their
+          address. */}
+      <Route
+        path="/signin"
+        element={
+          <Suspense fallback={<RouteFallback />}>
+            <LoginPage />
+          </Suspense>
+        }
+      />
 
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
