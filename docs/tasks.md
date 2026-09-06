@@ -8,7 +8,7 @@
 
 ## Where things stand — 2026-09-05
 
-**64 of 113 tasks done** (1 in progress, 1 blocked, 47 todo). Sprints 1 and most of 2 are shipped: backend **407 tests**, frontend **49**, extension **31**, all lint-clean.
+**65 of 113 tasks done** (1 in progress, 1 blocked, 46 todo). Sprints 1 and most of 2 are shipped: backend **407 tests**, frontend **49**, extension **31**, all lint-clean.
 
 > The count above used to read "55 of 94" and had drifted — it is now taken from the file itself (`awk '/^### T-/{t=$2} /^- \*\*status:\*\*/{print $3}' docs/tasks.md | sort | uniq -c`), so it is worth re-deriving rather than hand-incrementing.
 
@@ -26,7 +26,7 @@ Every item today is a prompt string and a textarea, whatever the subject. Two of
 
 **Done:** `T-079` (schema) · `T-090` (`shared-ui/`) · `T-091` (`topics.language`) · `T-080` (the block union, the two-schema split, the projection that keeps answer keys off the wire) · `T-082` (the map decides each concept's domain) · `T-083` (`domains/code.md` and the provider contract for blocks). **The generator side of the code category is complete** — what is missing is everything that puts a block on a screen: `T-084` highlighting, `T-085` the renderer, `T-086`–`T-088` the answer surfaces.
 **Blocked on a founder call:** `T-081` — CodeMirror is a UI library and `loop.md §2` bars one. It blocks `T-088` only.
-**Next:** `T-084` (highlight in the worker) or `T-085` (the renderer walks blocks) — both unblocked, and `T-085` is the one that puts a block on a screen. The generator side of the code category is now complete: `T-080` the shapes, `T-082` the domain, `T-083` the prompt and the provider contract. `T-092` needs `T-082` as well as `T-095`, so it is not next. Nothing in Sprint 5 jumps the measurement-first order above without a deliberate decision.
+**Next:** `T-084` (highlight in the worker) — `T-085` renders listings unhighlighted and the palette is already waiting for it. Then `T-086`/`T-087` (the two cheap answer surfaces); `T-088` stays blocked on `T-081`. Also open and now designed: `T-101`, the landing page. `T-092` needs `T-082` as well as `T-095`, so it is not next. Nothing in Sprint 5 jumps the measurement-first order above without a deliberate decision.
 
 **The free-text topic flow, designed 2026-09-05 (Neeraj) — `T-095` → `T-098`.** The question that started it: `T-091`'s language list is hardcoded, and language is only one example of what a topic needs to know. The answer that came out of it is a split by **who can answer**: what only the learner can say is a fast, cheap call on the topic string *before* the topic exists (`T-096`, the probe), and what only the model can say runs in the worker where nobody is waiting (`T-092`, the profile). The probe's more valuable half is not the metadata but the **viability verdict** — today any 2–120 character string enqueues ~73 model calls and five to ten minutes before anyone discovers it was `asdf` or "everything about physics". **Free text stays post-pilot** (`T-058`), gated on `T-098`'s critic, because hand-review does not scale to bespoke topics and unreviewed questions make the retention number meaningless. The pilot's three are pinned (`T-097`) and never touch any of it.
 
@@ -1832,7 +1832,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** One-line dependency reason for the commit: `shiki` — TextMate grammars, so highlighting is correct for every language a topic might use, run once at generation time.
 
 ### T-085 · The renderer walks blocks
-- **status:** todo
+- **status:** done
 - **sprint:** 5
 - **depends_on:** T-080
 - **files:** `frontend/src/components/blocks/*`, `frontend/src/components/QuestionCard.tsx`, `frontend/src/styles/`, tests alongside
@@ -1840,7 +1840,15 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **The slot is explicit, not positional (T-080).** Every block carries `slot: 'context' | 'answer' | 'reveal'`, so the walker groups by it rather than by position — which is what makes a `recognition` item whose listing is context work at all. A `reveal` block never arrives with the question (`toPublicBlocks` drops it), so the walker only has to handle one appearing later; see `T-099` for how it gets there.
 - **acceptance:** An item with no `blocks` renders exactly as it does today (snapshot the current output first, then assert it is unchanged). Wide listings scroll inside their own container; the page never scrolls sideways.
 - **tests:** Each content block renders; `blocks: undefined` falls back to `prompt`; a listing wider than its container scrolls rather than overflowing; the annotated-notes rail collapses below its breakpoint instead of squashing the code; a `reveal` block is never rendered alongside an unanswered question.
-- **notes:**
+- **notes:** (2026-09-06) Built. Frontend 49 → **59 tests**, lint and `pnpm build` green. `QuestionCard` gained exactly one branch, as planned.
+  - **The syntax palette is scoped to the *surface*, not the theme, and getting that wrong is invisible in light mode.** `.teach__card--retrieval` sets `background: var(--ink)` — near-black on a light page, near-white on a dark one — so **the retrieval card is always the opposite of the page**. A palette keyed to `prefers-color-scheme` would therefore be right half the time and produce dark-on-dark code the other half, which no light-mode screenshot ever shows. `_code-palette.scss` defines two mixins and applies them by container; verified in the *built* CSS, where `.teach__card--retrieval` carries `--code-surface: #221f1c` by default and `#f4f0ea` under `[data-theme="dark"]`.
+  - **`display: contents` was the reflex and fragments were the answer.** The gutter and the line have to be direct children of the grid so a highlight spans both columns. A wrapper with `className="contents"` is a Tailwind habit and this project has no Tailwind; a React fragment does it with no CSS at all.
+  - **The diff is computed on the client, not generated.** The model writes `before` and `after` and nothing else — one fewer thing it can get wrong — and `diffRows` is a line-level LCS, which is ample for listings T-080 caps at 12 lines. The `+`/`−` mark carries the meaning alongside the colour, and both are announced, so a change is never colour-only in either channel.
+  - **Nothing is colour-only anywhere here:** stderr is marked in the markup as well as tinted, a noted line's number is announced even though the badge that carries it visually is `aria-hidden`, and diff rows announce added/removed/unchanged.
+  - **An unknown block kind renders nothing, deliberately.** The four answer blocks arrive in T-086–T-088; until then an item carrying one falls through to `QuestionCard`'s textarea — degraded but answerable, rather than a dead end. A session screen is the wrong place to discover a schema mismatch.
+  - **`reveal` is filtered again here**, even though the server already drops it (T-080). Belt and braces against a future endpoint that forgets, and it is one line.
+  - **No highlighting yet, by design.** `CodeBlock` renders in `--code-fg`; the five syntax tokens are defined in the palette and unused until `T-084` highlights in the worker. A plain listing is not a broken listing.
+  - **Scope held:** content blocks only. `.cloze`, `.hotspot` and `.code-editor` from the design canvas's build spec belong to T-086, T-087 and T-088 and are not written.
 
 ### T-086 · Fill in the blank
 - **status:** todo
