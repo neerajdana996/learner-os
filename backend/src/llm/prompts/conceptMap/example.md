@@ -1,4 +1,4 @@
-A short example showing the expected granularity and shape (a real map has 14–18 concepts; this is trimmed for illustration):
+A short example showing the expected granularity and shape (a real map has 14–16 concepts; this is trimmed for illustration):
 
 ```json
 {
@@ -17,3 +17,8 @@ A short example showing the expected granularity and shape (a real map has 14–
 Note how each concept is a single testable idea, `prereqs` only references earlier, already-defined slugs, and the sequence is teachable in order.
 
 Note the domains too. This is a **biology** topic and not one concept is `code` — subject has nothing to do with it. `calvin-cycle` is `systems` because a correct answer is an ordering of steps, and `net-photosynthesis` is `math` because a correct answer is a balance you compute. Most of the rest are `prose` because a correct answer is a sentence, and that is the normal case.
+
+Note the titles as well. Every one is a term a biologist would actually say —
+"Calvin cycle", "Stomata", "Gas exchange". None of them is a coined compound
+like "chlorophyll absorption state" or "stomatal aperture predicate". Name the
+idea the way the field names it.

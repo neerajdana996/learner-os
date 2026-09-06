@@ -2223,3 +2223,21 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A hypothesis worth recording as **wrong**: the drift is *not* caused by the transfer-item rule ("a context that wasn't the one it was taught in"), which was the obvious suspect. The drifted items are all `isTransfer: false`. Transfer items are behaving.
   - **This change is unverified.** Prompt quality cannot be tested against fixtures — the only way to know whether it worked is to regenerate a topic and read the output. That costs a real model call and a real hand-review, and it should happen before the pilot rather than after.
   - The existing export is also **2× oversized** for the current design: 40 concepts against T-104's 14–18. The pilot's three topics need regenerating for length regardless, which is the natural moment to check whether these prompts read better.
+
+### T-107 · Prompt review — the examples contradicted the rules
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-106
+- **files:** `backend/src/llm/prompts/items/example.md`, `packages/shared/src/schemas.ts`
+- **description:** A read of all 14 prompt files after T-106, looking for contradictions, stale claims, missing guardrails and weak examples rather than generating more topics. Three real defects, all in the same place — **the examples disagreed with the rules they sit beside**, which matters more here than anywhere else because T-082 already established that in this codebase *the example is the load-bearing part*.
+  - **`items/example.md` hedged.** Its `explain` prompt was *"Explain why stomata **usually** close at night."* T-106 had just added "no hedges — *usually*, *generally*, *typically* make a question unanswerable". The example was demonstrating the exact thing the rule forbids, and an example beats a rule.
+  - **The same example broke the rubric format.** `items/system.md` specifies a fragment — *"a checklist for the grader, not an explanation… in a fragment, not a sentence"*, with a Good example beginning "Must mention:". The example.md rubric was a full sentence beginning "Should mention". Every rubric in three real generations copied the example's shape, not the rule's.
+  - **The "hard limit of 200 characters" was not enforced.** `itemFields.explain.rubric` was `z.string().min(1)` — no max. The prompt said "count them"; nothing counted. Measured across 108 real rubrics from three generations: median 110–128, max 169, none over 200 — so the model was obeying and the guard was free to add.
+- **acceptance:** No prompt example demonstrates behaviour its own rules forbid. The rubric limit is enforced in the schema, not only asserted in prose.
+- **tests:** Full workspace green (615). No new test: this is a prompt-and-schema change, and the suites run on fixtures — see T-106's note on why prompt quality is not testable here.
+- **notes:** (2026-09-06) **What was checked and found sound**, so it is not re-reviewed later:
+  - Injection guards are present and consistently worded on every prompt that interpolates user data — `conceptMap/user.md`, `items/user.md`, `teaching/user.md`, and `gradeExplanation` (which additionally names the concrete attacks: "ignore the rubric", "mark this correct").
+  - `items/domains/code.md` is the strongest prompt in the set: a stop-at-first-yes decision list, a per-format "earn it" field that cannot be written unless the format was right, and four contrastive ✗/✓ pairs. It needs nothing.
+  - The `teaching/example.md` explanation hedges twice ("perhaps 90% less water", "often have fewer stomata") and this is **correct, not a defect**: drought plants often but not always have fewer stomata, and T-106's rule says to name a real exception rather than flatten it into a false absolute. Left alone deliberately.
+  - `conceptMap/example.md` already models good naming (Chlorophyll, Calvin cycle, Stomata — all real terms), so it reinforces T-106's naming rule instead of fighting it. A closing note now says so explicitly.
+- **Open, not fixed:** `gradeExplanation` is the only generation prompt with **no `example.md`**, and it is the one in the request path with a learner waiting. Worth one before the pilot.

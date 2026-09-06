@@ -78,7 +78,12 @@ const itemFields = {
     answerIndex: z.number().int().min(0).max(3),
   },
   application: { type: z.literal('application'), prompt: z.string().min(1), answer: z.string().min(1), accept: z.array(z.string()).optional() },
-  explain: { type: z.literal('explain'), prompt: z.string().min(1), rubric: z.string().min(1) },
+  // 200 chars is what items/system.md calls a hard limit, and it was not one:
+  // nothing checked it. The rubric is re-sent on every grade, and a bloated one
+  // grades worse — it stops being a checklist and becomes prose to interpret.
+  // 108 real rubrics across three generations top out at 169, so this rejects
+  // nothing that exists.
+  explain: { type: z.literal('explain'), prompt: z.string().min(1), rubric: z.string().min(1).max(200) },
 };
 
 /**
