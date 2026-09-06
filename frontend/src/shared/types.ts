@@ -5,6 +5,7 @@ import type {
   SurfaceSchema,
   TeachModeSchema,
   ItemTypeSchema,
+  ConceptDomainSchema,
   IdParamSchema,
   UserCreateSchema,
   TopicCreateSchema,
@@ -52,6 +53,7 @@ export type UserCreate = z.infer<typeof UserCreateSchema>;
 export type TopicCreate = z.infer<typeof TopicCreateSchema>;
 
 export type ItemPayload = z.infer<typeof ItemPayloadSchema>;
+export type ConceptDomain = z.infer<typeof ConceptDomainSchema>;
 export type PublicItem = z.infer<typeof PublicItemSchema>;
 /** What the model may return, before the worker derives an ItemPayload (T-080). */
 export type ItemGeneration = z.infer<typeof ItemGenerationSchema>;
