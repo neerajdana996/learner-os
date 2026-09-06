@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { PublicBlock } from '../../shared';
+import type { PublicBlock } from '@learnos/shared';
 
 type CodeDiff = Extract<PublicBlock, { kind: 'codeDiff' }>;
 

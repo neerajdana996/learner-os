@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../lib/validate.js';
 import { requireUser } from '../../middleware/auth.js';
-import { DiagnosticAnswerSchema } from '../../shared/index.js';
+import { DiagnosticAnswerSchema } from '@learnos/shared';
 import { getNext, postAnswer, postStart } from './diagnostic.controller.js';
 
 export const diagnosticRouter = Router();

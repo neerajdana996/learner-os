@@ -3,13 +3,13 @@
 // It carries only what a popup and an options page need: the tokens, and the
 // handful of controls those two screens use. Everything visual comes from
 // `shared-ui` — synced from the repo root, never edited here — so a clay that
-// moves on the web moves in the popup on the next `scripts/sync-shared.sh`.
+// moves on the web moves in the popup on the next install — one package, no copy.
 //
 // The block components arrive with T-085 and bring their own partials; this
 // file deliberately does not anticipate them.
-@use "../shared-ui/styles/themes";
-@use "../shared-ui/styles/variables" as *;
-@use "../shared-ui/styles/mixins" as *;
+@use "@learnos/ui/styles/themes";
+@use "@learnos/ui/styles/variables" as *;
+@use "@learnos/ui/styles/mixins" as *;
 
 body {
   margin: 0;

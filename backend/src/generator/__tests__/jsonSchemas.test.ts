@@ -11,7 +11,7 @@ vi.mock('openai', () => ({
 const { itemsJsonSchema, itemsPrompt, blockJsonSchemas } = await import('../items.js');
 const { conceptMapJsonSchema, ConceptMapSchema, conceptMapPrompt } = await import('../conceptMap.js');
 const { teachingJsonSchema, teachingPrompt } = await import('../teaching.js');
-const { ItemGenerationSchema, BlockGenerationSchema } = await import('../../shared/index.js');
+const { ItemGenerationSchema, BlockGenerationSchema } = await import('@learnos/shared');
 
 type JsonSchema = {
   /** An array when the node is nullable — strict mode's way of saying optional. */

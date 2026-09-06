@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import { validate } from '../validate.js';
-import { TopicCreateSchema } from '../../shared/index.js';
+import { TopicCreateSchema } from '@learnos/shared';
 
 function app() {
   const a = express();

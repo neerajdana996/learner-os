@@ -1,4 +1,4 @@
-import type { Answer } from '../../shared/index.js';
+import type { Answer } from '@learnos/shared';
 import { persistReview } from './reviews.repository.js';
 
 export function submitReview(userId: string, answer: Answer) {

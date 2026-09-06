@@ -1,4 +1,4 @@
-import { isValidTimeZone } from '../shared/index.js';
+import { isValidTimeZone } from '@learnos/shared';
 
 /**
  * "Today" in the product is always the learner's today, never the server's

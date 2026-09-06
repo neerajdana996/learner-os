@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../lib/validate.js';
 import { requireUser } from '../../middleware/auth.js';
-import { SessionCompleteSchema } from '../../shared/index.js';
+import { SessionCompleteSchema } from '@learnos/shared';
 import { getSessionHandler, postCompleteHandler } from './session.controller.js';
 
 export const sessionRouter = Router();

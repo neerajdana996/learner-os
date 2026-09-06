@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'wxt';
 
 /**
@@ -12,6 +13,18 @@ const API_URL = process.env.WXT_API_URL ?? 'http://localhost:3001';
 export default defineConfig({
   srcDir: 'src',
   modules: ['@wxt-dev/module-react'],
+  // Sass has no notion of node resolution, so `@use "@learnos/ui/..."` means
+  // nothing to it without a load path. pnpm links the workspace package in as
+  // node_modules/@learnos/ui, and sass follows the symlink from there.
+  vite: () => ({
+    css: {
+      preprocessorOptions: {
+        scss: {
+          loadPaths: [fileURLToPath(new URL('node_modules', import.meta.url))],
+        },
+      },
+    },
+  }),
   manifest: {
     name: 'learnos',
     description: 'One retrieval question at a time. Never teaches — only helps you remember.',

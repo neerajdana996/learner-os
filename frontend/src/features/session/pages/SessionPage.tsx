@@ -5,7 +5,7 @@ import { ConfidenceTap } from '../../../components/ConfidenceTap';
 import { CheckCircle, ChevronDown } from '../../../components/Icon';
 import { Prose } from '../../../components/Prose';
 import { QuestionCard } from '../../../components/QuestionCard';
-import type { Confidence, PublicItem, SessionResponse } from '../../../shared';
+import type { Confidence, PublicItem, SessionResponse } from '@learnos/shared';
 import { useSubmitReviewMutation } from '../../reviews/reviewsApi';
 import { useCompleteSessionMutation, useSessionQuery } from '../sessionApi';
 

@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { PublicBlock, PublicItem } from '../../../shared';
+import type { PublicBlock, PublicItem } from '@learnos/shared';
 import { BlockList } from '../BlockList';
 import { diffRows } from '../CodeDiffBlock';
 import { QuestionCard } from '../../QuestionCard';

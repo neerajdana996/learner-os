@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
-import { ItemPayloadSchema, LangSchema, BlockSlotSchema, type ItemPayload } from '../shared/index.js';
+import { ItemPayloadSchema, LangSchema, BlockSlotSchema, type ItemPayload } from '@learnos/shared';
 import { parseGeneratedItemBlocks } from './blocks.js';
 
 /** sprint.md's Sprint 1 demo expects 6–8 items per taught concept. */

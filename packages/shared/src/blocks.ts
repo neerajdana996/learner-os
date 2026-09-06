@@ -1,5 +1,4 @@
-// SOURCE OF TRUTH for the block system (T-080). Synced to frontend/src/shared
-// and extension/src/shared by scripts/sync-shared.sh — never edit the copies.
+// SOURCE OF TRUTH for the block system (T-080), published as `@learnos/shared`.
 //
 // Browser-safe: only `zod` may be imported here (plan.md §5).
 //
@@ -75,6 +74,16 @@ const MAX_SHORT = 400;
  *  is a card that gets dismissed (T-089 decides what may pop; this is the cap
  *  the `short` variant is written against). */
 export const SHORT_MAX_LINES = 8;
+/**
+ * Lines in a listing (T-083's "hard limits").
+ *
+ * Enforced rather than merely asked for, because `domains/code.md` calls it a
+ * hard limit and tells the model which rules are checked — an unchecked "hard"
+ * limit teaches it that the checked ones are negotiable too. Twelve is what
+ * fits a session card without scrolling; the extension's eight-line `short` is
+ * a separate, tighter cap.
+ */
+export const SRC_MAX_LINES = 12;
 
 export function lineCount(src: string): number {
   return src.split('\n').length;
@@ -447,6 +456,14 @@ function blockRules(b: Record<string, unknown>, ctx: z.RefinementCtx): void {
   }
   if (!isAnswerKind(kind) && slot === 'answer') {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['slot'], message: `${kind} is a content block and cannot have slot "answer"` });
+  }
+
+  if (typeof b.src === 'string' && lineCount(b.src) > SRC_MAX_LINES) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['src'],
+      message: `listing is ${lineCount(b.src)} lines; the limit is ${SRC_MAX_LINES}`,
+    });
   }
 
   if (kind === 'code') {

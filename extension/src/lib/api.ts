@@ -12,7 +12,7 @@
  * reaching the card UI.
  */
 import type { output, ZodTypeAny } from 'zod';
-import { MeResponseSchema, type MeResponse } from '../shared';
+import { MeResponseSchema, type MeResponse } from '@learnos/shared';
 import { clearToken, getToken } from './storage';
 
 /** Set at build time from `WXT_API_URL` (see `.env.example`). The manifest's

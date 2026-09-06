@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { DevReset } from '../../shared';
+import type { DevReset } from '@learnos/shared';
 
 export interface ResetSummary {
   topics: { title: string; concepts: number }[];

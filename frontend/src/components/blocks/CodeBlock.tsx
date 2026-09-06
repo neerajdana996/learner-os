@@ -1,4 +1,4 @@
-import type { PublicBlock } from '../../shared';
+import type { PublicBlock } from '@learnos/shared';
 
 type Code = Extract<PublicBlock, { kind: 'code' }>;
 

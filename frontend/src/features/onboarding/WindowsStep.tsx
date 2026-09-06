@@ -1,6 +1,6 @@
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
-import { ActiveWindowsSchema, type ActiveWindow } from '../../shared';
+import { ActiveWindowsSchema, type ActiveWindow } from '@learnos/shared';
 
 export interface WindowsStepProps {
   timezone: string;

@@ -1,4 +1,4 @@
-import type { ConceptState } from '../shared';
+import type { ConceptState } from '@learnos/shared';
 
 const LABELS: Record<ConceptState, string> = {
   known: 'Already knew it',

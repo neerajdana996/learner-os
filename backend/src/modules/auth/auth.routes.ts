@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { isProd } from '../../lib/env.js';
 import { validate } from '../../lib/validate.js';
 import { requireUser } from '../../middleware/auth.js';
-import { DevLoginSchema, MagicLinkSchema, VerifyQuerySchema } from '../../shared/index.js';
+import { DevLoginSchema, MagicLinkSchema, VerifyQuerySchema } from '@learnos/shared';
 import { getVerify, postDevLogin, postExtensionToken, postLogout, postMagic } from './auth.controller.js';
 import { limitMagicLink } from './auth.rateLimit.js';
 import { getOAuthCallback, getOAuthStart } from './oauth.controller.js';

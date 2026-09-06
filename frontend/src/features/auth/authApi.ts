@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { DevLogin, MagicLink, MagicLinkResponse } from '../../shared';
+import type { DevLogin, MagicLink, MagicLinkResponse } from '@learnos/shared';
 
 /**
  * Magic-link sign-in. The OAuth routes are deliberately absent: the provider

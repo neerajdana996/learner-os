@@ -1,4 +1,4 @@
-import { ItemPayloadSchema, toPublicBlocks, type PublicItem } from '../shared/index.js';
+import { ItemPayloadSchema, toPublicBlocks, type PublicItem } from '@learnos/shared';
 
 /**
  * The one place an item crosses from server to client.

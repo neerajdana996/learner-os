@@ -1,0 +1,25 @@
+# The three apps and the two packages they share.
+#
+# The apps stay at the repo root rather than moving under apps/: docker-compose,
+# every script and most of docs/ names them by path, and relocating them buys
+# nothing a workspace does not already give us.
+packages:
+  - "backend"
+  - "frontend"
+  - "extension"
+  - "packages/*"
+
+# Union of what the three projects each allowed when they had their own
+# lockfile. pnpm 10 blocks dependency build scripts by default; these three
+# genuinely need theirs (esbuild fetches its platform binary).
+allowBuilds:
+  esbuild: true
+  msgpackr-extract: true
+  spawn-sync: true
+
+# NOTE: extension/pnpm-workspace.yaml also carried
+#   overrides: { '@vitejs/plugin-react': ^4.4.1, vite: ^7.3.6 }
+# which is deliberately NOT reproduced here. An override is workspace-global,
+# and the frontend depends on vite ^6.3.5 — applying the extension's pin would
+# silently drag the web app onto a new major. WXT resolves its own vite either
+# way. Revisit when both clients move to vite 7 together.

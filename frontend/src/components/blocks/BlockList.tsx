@@ -1,4 +1,4 @@
-import type { PublicBlock } from '../../shared';
+import type { PublicBlock } from '@learnos/shared';
 import { CodeBlock } from './CodeBlock';
 import { CodeDiffBlock } from './CodeDiffBlock';
 import { TerminalBlock } from './TerminalBlock';

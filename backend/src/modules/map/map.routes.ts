@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../lib/validate.js';
 import { requireUser } from '../../middleware/auth.js';
-import { IdParamSchema } from '../../shared/index.js';
+import { IdParamSchema } from '@learnos/shared';
 import { getMapHandler } from './map.controller.js';
 
 export const mapRouter = Router();

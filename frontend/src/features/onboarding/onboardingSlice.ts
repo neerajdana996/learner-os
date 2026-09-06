@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { ActiveWindow } from '../../shared';
+import type { ActiveWindow } from '@learnos/shared';
 import type { Role } from './topics';
 
 const STORAGE_KEY = 'learnos.onboarding';

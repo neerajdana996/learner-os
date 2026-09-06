@@ -10,13 +10,17 @@ NO_DOCKER=0; [ "${1:-}" = "--no-docker" ] && NO_DOCKER=1
 
 step() { printf '\n\033[1;34m▶ %s\033[0m\n' "$*"; }
 
-step "shared-sync test"
-bash scripts/sync-shared.test.sh
-bash scripts/sync-shared.sh
+step "install the workspace (one lockfile, all five packages)"
+pnpm install --frozen-lockfile
+
+step "packages/shared: build, lint, test"
+pnpm --filter @learnos/shared build
+pnpm --filter @learnos/shared lint
+pnpm --filter @learnos/shared test
 
 for p in backend frontend extension; do
-  step "$p: pnpm install && pnpm lint && pnpm test"
-  ( cd "$p" && pnpm install && pnpm lint && pnpm test )
+  step "$p: pnpm lint && pnpm test"
+  ( cd "$p" && pnpm lint && pnpm test )
 done
 
 # `pnpm lint` is `tsc --noEmit` in both client projects and never compiles a
@@ -27,8 +31,8 @@ for p in frontend extension; do
   ( cd "$p" && pnpm build )
 done
 
-step "synced copies contain no Node-only imports"
-! grep -rEn "from ['\"](node:|drizzle|postgres|bullmq|ioredis|express|ws)['\"/]" frontend/src/shared extension/src/shared
+step "@learnos/shared contains no Node-only imports"
+! grep -rEn "from ['\"](node:|drizzle|postgres|bullmq|ioredis|express|ws)['\"/]" packages/shared/src
 
 # The suite mocks the model SDK, never reads .env and only touches the test
 # database, so a green suite has repeatedly coexisted with an app that would

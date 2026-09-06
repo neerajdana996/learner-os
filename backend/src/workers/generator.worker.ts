@@ -11,7 +11,7 @@ import { generateTeaching } from '../generator/teaching.js';
 import { pickHeldOut, seededRng, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER } from '../lib/heldOut.js';
 import { env } from '../lib/env.js';
 import { collectUsage } from '../llm/usage.js';
-import { answerKindOf } from '../shared/index.js';
+import { answerKindOf } from '@learnos/shared';
 
 export const GENERATION_QUEUE = 'generation';
 

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../../components/Button';
 import { ConfidenceTap } from '../../../components/ConfidenceTap';
 import { QuestionCard } from '../../../components/QuestionCard';
-import type { Confidence } from '../../../shared';
+import type { Confidence } from '@learnos/shared';
 import { useAnswerDiagnosticMutation, useDiagnosticNextQuery } from '../diagnosticApi';
 
 type Rating = NonNullable<Confidence>;

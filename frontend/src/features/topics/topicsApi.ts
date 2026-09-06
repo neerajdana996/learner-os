@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { TopicCreate } from '../../shared';
+import type { TopicCreate } from '@learnos/shared';
 
 /** How far generation has got (T-064). Null unless the topic is generating —
  *  and null even then until the concept map returns, or if the job has been

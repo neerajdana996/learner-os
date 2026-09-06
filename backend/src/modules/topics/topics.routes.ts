@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../lib/validate.js';
 import { requireUser } from '../../middleware/auth.js';
-import { IdParamSchema, TopicCreateSchema } from '../../shared/index.js';
+import { IdParamSchema, TopicCreateSchema } from '@learnos/shared';
 import { getTopic, getTopics, postTopic } from './topics.controller.js';
 
 export const topicsRouter = Router();

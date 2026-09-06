@@ -1,5 +1,5 @@
 import { scoreConcept, topicScore } from '../../lib/score.js';
-import type { MapResponse } from '../../shared/index.js';
+import type { MapResponse } from '@learnos/shared';
 import { findEdges, findMapRows, findOwnedTopic } from './map.repository.js';
 
 export class MapError extends Error {

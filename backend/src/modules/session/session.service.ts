@@ -2,7 +2,7 @@ import { planSession, remainingDays } from '../../lib/planner.js';
 import { toPublicItem } from '../../lib/publicItem.js';
 import { localDayFor } from '../../lib/today.js';
 import { newCard, toDbCard } from '../../scheduler/index.js';
-import { CorrectionSchema, type SessionResponse } from '../../shared/index.js';
+import { CorrectionSchema, type SessionResponse } from '@learnos/shared';
 import { getDueItems } from '../due/due.service.js';
 import { findUserById } from '../users/users.repository.js';
 import {

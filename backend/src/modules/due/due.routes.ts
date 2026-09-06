@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../lib/validate.js';
 import { requireUser } from '../../middleware/auth.js';
-import { DueQuerySchema } from '../../shared/index.js';
+import { DueQuerySchema } from '@learnos/shared';
 import { getDue } from './due.controller.js';
 
 export const dueRouter = Router();

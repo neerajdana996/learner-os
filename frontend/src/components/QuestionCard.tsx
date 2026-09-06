@@ -1,4 +1,4 @@
-import type { PublicItem } from '../shared';
+import type { PublicItem } from '@learnos/shared';
 import { BlockList } from './blocks/BlockList';
 import { Choice } from './Choice';
 

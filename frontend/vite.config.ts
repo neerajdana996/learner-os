@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -7,6 +8,17 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    css: {
+      preprocessorOptions: {
+        scss: {
+          // Sass has no notion of node resolution, so `@use "@learnos/ui/..."`
+          // means nothing to it without a load path. pnpm links the workspace
+          // package in as node_modules/@learnos/ui, and sass follows the symlink
+          // from there.
+          loadPaths: [fileURLToPath(new URL('node_modules', import.meta.url))],
+        },
+      },
+    },
     build: {
       // Vendor code changes far less often than app code. Splitting it keeps the
       // big, stable dependencies in chunks a returning learner already has cached

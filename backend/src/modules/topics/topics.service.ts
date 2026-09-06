@@ -3,7 +3,7 @@ import { db } from '../../db/client.js';
 import { topics } from '../../db/schema.js';
 import { getGenerationQueue } from '../../workers/queue.js';
 import type { GenerationProgress } from '../../workers/generator.worker.js';
-import type { TopicCreate } from '../../shared/index.js';
+import type { TopicCreate } from '@learnos/shared';
 import { findTopic, insertTopic, listTopics } from './topics.repository.js';
 
 /**

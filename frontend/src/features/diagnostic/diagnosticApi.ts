@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { DiagnosticAnswer, DiagnosticNextResponse } from '../../shared';
+import type { DiagnosticAnswer, DiagnosticNextResponse } from '@learnos/shared';
 
 /**
  * The diagnostic is a server-driven walk: the client never decides what comes

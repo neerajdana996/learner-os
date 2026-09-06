@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
-import { ConceptDomainSchema, type ConceptDomain } from '../shared/index.js';
+import { ConceptDomainSchema, type ConceptDomain } from '@learnos/shared';
 
 /**
  * Floor on a usable map. Below this the course is unusable — the diagnostic,

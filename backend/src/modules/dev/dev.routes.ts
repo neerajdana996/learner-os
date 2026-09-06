@@ -3,7 +3,7 @@ import { isProd } from '../../lib/env.js';
 import { validate } from '../../lib/validate.js';
 import { requireUser, userId } from '../../middleware/auth.js';
 import { resetUser } from '../../lib/reset.js';
-import { DevResetSchema } from '../../shared/index.js';
+import { DevResetSchema } from '@learnos/shared';
 
 export const devRouter = Router();
 

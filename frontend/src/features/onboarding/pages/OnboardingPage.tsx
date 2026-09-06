@@ -4,7 +4,7 @@ import { Button } from '../../../components/Button';
 import { Choice } from '../../../components/Choice';
 import { Field } from '../../../components/Field';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { ActiveWindowsSchema } from '../../../shared';
+import { ActiveWindowsSchema } from '@learnos/shared';
 import { useUpdateMeMutation } from '../../users/usersApi';
 import {
   FAST_POLL_WINDOW_MS,

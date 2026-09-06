@@ -17,7 +17,7 @@
 //  2. **Shuffling `orderLines`.** The model emits the lines in the correct
 //     order; the shuffle and the answer key are computed here. Asking a model
 //     for a permutation of its own list is a needless way to get an off-by-one.
-import { ItemGenerationSchema, type Block, type BlockGeneration, type ItemGeneration } from '../shared/index.js';
+import { ItemGenerationSchema, type Block, type BlockGeneration, type ItemGeneration } from '@learnos/shared';
 import { GenerationError } from './errors.js';
 
 /**

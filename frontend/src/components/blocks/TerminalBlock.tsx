@@ -1,4 +1,4 @@
-import type { PublicBlock } from '../../shared';
+import type { PublicBlock } from '@learnos/shared';
 
 type Terminal = Extract<PublicBlock, { kind: 'terminal' }>;
 

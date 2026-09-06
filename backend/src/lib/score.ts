@@ -1,6 +1,6 @@
 import { KNOWN_THRESHOLD } from './diagnostic.js';
 import { fromDbCard, predictedRecall, type DbCard } from '../scheduler/index.js';
-import type { ConceptState } from '../shared/index.js';
+import type { ConceptState } from '@learnos/shared';
 
 /** Below this, a taught concept is slipping and worth surfacing (T-017). */
 export const AT_RISK_BELOW = 0.6;

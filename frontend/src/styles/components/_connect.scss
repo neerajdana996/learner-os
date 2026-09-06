@@ -1,5 +1,5 @@
-@use "../../shared-ui/styles/variables" as *;
-@use "../../shared-ui/styles/mixins" as *;
+@use "@learnos/ui/styles/variables" as *;
+@use "@learnos/ui/styles/mixins" as *;
 
 /// Numbered setup steps — the extension install, and anything else that is a
 /// sequence a learner performs outside the app.

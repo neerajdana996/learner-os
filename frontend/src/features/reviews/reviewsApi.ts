@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { Answer } from '../../shared';
+import type { Answer } from '@learnos/shared';
 
 export interface ReviewResult {
   eventId: string;

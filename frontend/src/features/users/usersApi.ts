@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { MeResponse, UserUpdate } from '../../shared';
+import type { MeResponse, UserUpdate } from '@learnos/shared';
 
 export const usersApi = api.injectEndpoints({
   endpoints: (build) => ({

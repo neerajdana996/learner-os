@@ -3,7 +3,7 @@ import {
   UserProfileSchema,
   type MeResponse,
   type UserUpdate,
-} from '../../shared/index.js';
+} from '@learnos/shared';
 import { hasExtensionSession } from '../auth/auth.repository.js';
 import { findUserById, updateUser } from './users.repository.js';
 

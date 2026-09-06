@@ -22,7 +22,7 @@ import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { db, pg } from '../db/client.js';
 import { concepts, items, topics } from '../db/schema.js';
 import { RETIRED_FLAG_THRESHOLD } from '../lib/retire.js';
-import { ItemPayloadSchema, type ItemPayload } from '../shared/index.js';
+import { ItemPayloadSchema, type ItemPayload } from '@learnos/shared';
 
 /** Anything the founder did wrong in the file, or that would corrupt a row. */
 export class QaError extends Error {}

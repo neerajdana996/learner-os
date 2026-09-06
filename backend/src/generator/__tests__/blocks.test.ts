@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveLine, toItemPayload, parseGeneratedItemBlocks } from '../blocks.js';
 import { GenerationError } from '../errors.js';
-import { ItemPayloadSchema, ItemGenerationSchema } from '../../shared/index.js';
+import { ItemPayloadSchema, ItemGenerationSchema } from '@learnos/shared';
 
 const SRC = ['function search(a, x) {', '  let lo = 0;', '  let hi = a.length;', '  return -1;', '}'].join('\n');
 

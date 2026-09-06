@@ -1,5 +1,5 @@
 import { toPublicItem } from '../../lib/publicItem.js';
-import type { DueItemsResponse } from '../../shared/index.js';
+import type { DueItemsResponse } from '@learnos/shared';
 import { findCandidates, findDueCards, findRecentHistory, RECENT_WINDOW } from './due.repository.js';
 
 export async function getDueItems(

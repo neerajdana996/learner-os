@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { SessionResponse } from '../../shared';
+import type { SessionResponse } from '@learnos/shared';
 
 export const sessionApi = api.injectEndpoints({
   endpoints: (build) => ({

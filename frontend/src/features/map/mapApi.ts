@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { MapResponse } from '../../shared';
+import type { MapResponse } from '@learnos/shared';
 
 export const mapApi = api.injectEndpoints({
   endpoints: (build) => ({

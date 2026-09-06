@@ -1,6 +1,6 @@
 import type { Server as HttpServer } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { WsClientMessageSchema, type WsServerMessage } from './shared/index.js';
+import { WsClientMessageSchema, type WsServerMessage } from '@learnos/shared';
 
 /**
  * WebSocket endpoint at `/ws`, sharing the HTTP server's port.

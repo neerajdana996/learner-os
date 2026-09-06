@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QuestionCard } from './QuestionCard';
-import type { PublicItem } from '../shared';
+import type { PublicItem } from '@learnos/shared';
 
 const recognition: PublicItem = {
   itemId: '00000000-0000-0000-0000-000000000001',

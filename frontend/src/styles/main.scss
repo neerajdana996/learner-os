@@ -2,12 +2,12 @@
 // reference them and never inline a colour or a spacing value.
 //
 // Order matters: themes define the custom properties everything else reads.
-@use "../shared-ui/styles/themes";
+@use "@learnos/ui/styles/themes";
 // Surface-scoped, not theme-scoped, and it must land after themes because it
 // reads nothing from them but is read by every block partial below (T-085).
 @use "code-palette";
 @use "base";
-@use "../shared-ui/styles/animations";
+@use "@learnos/ui/styles/animations";
 @use "utilities";
 
 @use "components/layout";

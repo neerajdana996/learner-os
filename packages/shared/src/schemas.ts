@@ -1,8 +1,10 @@
-// SOURCE OF TRUTH for shared Zod schemas. Synced to frontend/src/shared and
-// extension/src/shared by scripts/sync-shared.sh — never edit the copies.
+// SOURCE OF TRUTH for shared Zod schemas — the API contract all three apps
+// agree on. There is one copy now: this file, published as `@learnos/shared`.
 //
 // Browser-safe: only `zod` may be imported here. No `node:*`, drizzle, postgres,
-// bullmq or ioredis (sync-shared.sh fails the build if it finds any).
+// bullmq or ioredis — this package is compiled by Vite for the web app and by
+// WXT for the extension, and neither has Node. Each client keeps a smoke test
+// (`src/shared.test.ts`) that fails if something Node-only ever leaks in.
 import { z } from 'zod';
 import { BlockSchema, BlockGenerationSchema, PublicBlockSchema, optionalOrNull } from './blocks.js';
 

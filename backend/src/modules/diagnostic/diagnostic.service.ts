@@ -13,7 +13,7 @@ import {
 import { toPublicItem } from '../../lib/publicItem.js';
 import { recordReview } from '../../lib/recordReview.js';
 import { newCard, Rating, scheduleReview, toDbCard } from '../../scheduler/index.js';
-import type { DiagnosticAnswer, DiagnosticNextResponse } from '../../shared/index.js';
+import type { DiagnosticAnswer, DiagnosticNextResponse } from '@learnos/shared';
 import { findUserById } from '../users/users.repository.js';
 import {
   findConcepts,

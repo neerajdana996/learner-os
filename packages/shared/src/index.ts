@@ -1,4 +1,4 @@
-// Public entry point of the shared module. Import from '<project>/src/shared'.
+// Public entry point of the shared package. Import from '@learnos/shared'.
 export * from './blocks.js';
 export * from './schemas.js';
 export type * from './types.js';

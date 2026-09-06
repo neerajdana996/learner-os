@@ -1,5 +1,5 @@
 import { gradeExplanation } from '../generator/grade.js';
-import type { ItemPayload } from '../shared/index.js';
+import type { ItemPayload } from '@learnos/shared';
 
 export interface Grade {
   correct: boolean;

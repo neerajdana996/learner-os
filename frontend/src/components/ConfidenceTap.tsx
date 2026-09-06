@@ -1,4 +1,4 @@
-import type { Confidence } from '../shared';
+import type { Confidence } from '@learnos/shared';
 import { Choice } from './Choice';
 
 type Rating = NonNullable<Confidence>;

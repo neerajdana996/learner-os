@@ -1,6 +1,0 @@
-allowBuilds:
-  esbuild: true
-  spawn-sync: true
-overrides:
-  '@vitejs/plugin-react': ^4.4.1
-  vite: ^7.3.6

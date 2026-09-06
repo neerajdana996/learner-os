@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
-import type { TeachMode } from '../shared/index.js';
+import type { TeachMode } from '@learnos/shared';
 import { GenerationError } from './errors.js';
 
 /** plan.md §3.5 — a correction list of one is not a list, and past four the

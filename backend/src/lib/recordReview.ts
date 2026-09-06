@@ -2,7 +2,7 @@ import { and, desc, eq, isNotNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { cards, items, reviewEvents } from '../db/schema.js';
 import { fromDbCard, newCard, predictedRecall, Rating, scheduleReview, toDbCard } from '../scheduler/index.js';
-import { ItemPayloadSchema, type Answer, type Surface } from '../shared/index.js';
+import { ItemPayloadSchema, type Answer, type Surface } from '@learnos/shared';
 import { grade } from './grade.js';
 
 /** Surfaces that record the answer but must never move the card's schedule:
