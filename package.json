@@ -3,17 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "packageManager": "pnpm@10.0.0",
   "scripts": {
-    "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
-    "dev:backend": "pnpm --filter learner-os-backend dev",
-    "dev:frontend": "pnpm --filter learner-os-frontend dev",
-    "dev:extension": "pnpm --filter learner-os-extension dev"
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "check": "turbo run lint test build",
+    "dev:backend": "turbo run dev --filter learner-os-backend",
+    "dev:frontend": "turbo run dev --filter learner-os-frontend",
+    "dev:extension": "turbo run dev --filter learner-os-extension"
   },
   "devDependencies": {
+    "turbo": "^2",
     "typescript": "^5.8.3"
   }
 }

@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      # The backend suite is not mocked at the database boundary — it truncates
+      # and seeds real tables (see backend/vitest.setup.ts), so CI needs a real
+      # Postgres. POSTGRES_DB is learnos_test directly: vitest.setup.ts points
+      # DATABASE_URL at TEST_DATABASE_URL, so the dev database is never touched.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: learnos
+          POSTGRES_PASSWORD: learnos
+          POSTGRES_DB: learnos_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U learnos -d learnos_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgres://learnos:learnos@localhost:5432/learnos_test
+      REDIS_URL: redis://localhost:6379
+      # OAuth registers a provider only when its client id is non-empty
+      # (backend/.env.example), so without these the routes 404 and every
+      # oauth.test.ts case fails. The suite stubs fetch — nothing leaves the
+      # runner, and these are not credentials.
+      GITHUB_CLIENT_ID: ci-not-a-real-client
+      GITHUB_CLIENT_SECRET: ci-not-a-real-secret
+      GOOGLE_CLIENT_ID: ci-not-a-real-client
+      GOOGLE_CLIENT_SECRET: ci-not-a-real-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Turbo's local cache. `lint` and `build` are cacheable and skip entirely
+      # when nothing they depend on changed; `test` is not (turbo.json says why).
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Push schema to the test database
+        run: pnpm --filter learner-os-backend db:test:push
+
+      - name: Lint, test, build
+        run: pnpm turbo run lint test build
+
+      # pnpm lint is `tsc --noEmit` in both clients and never compiles a
+      # stylesheet, so a broken @use path passes lint and fails only here. The
+      # `build` task above already covers it — this asserts the artefacts exist,
+      # which a cache hit must not be allowed to fake.
+      - name: Build artefacts are present
+        run: |
+          test -f packages/shared/dist/index.js
+          test -d frontend/dist
+          test -d extension/.output
+
+      - name: @learnos/shared is browser-safe
+        run: |
+          ! grep -rEn "from ['\"](node:|drizzle|postgres|bullmq|ioredis|express|ws)['\"/]" packages/shared/src

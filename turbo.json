@@ -1,0 +1,29 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "tasks": {
+    // ^build is the whole reason Turbo is here: @learnos/shared emits the JS and
+    // .d.ts the three apps compile against, so it has to be built before any of
+    // them. Nothing else in the repo has an ordering constraint.
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".output/**"]
+    },
+    // tsc --noEmit in every app, each typechecking against @learnos/shared's
+    // emitted declarations — so the same ordering applies.
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    // Not cached. The backend suite talks to Postgres and Redis, so a green run
+    // says nothing about a machine whose database has since moved on; a cache
+    // hit here would be a lie.
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
