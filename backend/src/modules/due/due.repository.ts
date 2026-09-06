@@ -24,12 +24,6 @@ export async function findDueCards(userId: string, now: Date, limit: number) {
     .orderBy(asc(cards.due))
     .limit(limit);
 
-  console.log('[findDueCards] query result', {
-    userId,
-    now: now.toISOString(),
-    limit,
-    rows,
-  });
 
   return rows.map((row) => ({ conceptId: row.conceptId, due: row.due }));
 }

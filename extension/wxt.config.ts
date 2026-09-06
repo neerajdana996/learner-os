@@ -32,6 +32,11 @@ export default defineConfig({
     // "should I pop?" tick. idle: don't interrupt someone who isn't there.
     // notifications: how a card announces itself when the popup isn't open.
     permissions: ['storage', 'alarms', 'notifications', 'idle'],
+    // Without these Chrome shows the default puzzle piece in the toolbar — the
+    // thing ten people are told to click — and `notifications.create` has no
+    // icon to draw. A clay square with a paper dot; the same two colours the
+    // web app is built from.
+    icons: { 16: 'icon/16.png', 32: 'icon/32.png', 48: 'icon/48.png', 128: 'icon/128.png' },
     // Exactly one origin, and no `<all_urls>`: this extension reads nothing
     // from the pages the learner is browsing, and asking for more would be
     // both a lie about what it does and a much worse review to pass.

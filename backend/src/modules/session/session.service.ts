@@ -154,14 +154,6 @@ export async function completeSession(
   now: Date = new Date(),
 ): Promise<{ completedToday: true; taught: number }> {
   const { topic, user, chosen } = await buildPlan(userId, now);
-  console.log('[completeSession] buildPlan result', {
-    topicId: topic.id,
-    topicStatus: topic.status,
-    userId,
-    chosenConceptIds: chosen.map((c) => c.id),
-    chosenCount: chosen.length,
-    timezone: user?.timezone ?? null,
-  });
   const offered = new Set(chosen.map((c) => c.id));
   const unknown = conceptIds.filter((id) => !offered.has(id));
   if (unknown.length > 0) {
@@ -170,12 +162,6 @@ export async function completeSession(
 
   // due = now so the extension can ask about it later the same day.
   const card = toDbCard(newCard(now));
-  console.log('[completeSession] before teachConcepts', {
-    userId,
-    conceptIds,
-    due: card.due,
-    taughtAt: now,
-  });
 
   await teachConcepts(
     userId,
@@ -183,12 +169,5 @@ export async function completeSession(
   );
 
   await markSessionComplete(userId, topic.id, localDayFor(now, user?.timezone ?? null));
-  console.log('[completeSession] after teachConcepts and session complete', {
-    userId,
-    topicId: topic.id,
-    day: localDayFor(now, user?.timezone ?? null),
-    cardDue: card.due,
-    taughtCount: conceptIds.length,
-  });
   return { completedToday: true, taught: conceptIds.length };
 }

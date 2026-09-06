@@ -15,7 +15,6 @@ function providerParam(req: Request): string {
 }
 
 function fail(res: Response, error: unknown): void {
-  console.log(error)
   if (error instanceof OAuthError) {
     const status = error.reason === 'unknown_provider' || error.reason === 'not_configured' ? 404 : 400;
     res.status(status).json({ error: error.reason, message: error.message });
