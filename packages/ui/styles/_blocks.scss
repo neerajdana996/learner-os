@@ -289,3 +289,58 @@
     }
   }
 }
+
+/// Put the lines in order (T-114). Moved with buttons rather than dragged —
+/// see the component for why. Each control clears `$tap`, because this is a
+/// format someone will use with a thumb.
+.order {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: $s-3;
+    padding: $s-2 $s-2 $s-2 $s-3;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: $radius;
+    min-height: $tap;
+  }
+
+  &__line {
+    font-family: $font-mono;
+    font-size: $text-sm;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  &__moves {
+    display: flex;
+    gap: 2px;
+  }
+
+  &__move {
+    @include control;
+    min-width: $tap;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-2);
+    font-size: $text-md;
+
+    &:hover:not(:disabled) {
+      background: var(--sunken);
+      color: var(--ink);
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+}

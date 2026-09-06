@@ -2412,3 +2412,17 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** (2026-09-06) **The block decides the surface, not the item's `type`.** Grading checks for the answer block before the type switch, and `QuestionCard` does the same — which is the shape the remaining four answer surfaces (T-086–T-088) should follow.
   - Also fixed while in there: `recall` and `application` rendered a 2-row **textarea**, which T-029's spec calls an input. A textarea invited a paragraph for a one-word answer and wasted a third of a 380×300 popup on empty rows; an input also gets Enter-to-submit for free. `explain` keeps its textarea.
   - **Still open, and now the only gap in the card:** `clozeCode`, `hotspotLine`, `orderLines` and `codeEditor` have schemas, generator support and prompt instructions, and **no answer surface** — they fall through to the text box. That is T-086, T-087 and T-088, all `todo`, and T-088 is blocked on the T-081 library call. Today the schema supports five answer surfaces and the UI renders one.
+
+### T-114 · Put the lines in order
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-085
+- **files:** `packages/ui/src/blocks/OrderLines.tsx`, `packages/ui/src/QuestionCard.tsx`, `packages/ui/styles/_blocks.scss`, `backend/src/lib/grade.ts`, tests alongside
+- **description:** The last answer surface that is not blocked on T-081. Four to six lines, shuffled once by the worker so every learner on a topic gets the same puzzle, arranged into the correct sequence. `order` — indices into the shuffled `lines` — is the answer key.
+- **acceptance:** The arrangement grades against `order`; every control is keyboard-operable and clears `$tap`.
+- **tests:** Correct arrangement passes and any other fails; the feedback names which swap breaks it; the first line cannot move up and the last cannot move down; the reported value is indices into the shuffled lines; a malformed stored value falls back to the order as shown rather than rendering a list with lines missing.
+- **notes:** (2026-09-06) **Moved with buttons, not dragged — a deliberate divergence from the design canvas**, which says "drags 4–6 shuffled lines into order". HTML5 drag-and-drop does not fire on touch at all, and it is invisible to a screen reader without a parallel keyboard implementation. That is the same objection T-087's acceptance raised against click handlers on `<div>`s, and it was right there too. Buttons are keyboard-native, work under a thumb, need no library, and **leave the data contract untouched** — so a drag affordance can be layered on later as an enhancement rather than a rewrite. Founder's call to overturn.
+  - **Graded on indices, never on text.** Two identical lines would otherwise compare equal in the wrong positions.
+  - Feedback on a wrong answer is `swapBreaks` — which two lines, swapped, break it and how. Naming the right sequence back teaches nothing; the reason the order mattered is the thing worth remembering.
+  - A malformed or partial stored value falls back to the order as shown, because the alternative is a list rendering with a line missing or duplicated — a broken question rather than a wrong answer.
+  - The worker's shuffle is guaranteed never to be the correct order, so submitting the arrangement untouched is always wrong. The card waiting for a move before it accepts an answer is therefore correct, not an obstacle.

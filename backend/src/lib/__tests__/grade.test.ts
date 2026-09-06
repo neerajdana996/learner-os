@@ -345,3 +345,43 @@ describe('a blank is graded as code, not prose', () => {
     expect((await grade(boundary, 'lo<hi')).correct).toBe(true);
   });
 });
+
+describe('put the lines in order (T-114)', () => {
+  // The learner sees `lines` shuffled; `order` is the correct sequence as
+  // indices into it. Correct here is 1,2,0 — "b", "c", "a".
+  const ordering = {
+    type: 'application' as const,
+    prompt: 'Put the effect in order.',
+    answer: 'b, c, a',
+    blocks: [
+      {
+        kind: 'orderLines' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        lines: ['a', 'b', 'c'],
+        order: [1, 2, 0],
+        swapBreaks: 'Subscribing before the guard runs leaks on the first render.',
+      },
+    ],
+  };
+
+  it('grades the correct arrangement correct', async () => {
+    expect((await grade(ordering, '1,2,0')).correct).toBe(true);
+  });
+
+  it('grades any other arrangement wrong', async () => {
+    expect((await grade(ordering, '0,1,2')).correct).toBe(false);
+    expect((await grade(ordering, '2,1,0')).correct).toBe(false);
+  });
+
+  /** The reason the order mattered is the thing worth remembering — naming the
+   *  right sequence back teaches nothing. */
+  it('explains which swap breaks it', async () => {
+    const result = await grade(ordering, '0,1,2');
+    expect(result.feedback).toMatch(/leaks on the first render/);
+  });
+
+  it('tolerates surrounding whitespace from a form', async () => {
+    expect((await grade(ordering, ' 1,2,0 ')).correct).toBe(true);
+  });
+});

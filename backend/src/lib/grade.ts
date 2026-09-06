@@ -128,6 +128,24 @@ export async function grade(payload: ItemPayload, response: string | number): Pr
   }
 
   /**
+   * Put the lines in order (T-114).
+   *
+   * `order` is the answer key: indices into the shuffled `lines`, in the
+   * correct sequence. The learner sends the arrangement they built, so the
+   * comparison is the two index lists, not the text — identical lines would
+   * otherwise compare equal in the wrong positions.
+   */
+  if (answerBlock?.kind === 'orderLines') {
+    const correct = text.trim() === answerBlock.order.join(',');
+    return {
+      correct,
+      // `swapBreaks` names which two lines, swapped, break it and how — the
+      // reason the order mattered, which is the thing worth remembering.
+      feedback: correct ? 'Correct.' : answerBlock.swapBreaks,
+    };
+  }
+
+  /**
    * Click the line that is wrong (T-087).
    *
    * `acceptAdjacent` is the honest catch in this format: when the fix is an

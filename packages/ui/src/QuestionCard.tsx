@@ -2,6 +2,7 @@ import type { PublicItem } from '@learnos/shared';
 import { BlockList } from './blocks/BlockList.js';
 import { ClozeCode } from './blocks/ClozeCode.js';
 import { HotspotLine } from './blocks/HotspotLine.js';
+import { OrderLines } from './blocks/OrderLines.js';
 import { Choice } from './Choice.js';
 
 export interface QuestionCardProps {
@@ -44,6 +45,12 @@ export function QuestionCard({ item, value, onChange }: QuestionCardProps) {
         <HotspotLine
           block={answerBlock}
           value={typeof value === 'number' ? value : null}
+          onChange={onChange}
+        />
+      ) : answerBlock?.kind === 'orderLines' ? (
+        <OrderLines
+          block={answerBlock}
+          value={typeof value === 'string' ? value : ''}
           onChange={onChange}
         />
       ) : answerBlock?.kind === 'numeric' ? (

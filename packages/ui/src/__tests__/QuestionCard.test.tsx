@@ -195,3 +195,60 @@ describe('click the line that is wrong (T-087)', () => {
     expect(screen.getByRole('radio', { name: /Line 2:/ })).toBeInTheDocument();
   });
 });
+
+describe('put the lines in order (T-114)', () => {
+  const ordering = {
+    itemId: 'i1',
+    conceptId: 'c1',
+    type: 'application' as const,
+    prompt: 'Put the effect in order.',
+    blocks: [
+      {
+        kind: 'orderLines' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        lines: ['subscribe()', 'return cleanup', 'const s = get()'],
+      },
+    ],
+  };
+
+  it('shows every line in the order the worker shuffled them into', () => {
+    render(<QuestionCard item={ordering} value="" onChange={() => {}} />);
+    const rows = screen.getAllByRole('listitem');
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveTextContent('subscribe()');
+  });
+
+  /**
+   * Buttons, not drag. HTML5 drag does not fire on touch at all and is
+   * invisible to a screen reader without a parallel keyboard implementation —
+   * the same objection T-087 raised against click handlers on divs.
+   */
+  it('is operable with buttons that name the line they move', () => {
+    render(<QuestionCard item={ordering} value="" onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Move "return cleanup" up' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move "subscribe()" down' })).toBeInTheDocument();
+  });
+
+  it('cannot move the first line up or the last line down', () => {
+    render(<QuestionCard item={ordering} value="" onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Move "subscribe()" up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move "const s = get()" down' })).toBeDisabled();
+  });
+
+  it('reports the arrangement as indices into the shuffled lines', async () => {
+    const user = userEvent.setup();
+    let latest = '';
+    render(<QuestionCard item={ordering} value="" onChange={(v) => { latest = String(v); }} />);
+
+    await user.click(screen.getByRole('button', { name: 'Move "return cleanup" up' }));
+    // "return cleanup" (index 1) moves above "subscribe()" (index 0).
+    expect(latest).toBe('1,0,2');
+  });
+
+  it('falls back to the order as shown when the stored value is malformed', () => {
+    // A partial or duplicated value must never render a list with lines missing.
+    render(<QuestionCard item={ordering} value="1,1" onChange={() => {}} />);
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
+});
