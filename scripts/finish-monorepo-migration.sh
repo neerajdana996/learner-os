@@ -93,16 +93,27 @@ done
 
 # ------------------------------------------------------------------- 3. push
 say "3/5 push the monorepo to $OWNER/$MONOREPO"
-if [ "$CURRENT" != "$BRANCH" ]; then
+
+# --prune matters more than the fetch does. This working copy was cloned from a
+# local path, so it inherited that clone's remote-tracking refs — origin/main
+# and a handful of origin/task/* that never existed under the GitHub URL. Left
+# in place they make `git rev-parse origin/main` succeed against a branch the
+# remote does not have, which is exactly the wrong answer to "am I behind?".
+run git fetch -q --prune origin || true
+
+# Ask the remote, not the local ref cache. An empty answer means the branch is
+# ours to create, not that something is wrong.
+if [ -n "$(git ls-remote --heads origin "$BRANCH" 2>/dev/null)" ]; then
+  behind=$(git rev-list --count "HEAD..origin/$BRANCH" 2>/dev/null || echo 0)
   # Fast-forward only. If main has moved on the remote, stop and let a human
   # decide — a --force here would discard whatever moved it.
-  run git fetch -q origin "$BRANCH"
-  if git rev-parse --verify -q "origin/$BRANCH" >/dev/null; then
-    behind=$(git rev-list --count "HEAD..origin/$BRANCH")
-    [ "$behind" = "0" ] || die "origin/$BRANCH is $behind commit(s) ahead of you — merge before pushing"
-  fi
-  run git branch -f "$BRANCH" "$CURRENT"
+  [ "$behind" = "0" ] || die "origin/$BRANCH is $behind commit(s) ahead of you — merge before pushing"
+  ok "origin/$BRANCH exists and is not ahead"
+else
+  echo "  – origin/$BRANCH does not exist yet; this push creates it"
 fi
+
+[ "$CURRENT" = "$BRANCH" ] || run git branch -f "$BRANCH" "$CURRENT"
 run git push -u origin "$BRANCH"
 run git push -u origin "$CURRENT"
 ok "pushed $BRANCH and $CURRENT"
