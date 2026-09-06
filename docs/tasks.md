@@ -2241,3 +2241,34 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The `teaching/example.md` explanation hedges twice ("perhaps 90% less water", "often have fewer stomata") and this is **correct, not a defect**: drought plants often but not always have fewer stomata, and T-106's rule says to name a real exception rather than flatten it into a false absolute. Left alone deliberately.
   - `conceptMap/example.md` already models good naming (Chlorophyll, Calvin cycle, Stomata — all real terms), so it reinforces T-106's naming rule instead of fighting it. A closing note now says so explicitly.
 - **Open, not fixed:** `gradeExplanation` is the only generation prompt with **no `example.md`**, and it is the one in the request path with a learner waiting. Worth one before the pilot.
+
+### T-108 · The systems category — the answer is a shape
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-085
+- **files:** `packages/shared/src/blocks.ts`, `backend/src/llm/prompts/items/domains/systems.md`, `packages/ui/styles/_code-palette.scss`, `packages/ui/src/blocks/*`, worker SVG renderer, tests
+- **description:** Raised by the founder (2026-09-06). `ConceptDomainSchema` has four domains — `code | math | systems | prose` — and only `code` has a prompt fragment or any block that fits it. **Every block kind in the union is code-shaped:** `prose · code · codeDiff · terminal · clozeCode · hotspotLine · orderLines · codeEditor`. A `systems` concept today falls back to a prompt string and a textarea, which is the exact failure T-079/T-080 fixed for code.
+  - **This one is in the pilot.** *Consistency in distributed systems* is one of the three pinned topics (T-097), so this is the category whose absence a real learner feels. **Maths is not in the pilot** — see T-109, which is why these are separate tasks.
+  - **Already designed in full**: `design/systems/` — Main, Spec, Build, Explain, Trace. Do not redesign; read the canvas.
+  - **Four blocks, two genuinely new** (the design's own measure of whether the abstraction held):
+    - `diagram` (context, new) — nodes and edges, **rendered to SVG in the worker**, because a diagram you only read does not need a graph library on the client. Extension-safe at ≤5 nodes.
+    - `sequence` (context, new) — lanes and messages down a time axis. Half of distributed systems is an interleaving: a stale read is not a picture of boxes, it is two orders of events. Extension-safe at 2 lanes.
+    - `graphBuild` (answer, new) — place a component or draw an edge. **The one genuinely new grader**: the answer is a graph, so grading asks whether the read path goes through the primary, not whether two strings match. 45–90s, and it needs a canvas on the client.
+    - `numeric` (answer, new, **shared with maths**) — a number with a tolerance. `accept: string[]` cannot express this: `6GB`, `6e9` and `6,000,000,000` are one answer with infinitely many spellings, and a capacity estimate wants an order of magnitude rather than equality. Specified once here, consumed by T-109.
+  - **Everything else ports unchanged**: `hotspot` targets a node or an edge instead of a line, `orderLines` orders protocol steps instead of statements, and `recognition`, `explain` and the whole reveal slot are identical.
+- **acceptance:** A `systems` concept generates items using the new blocks; a diagram renders from worker-generated SVG with no client graph library; `pnpm build` passes.
+- **tests:** Generation schema accepts the four new blocks and rejects a `graphBuild` in a non-answer slot; the worker's SVG output and the live renderer read the same five token names; `numeric` accepts a value inside tolerance and rejects one outside.
+- **notes:** ⚠ **`graphBuild` needs a graph/canvas library in the browser, which `loop.md §2` bars.** That is the same decision as **T-081** (CodeMirror), which is logged as blocking `T-088` only — it does not: it gates this too, and unlike T-088 this category is in the pilot. **T-081's scope is wrong and its priority is understated.**
+  - The build spec says tokens append to `src/styles/_code-palette.scss`. That path is now `packages/ui/styles/_code-palette.scss` (T-090 → the design-system move). The design predates it.
+
+### T-109 · The maths category
+- **status:** todo
+- **sprint:** post-pilot
+- **depends_on:** T-108
+- **files:** `backend/src/llm/prompts/items/domains/math.md`, `packages/shared/src/blocks.ts`, tests
+- **description:** The fourth domain, and the only one not represented at all. Designed at `design/maths/` — Main, Explain, FillIn.
+  - **Deliberately after the pilot.** None of the three pinned topics is a maths topic, so a `math` concept arising inside a code or systems topic is rare and falls back to `prose` acceptably. The design says as much.
+  - Its `numeric` block is specified once, in T-108, because systems needs the identical thing — a number with a tolerance rather than a string match.
+- **acceptance:** A `math` concept generates items that ask for a value or a derivation rather than a sentence about one.
+- **tests:** `math.md` composes via `loadTemplate(name, fragment)` with no code change (T-083 built the mechanism and a missing fragment is already a no-op).
+- **notes:**
