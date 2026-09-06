@@ -1883,7 +1883,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** ⚠ Blocked on **T-081** — needs a founder call on CodeMirror before it can start.
 
 ### T-089 · What the extension is allowed to pop
-- **status:** todo
+- **status:** done
 - **sprint:** 5
 - **depends_on:** T-079, T-085
 - **files:** `backend/src/modules/due/due.repository.ts`, `extension/src/`, tests alongside
@@ -1891,7 +1891,10 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **`items.answer_kind` is populated as of T-080** — the worker derives it with `answerKindOf`, and it is null for a plain prompt, which is every item generated before blocks existed. A null must stay eligible, or the extension goes quiet for every existing topic.
 - **acceptance:** No item whose `answer_kind` is popup-ineligible is ever returned to a surface of `extension`, asserted at the repository level rather than filtered in the client. An item with a null `answer_kind` is still eligible.
 - **tests:** A concept whose only due item is a `codeEditor` yields nothing for the extension and still yields it for the web session; a listing over 8 lines is rejected by the eligibility check rather than truncated at render.
-- **notes:**
+- **notes:** (2026-09-06) Done as the precondition for T-029: a card UI built before this would have been served four-minute questions in a 380×300 popup.
+  - **The eligible set is derived, not listed.** `POPUP_INELIGIBLE_KINDS` names the two that are too slow (`codeEditor`, `orderLines`); everything else — including any format added later — is eligible by default. The opposite default fails silently: `graphBuild` (T-108) would simply never appear on the extension, and "no card right now" is also what a quiet day looks like, so nobody would notice for weeks. A test asserts every answer kind is classified exactly once, so a new format cannot slip through unclassified.
+  - **`surface` decides where a question is asked, never whether.** A `codeEditor` concept stays due; it waits for the next web session. `getDueItems` defaults to `'web'`, and `/due` pins `'extension'` in the controller rather than reading a header a client could get wrong.
+  - The same predicate is what T-093 needs for the Day-30 test, which is why it is a lib rather than a line in the due query.
 
 ### T-090 · One source of truth for presentation, not just for types
 - **status:** done

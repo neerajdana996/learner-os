@@ -2,17 +2,24 @@ import { toPublicItem } from '../../lib/publicItem.js';
 import type { DueItemsResponse } from '@learnos/shared';
 import { findCandidates, findDueCards, findRecentHistory, RECENT_WINDOW } from './due.repository.js';
 
+/**
+ * `surface` decides which answer formats are allowed, not whether a concept is
+ * due (T-089). A `codeEditor` item does not disappear for the extension — the
+ * concept simply waits for the next web session instead of arriving as a card
+ * nobody can answer at a traffic light.
+ */
 export async function getDueItems(
   userId: string,
   limit: number,
   now: Date = new Date(),
+  surface: 'web' | 'extension' = 'web',
 ): Promise<DueItemsResponse> {
   const dueCards = await findDueCards(userId, now, limit);
   if (dueCards.length === 0) return { items: [] };
 
   const conceptIds = dueCards.map((card) => card.conceptId);
   const [candidates, history] = await Promise.all([
-    findCandidates(conceptIds),
+    findCandidates(conceptIds, surface === 'extension'),
     findRecentHistory(userId, conceptIds),
   ]);
 

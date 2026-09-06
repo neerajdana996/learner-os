@@ -50,6 +50,9 @@ async function seedDueConcept(
     taught?: boolean;
     due?: Date;
     payloads?: object[];
+    /** Normally derived by the worker via `answerKindOf` (T-080). Set directly
+     *  here so a test can seed a format the popup must refuse. */
+    answerKind?: string | null;
   },
 ) {
   const [concept] = await db
@@ -65,6 +68,7 @@ async function seedDueConcept(
         conceptId: concept.id,
         type: (payload as { type: 'recall' }).type,
         payload,
+        answerKind: opts.answerKind ?? null,
       })),
     )
     .returning({ id: items.id });
@@ -240,6 +244,37 @@ describe('GET /due', () => {
     const other = await seedUser();
 
     expect((await getDue(other.cookie)).body.items).toEqual([]);
+  });
+
+  /**
+   * T-089. The popup is 380×300 and the card promises twenty seconds. A
+   * `codeEditor` is two to four minutes — served there it is not a worse card,
+   * it is a dismissed one, and three dismissals in a row stop the extension for
+   * the day (`lib/schedule.ts`). One bad pick costs the rest of the day's
+   * retrieval, which is the thing being measured.
+   */
+  it('never serves an answer format the popup cannot hold', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1, answerKind: 'codeEditor' });
+
+    expect((await getDue(user.cookie)).body.items).toEqual([]);
+  });
+
+  it('still serves the cheap answer formats', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1, answerKind: 'clozeCode' });
+
+    // 15–30s and one short blank: exactly what the card is for.
+    expect((await getDue(user.cookie)).body.items).toHaveLength(1);
+  });
+
+  it('serves a plain item, which is every item generated before blocks existed', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1, answerKind: null });
+
+    // A null answer_kind must stay eligible or the extension goes quiet for
+    // every existing topic.
+    expect((await getDue(user.cookie)).body.items).toHaveLength(1);
   });
 
   it('requires a user', async () => {
