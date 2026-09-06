@@ -143,6 +143,10 @@ export async function processGenerationJob(
               order: concept.order,
               heldOut: concept.heldOut,
               teachMode: concept.teachMode,
+              // Decided once in the map pass (T-082) and read by every format
+              // decision downstream — T-083 appends `domains/code.md` only for
+              // a `code` concept.
+              domain: concept.domain,
               // Null for held-out concepts, which are never taught.
               tryFirstPrompt: teaching?.tryFirstPrompt ?? null,
               explanationShort: teaching?.explanationShort ?? null,

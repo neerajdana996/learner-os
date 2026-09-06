@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
+import { ConceptDomainSchema, type ConceptDomain } from '../shared/index.js';
 
 /**
  * Floor on a usable map. Below this the course is unusable — the diagnostic,
@@ -26,6 +27,17 @@ const ConceptSchema = z.object({
   title: z.string().min(1),
   summary: z.string().min(1),
   prereqs: z.array(z.string()).default([]),
+  /**
+   * Decided here and not in the item pass (T-082): this call already reasons
+   * about what each concept *is* in order to order and link them, so asking
+   * forty separate item calls to re-derive it would pay for the same judgement
+   * forty times, on the cheap model, with no guarantee two siblings agree.
+   *
+   * Required, with no default. A default would be a silent claim about every
+   * concept the model declined to classify, and `domain` is what decides which
+   * question formats a concept can even use (T-083).
+   */
+  domain: ConceptDomainSchema,
 });
 
 export const ConceptMapSchema = z.object({
@@ -94,12 +106,16 @@ export const conceptMapJsonSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['slug', 'title', 'summary', 'prereqs'],
+        required: ['slug', 'title', 'summary', 'prereqs', 'domain'],
         properties: {
           slug: { type: 'string' },
           title: { type: 'string' },
           summary: { type: 'string' },
           prereqs: { type: 'array', items: { type: 'string' } },
+          // Enumerated for the provider as well as for Zod: under strict mode
+          // this makes an invented value like "javascript" structurally
+          // impossible rather than a retry.
+          domain: { type: 'string', enum: [...ConceptDomainSchema.options] },
         },
       },
     },
@@ -150,5 +166,39 @@ export async function generateConceptMap(topic: string): Promise<ConceptMap> {
         `${EXPECTED_MIN_CONCEPTS}–40. Thin for a 30-day course — worth regenerating before QA.`,
     );
   }
+  warnOnUniformDomain(topic, map);
   return map;
+}
+
+/**
+ * A map where every concept has the same domain is legal and almost always
+ * wrong (T-082).
+ *
+ * It is the signature of a model that classified by *subject* — every concept
+ * in a topic called "Dynamic programming" coming back `code` — and it silently
+ * disables every format decision downstream: `domains/code.md` gets appended to
+ * all forty item calls, and the concepts whose correct answer is a sentence get
+ * a blank cut into a listing instead.
+ *
+ * Not a hard failure, because a genuinely uniform topic does exist. A warning
+ * plus a line in `docs/qa-checklist.md` is enough: the founder reads every
+ * topic before anyone is onboarded onto it, and this is one glance.
+ */
+export function domainSplit(map: ConceptMap): Record<ConceptDomain, number> {
+  const split = { code: 0, math: 0, systems: 0, prose: 0 };
+  for (const concept of map.concepts) split[concept.domain] += 1;
+  return split;
+}
+
+function warnOnUniformDomain(topic: string, map: ConceptMap): void {
+  const split = domainSplit(map);
+  const used = Object.entries(split).filter(([, n]) => n > 0);
+  if (used.length > 1 || map.concepts.length < 2) return;
+
+  const [only] = used as [[ConceptDomain, number]];
+  console.warn(
+    `concept map for "${topic}": all ${map.concepts.length} concepts are "${only[0]}". ` +
+      'Legal, but usually means the model classified by subject rather than by what a correct ' +
+      'answer looks like — check the domain split before onboarding anyone (docs/qa-checklist.md).',
+  );
 }

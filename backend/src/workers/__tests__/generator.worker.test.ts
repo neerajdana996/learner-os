@@ -25,6 +25,8 @@ const { concepts, conceptPrereqs, items, topics } = await import('../../db/schem
 const { seedUser, truncateAll } = await import('../../test/db.js');
 
 /** n concepts in teaching order, each depending on the one before it. */
+const DOMAINS = ['code', 'prose', 'systems', 'math'] as const;
+
 function fakeMap(n: number) {
   return {
     topic: 'React Hooks',
@@ -33,6 +35,9 @@ function fakeMap(n: number) {
       title: `Concept ${i + 1}`,
       summary: `summary ${i + 1}`,
       prereqs: i === 0 ? [] : [`c${i}`],
+      // Cycled rather than fixed, so a worker that dropped the field or wrote
+      // the same one for every row would fail the assertion below (T-082).
+      domain: DOMAINS[i % DOMAINS.length] as (typeof DOMAINS)[number],
     })),
   };
 }
@@ -198,6 +203,26 @@ describe('processGenerationJob', () => {
       expect(arg.teachMode).toBe(modeBySlug.get(row?.slug ?? ''));
       expect(arg.topic).toBe('React Hooks');
     }
+  });
+
+  // T-082 — the map decides the domain and the worker is the only thing that
+  // can carry it to the row. T-079 left the column nullable, so a worker that
+  // dropped this would look fine and silently disable every format decision.
+  it('persists each concept’s domain from the map', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    await processGenerationJob({ topicId: topic.id }, seededRng(42));
+
+    const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
+    const bySlug = new Map(rows.map((r) => [r.slug, r.domain]));
+    for (const concept of fakeMap(20).concepts) {
+      expect(bySlug.get(concept.slug), concept.slug).toBe(concept.domain);
+    }
+    // And not the same value for all of them, which a hardcoded default would
+    // also satisfy.
+    expect(new Set(rows.map((r) => r.domain)).size).toBeGreaterThan(1);
   });
 
   // T-091 — the topic's language, read from the row rather than decided forty

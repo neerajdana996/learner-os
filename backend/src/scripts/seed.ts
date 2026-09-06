@@ -153,6 +153,10 @@ export async function seed(): Promise<SeedResult> {
           teachMode: (concept.order % 2 === 0 ? 'example_first' : 'try_first') as
             | 'try_first'
             | 'example_first',
+          // Straight from the fixture (T-082), so seeded data shows the same
+          // domain spread a real generation does — otherwise `pnpm qa` on a
+          // seeded topic can never exercise the check it exists to make.
+          domain: concept.domain,
           // Held-out concepts are never taught, so they carry no teaching
           // content — the same rule the real worker follows (T-053).
           tryFirstPrompt: isHeldOut ? null : teaching.tryFirstPrompt,

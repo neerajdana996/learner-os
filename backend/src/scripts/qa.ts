@@ -51,6 +51,7 @@ interface ConceptRow {
   order: number;
   heldOut: boolean;
   teachMode: 'try_first' | 'example_first' | null;
+  domain: 'code' | 'math' | 'systems' | 'prose' | null;
   tryFirstPrompt: string | null;
   explanationShort: string | null;
   explanationLong: string | null;
@@ -102,7 +103,7 @@ function renderConcept(concept: ConceptRow, conceptItems: ItemRow[]): string {
   let out = `## ${concept.order} · ${concept.title}${concept.heldOut ? '  — HELD OUT' : ''}\n\n`;
   out += `<!-- learnos:concept ${concept.id} -->\n`;
   out += `- [ ] reviewed\n\n`;
-  out += `\`slug: ${concept.slug}\` · teach mode: \`${concept.teachMode ?? 'unset'}\`\n\n`;
+  out += `\`slug: ${concept.slug}\` · teach mode: \`${concept.teachMode ?? 'unset'}\` · domain: \`${concept.domain ?? 'unset'}\`\n\n`;
 
   if (concept.heldOut) {
     // The control group the pilot's result rests on (plan.md §6): never taught,
@@ -141,6 +142,30 @@ function renderConcept(concept: ConceptRow, conceptItems: ItemRow[]): string {
   return `${out}---\n\n`;
 }
 
+/**
+ * The first thing to read (T-082), because it invalidates everything below it.
+ *
+ * A topic where every concept came back one domain is legal and almost always
+ * means the model classified by subject rather than by what a correct answer
+ * looks like — which forces rich code formats onto concepts whose answer is a
+ * sentence. The generator warns at 100%; it cannot see 90%, and a human glance
+ * at one line can. Roughly half of a healthy code topic is `prose`.
+ */
+export function renderDomainSplit(conceptRows: ConceptRow[]): string {
+  const counts = new Map<string, number>();
+  for (const concept of conceptRows) {
+    const key = concept.domain ?? 'unset';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const parts = [...counts]
+    .sort((a, b) => b[1] - a[1])
+    .map(([domain, n]) => `${domain} ${n} (${Math.round((n / conceptRows.length) * 100)}%)`);
+
+  const prose = counts.get('prose') ?? 0;
+  const thin = conceptRows.length > 0 && prose / conceptRows.length < 1 / 3;
+  return `${parts.join(' · ')}${thin ? ' — ⚠ under a third prose; check these were classified by answer shape, not by subject' : ''}`;
+}
+
 export function renderExport(
   topic: { id: string; title: string },
   conceptRows: ConceptRow[],
@@ -155,6 +180,7 @@ export function renderExport(
   out += `<!-- learnos:topic ${topic.id} -->\n\n`;
   out += `> **This file contains every answer key for a live topic.** \`qa/\` is gitignored — do not commit it, and do not share it with a pilot participant.\n\n`;
   out += `Generated ${new Date().toISOString()} · ${conceptRows.length} concepts · ${itemRows.length} items.\n\n`;
+  out += `**Domain split.** ${renderDomainSplit(conceptRows)}\n\n`;
   out += `**How to use.** Work through \`docs/qa-checklist.md\`. Edit the text between the \`<!-- learnos:field ... -->\` and \`<!-- /learnos:field -->\` markers, leaving the markers themselves alone — they carry the row id, so an edited title still lands on the right row. Tick a concept's checkbox when you have reviewed it. Then:\n\n`;
   out += `\`\`\`\npnpm qa:apply qa/<this-file>.md\n\`\`\`\n\n`;
   out += `Applying an unedited file changes nothing. To drop a bad question entirely: \`pnpm qa:retire <itemId>\`.\n\n---\n\n`;

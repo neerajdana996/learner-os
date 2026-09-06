@@ -8,7 +8,7 @@ import { createApp } from '../../app.js';
 import { db } from '../../db/client.js';
 import { cards, concepts, items, topics, users } from '../../db/schema.js';
 import { truncateAll } from '../../test/db.js';
-import { applyEdits, exportTopic, parseExport, QaError, retireItem } from '../qa.js';
+import { applyEdits, exportTopic, parseExport, QaError, renderDomainSplit, retireItem } from '../qa.js';
 
 const app = createApp();
 
@@ -38,6 +38,9 @@ async function seedTopic() {
         explanationShort: 'useState stores a value across renders.',
         explanationLong: 'Calling useState(0) returns [value, setValue].\n\nReact keeps the value outside the function.',
         corrections: [{ wrong: 'state updates immediately', why: 'React batches and re-renders' }],
+        // T-082 — two different domains, so the export's split is a spread
+        // rather than a single value the assertions could pass by accident on.
+        domain: 'code' as const,
       },
       {
         topicId: topic.id,
@@ -46,6 +49,7 @@ async function seedTopic() {
         summary: 'Held-out control concept.',
         order: 2,
         heldOut: true,
+        domain: 'prose' as const,
       },
     ])
     .returning();
@@ -155,6 +159,44 @@ describe('qa export', () => {
 
     // One reviewable checkbox per concept.
     expect(markdown.match(/^- \[ \] reviewed$/gm)).toHaveLength(2);
+  });
+
+  // T-082 — docs/qa-checklist.md now asks the founder to check the domain split
+  // before anything else, so the export has to show it. A checklist item the
+  // tool cannot support is a dead checklist item.
+  it('shows each concept’s domain and the topic-level split', async () => {
+    const { topic } = await seedTopic();
+    const { path } = await exportTopic(topic.id, outDir());
+    const markdown = readFileSync(path, 'utf8');
+
+    expect(markdown).toContain('**Domain split.**');
+    expect(markdown).toContain('domain: `code`');
+    expect(markdown).toContain('domain: `prose`');
+  });
+
+  it('flags a topic that is under a third prose, and stays quiet on a healthy spread', () => {
+    const rows = (domains: (string | null)[]) =>
+      domains.map((domain, i) => ({
+        id: `${i}`,
+        slug: `c${i}`,
+        title: `C${i}`,
+        summary: null,
+        order: i,
+        heldOut: false,
+        teachMode: null,
+        domain,
+        tryFirstPrompt: null,
+        explanationShort: null,
+        explanationLong: null,
+        corrections: [],
+      })) as Parameters<typeof renderDomainSplit>[0];
+
+    // The failure this catches: every concept classified by subject.
+    expect(renderDomainSplit(rows(['code', 'code', 'code', 'code']))).toContain('under a third prose');
+    expect(renderDomainSplit(rows(['code', 'code', 'prose', 'prose']))).not.toContain('under a third');
+    // Percentages, because 9 of 23 reads very differently from 9 of 40.
+    expect(renderDomainSplit(rows(['code', 'prose', 'prose', 'systems']))).toContain('prose 2 (50%)');
+    expect(renderDomainSplit(rows([null, null, 'prose', 'prose']))).toContain('unset 2');
   });
 
   it('names the file after the topic and writes it into the qa directory', async () => {
