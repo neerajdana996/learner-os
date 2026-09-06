@@ -9,14 +9,29 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { Button } from '@learnos/ui';
-import { getToken } from '../../lib/storage';
+import { PublicItemSchema, type PublicItem } from '@learnos/shared';
+import { getToken, takePendingCard } from '../../lib/storage';
+import { Card } from './Card';
 
 export function Popup() {
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [card, setCard] = useState<PublicItem | null>(null);
 
   useEffect(() => {
-    void getToken().then((token) => setConnected(token !== null));
+    void (async () => {
+      setConnected((await getToken()) !== null);
+      // Taken, not read: the worker put one card here and it is answered once.
+      // A parse failure means the server changed shape — better to show
+      // "nothing due" than to hand the renderer something it cannot draw.
+      const pending = await takePendingCard();
+      const parsed = PublicItemSchema.safeParse(pending);
+      if (parsed.success) setCard(parsed.data);
+    })();
   }, []);
+
+  // The card owns the whole popup when there is one: no nav, no branding, no
+  // score. It has one job and then it goes away.
+  if (card) return <Card item={card} onClose={() => window.close()} />;
 
   return (
     <main className="ext ext--popup">

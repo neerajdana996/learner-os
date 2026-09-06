@@ -866,7 +866,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - New local day resets `dailyCount`.
 
 ### T-029 · Question card UI
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-028, T-011
 - **files:** `entrypoints/popup/App.tsx`, `components/Card.tsx`, tests
@@ -875,6 +875,13 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - Selecting an option sends `response` with the option index.
   - Snooze → POST with `snoozed:true`, `correct:null`.
   - Dismiss → POST with `dismissed:true`.
+- **notes:** (2026-09-06) **The question is the shared `QuestionCard`** — the same component the session player and the day-30 test render. So a `sequence` diagram or a code listing appears here exactly as it does on the web, and a block added later arrives on both surfaces at once. What the extension adds is only the chrome that is genuinely different: a card that interrupted you, and the two ways to make it go away.
+  - **No navigation, no branding, no score**, asserted by a test. Anything that is not the question is a reason to look away, and a dismissed card costs the rest of the day's retrieval — three in a row and the extension stops until tomorrow (T-028).
+  - **One `idempotencyKey` per card, not per attempt.** The confidence tap reuses it so it *updates* the event just recorded rather than creating a second one; the offline queue (T-031) will replay on the same key. A key minted per retry would schedule the card twice, which corrupts a measurement rather than merely double-counting.
+  - **The verdict leads with the gap**: "Right — 9 days since you last saw this". `recordReview` already returned `gapDaysSinceLast`; nothing needed adding. A right answer after nine days is the thing being measured, and the same answer after ten minutes is not.
+  - **Snooze pushes `lastShownAt` forward, not back.** `shouldShow` gates on `now - lastShownAt < MIN_GAP_MS`, so a snooze is expressed by advancing the stamp until the 20-minute gap expires 30 minutes out. The first version rewound it, which would have made the next card arrive *sooner* — the opposite of "later".
+  - Snooze is deliberately **not** a dismissal: someone asking for it later has not refused it, and counting it as one would back the extension off for the whole day.
+  - **Deferred, deliberately:** "Report bad question" and `POST /items/:id/flag` are not built. The route does not exist and `flagged_bad` has no writer, so `RETIRED_FLAG_THRESHOLD` in the due query currently guards a column nothing increments. Worth its own task rather than a stub here. The concept name in the card header is also missing — `PublicItem` carries only `conceptId`, and the title is withheld from the client on purpose for held-out concepts (T-010).
   - Same card retry uses the same `idempotencyKey`.
   - Flag link → POST `/items/:id/flag`.
 
@@ -2297,3 +2304,16 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** (2026-09-06) **Unverified.** Three regeneration attempts failed and the cause is environmental, not code: Node's `fetch` cannot reach the provider from this machine while `curl` can. Isolated as far as it goes — `curl` gets 200s and real completions, Node reaches github fine, Node's raw TCP connects to the provider's IPs in under 300ms, but Node `fetch` returns `ETIMEDOUT` in ~500ms every time, and `curl -6` fails instantly. The IPv6 route to that host is dead and undici keeps taking it; `dns.setDefaultResultOrder('ipv4first')` does not help because undici resolves independently of it. Founder is fixing the network. **Re-run a distributed-systems generation and check the two acceptance criteria before trusting this.**
   - **Three rendering bugs the real output found**, none of which a hand-written test would have caught: self-messages (`Node B → Node B`, a standard idiom the generator reaches for unprompted) were **silently dropped**, taking half of one diagram with them; a self-message on the last lane had its label clipped off the canvas; and `width="100%"` stretched a 414px drawing across an 800px column and doubled every label. All three now have tests, and the canvas measures its overhang rather than padding by a guess.
   - **Two stale things found while debugging.** The concept-count warning still read *"20–40 … thin for a 30-day course"*, so every correct 16-concept map warned; it now reads 14–16 and gains the opposite check that did not exist — above 21 a 7-day course cannot finish the map, which is exactly the risk T-104 introduced. And a provider `Connection error` is reported with reason **`invalid_shape`**, which would send the next person debugging in entirely the wrong direction. Not fixed here; worth its own task.
+
+### T-111 · Three different backend tests flaked under parallel load
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** —
+- **files:** `backend/vitest.config.ts`, `backend/src/test/*`
+- **description:** Three distinct failures in one session, each passing on a re-run with no code change between: `dev.test.ts` ("scope=progress keeps the generated course") failed with a 401; a `jsonSchemas` case failed once; and `session.test.ts` ("rejects a concept that was not offered today") failed once. Two of the three were during runs that touched no backend code at all.
+  - **T-100 fixed one class of this** — vitest's 5s default timeout on the DB suites — and marked it done. This is a different one, or the same one incompletely fixed.
+  - A suite that fails one run in five teaches people to re-run rather than read, and the day it catches something real it will be re-run too. That is the cost, not the minute it wastes.
+  - Likely candidates: shared Postgres state between parallel files (`truncateAll` racing another file's insert), or Redis db 1 shared across workers despite T-068.
+- **acceptance:** The backend suite passes twenty consecutive runs.
+- **tests:** —
+- **notes:**

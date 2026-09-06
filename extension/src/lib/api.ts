@@ -11,8 +11,8 @@
  * server change shows up here as a clear parse failure instead of `undefined`
  * reaching the card UI.
  */
-import type { output, ZodTypeAny } from 'zod';
-import { MeResponseSchema, type MeResponse } from '@learnos/shared';
+import { z, type output, type ZodTypeAny } from 'zod';
+import { MeResponseSchema, type Answer, type MeResponse } from '@learnos/shared';
 import { clearToken, getToken } from './storage';
 
 /** Set at build time from `WXT_API_URL` (see `.env.example`). The manifest's
@@ -94,4 +94,32 @@ export async function apiJson<S extends ZodTypeAny>(
  */
 export function getMe(token?: string): Promise<MeResponse> {
   return apiJson(MeResponseSchema, '/me', token ? { token } : {});
+}
+
+/**
+ * What the server says back about one answer (T-029).
+ *
+ * `gapDaysSinceLast` is the line the card is built around — "9 days since you
+ * last saw this" is the product in one sentence, and it is the difference
+ * between a flashcard and a retention measurement. `feedback` is the grader's
+ * one line, null when nothing was answered.
+ */
+export const ReviewResultSchema = z.object({
+  correct: z.boolean().nullable(),
+  gapDaysSinceLast: z.number().nullable(),
+  feedback: z.string().nullable(),
+});
+
+export type ReviewResult = z.infer<typeof ReviewResultSchema>;
+
+/**
+ * Records one outcome. Snooze and dismiss go through here too, with
+ * `correct: null` — a card waved away is data about when someone will not
+ * answer, which is exactly what the daily cap and the backoff are tuned from.
+ */
+export function postReview(answer: Answer): Promise<ReviewResult> {
+  return apiJson(ReviewResultSchema, '/reviews', {
+    method: 'POST',
+    body: JSON.stringify(answer),
+  });
 }

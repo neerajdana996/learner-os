@@ -11,6 +11,10 @@
 // block — the card has one job and then it goes away.
 @use "@learnos/ui/styles/index" as *;
 @use "@learnos/ui/styles/variables" as *;
+// `index` forwards the component partials; the token files are @use'd directly
+// because a partial that wants `$s-4` should say so rather than rely on a
+// barrel to have re-exported it.
+@use "@learnos/ui/styles/mixins" as *;
 
 body {
   margin: 0;
@@ -36,4 +40,97 @@ body {
 
   // The API it is actually talking to — useful in dev, quiet in the layout.
   &__endpoint { margin-top: $s-6; }
+}
+
+/// The twenty-second card (T-029).
+///
+/// Chrome only. The question inside is the shared `QuestionCard`, and every
+/// class it renders — `.question__prompt`, `.choice`, `.blocks` — comes from
+/// `@learnos/ui` and is not restated here. Chrome gives the popup a fixed
+/// width, so this is the one place a hard number is correct.
+.card {
+  width: 344px;
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $s-2 $s-3;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__concept {
+    font-family: $font-mono;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /// The one control that must never be hard to hit. This product leans on
+  /// people declining, and a "not now" you have to aim at is a dark pattern.
+  &__x {
+    @include control;
+    min-width: $tap;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    font-size: $text-md;
+
+    &:hover {
+      color: var(--ink);
+    }
+  }
+
+  &__body {
+    padding: $s-4;
+    display: flex;
+    flex-direction: column;
+    gap: $s-4;
+
+    /// The prompt is a page heading on the web; here it is a card's question,
+    /// in a 344px column. Only the size changes.
+    .question__prompt {
+      font-size: $text-lg;
+      margin-bottom: 0;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: $s-2;
+  }
+
+  &__result {
+    display: flex;
+    flex-direction: column;
+    gap: $s-3;
+    border-top: 1px solid var(--border);
+    padding-top: $s-3;
+  }
+
+  &__verdict {
+    margin: 0;
+    font-size: $text-base;
+    font-weight: $weight-semibold;
+    line-height: 1.5;
+
+    &--right {
+      color: var(--sage);
+    }
+  }
+
+  &__why {
+    margin: 0;
+    font-size: $text-sm;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  /// Ochre, not red: failing to reach the server is not the learner's mistake.
+  &__error {
+    margin: 0;
+    font-size: $text-sm;
+    color: var(--ochre);
+  }
 }
