@@ -932,12 +932,18 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **tests:** Shown once per day; second card same day → not shown; API upsert idempotent.
 
 ### T-033 · Extension never leaks answers / never shows wrong content
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-010, T-029
 - **files:** tests only
 - **description:** Contract tests: `/due` response shape has no answer keys; extension renders only from that shape; untaught and held-out never appear (API-level). Also verify the popup never requests any URL other than the API origin (inspect fetch mock calls).
 - **tests:** as described.
+
+- **notes:** (2026-09-06) **Half of this was already true and tested.** `due.test.ts` covers the API end in full — untaught excluded, held-out excluded, `holdout` topics excluded, a topic past `endsAt` excluded, no `answer`/`accept`/`answerIndex`/`rubric` on the wire, and only the calling user's cards. What had never been asserted is the *client* end, which is where `src/contract.test.tsx` now sits.
+  - **The mutation test changed what this task shipped.** The first version claimed "puts no answer key on screen even when storage holds one" — so I broke `Popup` on purpose (handed the renderer the raw stored object, skipping `PublicItemSchema`) to watch it fail. **It passed.** `QuestionCard` renders `prompt` and `options` and nothing else, so an answer key reaching it is never drawn regardless of the parse. The test was real but its label was a lie: it guards the *renderer*, not the projection. Both are now named for what they actually prove, and they fail independently — which is the whole reason to keep both.
+  - A leaked answer key produces no visible bug. It produces a learner who scores well, which is exactly what the pilot is trying to measure honestly — so this is the one class of defect that looks like success while it happens.
+  - **The origin claim is asserted against the manifest, not just the fetch calls.** Driving every code path I remembered would miss the one I did not; `host_permissions` is the actual enforcement, so the test reads `wxt.config.ts` and asserts exactly one entry, that it is the API origin, that it is not `<all_urls>`, that `tabs` is not requested and that there are no content scripts. The fetch-call assertion is kept as well and covers the queue's replay path, which is the newest way out.
+  - An earlier draft asserted the absence of a leaked string that differed from a legitimate option by one word — it passed by coincidence rather than by guarantee. The leaked values are now sentinels no distractor can resemble, and the DOM check is on `innerHTML`, not visible text: "you cannot see it" is not a security property.
 
 ### T-034 · Extension options page + connect flow on web
 - **status:** done
