@@ -1,5 +1,4 @@
-import { Button } from '../../components/Button';
-import { Field } from '../../components/Field';
+import { Button, Field } from '@learnos/ui';
 import { ActiveWindowsSchema, type ActiveWindow } from '@learnos/shared';
 
 export interface WindowsStepProps {

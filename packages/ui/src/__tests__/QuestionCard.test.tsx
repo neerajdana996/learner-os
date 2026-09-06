@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QuestionCard } from './QuestionCard';
+import { QuestionCard } from '../index.js';
 import type { PublicItem } from '@learnos/shared';
 
 const recognition: PublicItem = {

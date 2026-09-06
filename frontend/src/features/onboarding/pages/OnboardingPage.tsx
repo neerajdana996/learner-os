@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Button } from '../../../components/Button';
-import { Choice } from '../../../components/Choice';
-import { Field } from '../../../components/Field';
+import { Button, Choice, Field } from '@learnos/ui';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { ActiveWindowsSchema } from '@learnos/shared';
 import { useUpdateMeMutation } from '../../users/usersApi';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '../../../components/Button';
+import { Button } from '@learnos/ui';
 import { useMeQuery } from '../../users/usersApi';
 import { useExtensionTokenMutation } from '../../auth/authApi';
 

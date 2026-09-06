@@ -1,5 +1,5 @@
-@use "@learnos/ui/styles/variables" as *;
-@use "@learnos/ui/styles/mixins" as *;
+@use "variables" as *;
+@use "mixins" as *;
 
 /// A selectable card wrapping a hidden radio: the topic picker, answer options
 /// and the confidence tap are all the same control at different sizes, so they

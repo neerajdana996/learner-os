@@ -11,6 +11,7 @@
  * silently does nothing, which is the hardest failure to report.
  */
 import { useEffect, useState } from 'react';
+import { Button, Field } from '@learnos/ui';
 import { ApiError, API_URL, getMe, NotConnectedError } from '../../lib/api';
 import { clearToken, getToken, setToken } from '../../lib/storage';
 
@@ -69,9 +70,9 @@ export function Options() {
             Connected as <strong>{state.email}</strong>. Questions will appear during your active
             windows.
           </p>
-          <button type="button" className="ext__button" onClick={() => void disconnect()}>
+          <Button type="button" variant="secondary" onClick={() => void disconnect()}>
             Disconnect
-          </button>
+          </Button>
         </>
       ) : (
         <>
@@ -79,29 +80,24 @@ export function Options() {
             Open the web app, go to <strong>Connect extension</strong>, and paste the token here.
             It stays on this device.
           </p>
-          <label htmlFor="token" className="ext__muted">
-            Extension token
-          </label>
-          <input
-            id="token"
-            className="ext__input"
+          <Field
+            label="Extension token"
             value={token}
             onChange={(event) => setTokenInput(event.target.value)}
             placeholder="paste the token"
             autoComplete="off"
             spellCheck={false}
+            error={state.kind === 'error' ? state.message : null}
           />
           <p>
-            <button
+            <Button
               type="button"
-              className="ext__button"
               disabled={token.trim() === '' || state.kind === 'checking'}
               onClick={() => void connect()}
             >
               {state.kind === 'checking' ? 'Checking…' : 'Connect'}
-            </button>
+            </Button>
           </p>
-          {state.kind === 'error' && <p className="ext__error">{state.message}</p>}
         </>
       )}
 

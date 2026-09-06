@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button } from '../../components/Button';
+import { Button } from '@learnos/ui';
 
 export interface StepProps {
   kicker: string;

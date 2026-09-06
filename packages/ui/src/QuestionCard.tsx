@@ -1,6 +1,6 @@
 import type { PublicItem } from '@learnos/shared';
-import { BlockList } from './blocks/BlockList';
-import { Choice } from './Choice';
+import { BlockList } from './blocks/BlockList.js';
+import { Choice } from './Choice.js';
 
 export interface QuestionCardProps {
   item: PublicItem;

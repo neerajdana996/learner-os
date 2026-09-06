@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from '../../../components/Button';
-import { ConfidenceTap } from '../../../components/ConfidenceTap';
-import { QuestionCard } from '../../../components/QuestionCard';
+import { Button, ConfidenceTap, QuestionCard } from '@learnos/ui';
 import type { Confidence } from '@learnos/shared';
 import { useAnswerDiagnosticMutation, useDiagnosticNextQuery } from '../diagnosticApi';
 

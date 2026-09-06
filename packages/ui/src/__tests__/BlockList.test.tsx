@@ -8,9 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { PublicBlock, PublicItem } from '@learnos/shared';
-import { BlockList } from '../BlockList';
-import { diffRows } from '../CodeDiffBlock';
-import { QuestionCard } from '../../QuestionCard';
+import { BlockList, diffRows, QuestionCard } from '../index.js';
 
 const SRC = ['function search(a, x) {', '  let lo = 0;', '  let hi = a.length;', '  return -1;', '}'].join('\n');
 

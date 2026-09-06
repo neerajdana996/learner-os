@@ -1,5 +1,5 @@
 import type { Confidence } from '@learnos/shared';
-import { Choice } from './Choice';
+import { Choice } from './Choice.js';
 
 type Rating = NonNullable<Confidence>;
 

@@ -1,0 +1,13 @@
+@use "variables" as *;
+
+/// The prompt above an answer surface. Shared because the same question is
+/// asked on the web and in the extension card — only the chrome around it
+/// differs. `.question-page`, which is layout, stays with the web app.
+.question {
+  &__prompt {
+    font-family: $font-display;
+    font-size: 30px;
+    line-height: 1.28;
+    margin-bottom: $s-6;
+  }
+}

@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { ConceptDot, ConceptLegend } from '../../../components/ConceptDot';
+import { ConceptDot, ConceptLegend } from '@learnos/ui';
 import type { MapConcept } from '@learnos/shared';
 import { useTopicsQuery } from '../../topics/topicsApi';
 import { useMapQuery } from '../mapApi';

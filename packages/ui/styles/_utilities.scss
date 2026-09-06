@@ -1,5 +1,5 @@
-@use "@learnos/ui/styles/variables" as *;
-@use "@learnos/ui/styles/mixins" as *;
+@use "variables" as *;
+@use "mixins" as *;
 
 .u-serif {
   font-family: $font-display;

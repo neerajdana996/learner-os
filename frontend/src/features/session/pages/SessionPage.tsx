@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '../../../components/Button';
-import { ConfidenceTap } from '../../../components/ConfidenceTap';
-import { CheckCircle, ChevronDown } from '../../../components/Icon';
-import { Prose } from '../../../components/Prose';
-import { QuestionCard } from '../../../components/QuestionCard';
+import { Button, CheckCircle, ChevronDown, ConfidenceTap, Prose, QuestionCard } from '@learnos/ui';
 import type { Confidence, PublicItem, SessionResponse } from '@learnos/shared';
 import { useSubmitReviewMutation } from '../../reviews/reviewsApi';
 import { useCompleteSessionMutation, useSessionQuery } from '../sessionApi';

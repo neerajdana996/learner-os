@@ -1,15 +1,16 @@
 // The extension's one stylesheet, imported by both entrypoints.
 //
-// It carries only what a popup and an options page need: the tokens, and the
-// handful of controls those two screens use. Everything visual comes from
-// `shared-ui` — synced from the repo root, never edited here — so a clay that
-// moves on the web moves in the popup on the next install — one package, no copy.
+// The design system arrives whole from `@learnos/ui` — tokens, and the partials
+// for every shared component. Nothing visual is authored twice: a clay that
+// moves on the web moves in the popup on the next install, because it is
+// literally the same file.
 //
-// The block components arrive with T-085 and bring their own partials; this
-// file deliberately does not anticipate them.
-@use "@learnos/ui/styles/themes";
+// What is left here is only what a popup and an options page need and nothing
+// else has: Chrome gives the popup a fixed width, and the options page is a
+// real page that needs a reading measure. Deliberately no nav and no branding
+// block — the card has one job and then it goes away.
+@use "@learnos/ui/styles/index" as *;
 @use "@learnos/ui/styles/variables" as *;
-@use "@learnos/ui/styles/mixins" as *;
 
 body {
   margin: 0;
@@ -21,8 +22,6 @@ body {
 }
 
 .ext {
-  // The popup has a fixed width because Chrome gives it one; the options page
-  // is a real page and only needs a reading measure.
   &--popup { width: 280px; padding: $s-4; }
   &--options { max-width: 460px; padding: $s-6; }
 
@@ -35,30 +34,6 @@ body {
 
   &__muted { color: var(--muted); font-size: $text-sm; line-height: 1.55; }
 
-  // Ochre, not red: a mis-pasted token is a normal thing to do once.
-  &__error { color: var(--ochre); font-size: $text-sm; }
-
   // The API it is actually talking to — useful in dev, quiet in the layout.
   &__endpoint { margin-top: $s-6; }
-
-  &__button {
-    @include control;
-    background: var(--clay);
-    color: var(--clay-on);
-    font-size: $text-sm;
-  }
-
-  &__input {
-    width: 100%;
-    font: inherit;
-    font-family: $font-mono;
-    font-size: $text-sm;
-    background: var(--surface);
-    color: var(--ink);
-    border: 1px solid var(--border-strong);
-    border-radius: $radius;
-    padding: $s-2 $s-3;
-    min-height: $tap;
-    @include focus-ring;
-  }
 }

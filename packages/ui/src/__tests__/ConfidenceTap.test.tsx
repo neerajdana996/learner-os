@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ConfidenceTap } from './ConfidenceTap';
+import { ConfidenceTap } from '../index.js';
 
 function Harness() {
   const [value, setValue] = useState<'guess' | 'think' | 'sure' | null>(null);

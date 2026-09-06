@@ -1,8 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../../../components/Button';
-import { Field } from '../../../components/Field';
-import { GitHubMark, GoogleMark } from '../../../components/Icon';
+import { Button, Field, GitHubMark, GoogleMark } from '@learnos/ui';
 import { useDevLoginMutation, useRequestMagicLinkMutation } from '../authApi';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';

@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
+import { Button } from '@learnos/ui';
 import { getToken } from '../../lib/storage';
 
 export function Popup() {
@@ -28,9 +29,9 @@ export function Popup() {
           <p className="ext__muted">
             Not connected yet. Paste your extension token to start getting questions.
           </p>
-          <button type="button" className="ext__button" onClick={() => browser.runtime.openOptionsPage()}>
+          <Button type="button" onClick={() => browser.runtime.openOptionsPage()}>
             Connect
-          </button>
+          </Button>
         </>
       )}
     </main>

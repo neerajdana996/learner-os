@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Prose } from '../Prose';
+import { Prose } from '../index.js';
 
 describe('Prose', () => {
   it('renders inline code spans as code, not as backticks', () => {

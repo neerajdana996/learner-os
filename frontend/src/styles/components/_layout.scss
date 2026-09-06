@@ -101,15 +101,6 @@
   margin-inline: auto;
 }
 
-.question {
-  &__prompt {
-    font-family: $font-display;
-    font-size: 30px;
-    line-height: 1.28;
-    margin-bottom: $s-6;
-  }
-}
-
 .stat {
   font-family: $font-mono;
   font-variant-numeric: tabular-nums;

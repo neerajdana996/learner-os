@@ -75,16 +75,6 @@ legend {
 /// Inline code inside generated prose. The model writes examples as code
 /// spans — `[2, 3, 1, 2]`, `distinctCount <= 2` — and rendering the backticks
 /// literally reads as a bug in the product rather than a quirk of the text.
-/// One rule here rather than per-screen, because every surface that shows
-/// teaching prose needs it: session, map tooltip, and the extension card.
-.code {
-  font-family: $font-mono;
-  font-size: 0.92em;
-  background: var(--sunken);
-  border-radius: 3px;
-  padding: 1px 5px;
-}
-
 /// On an inverted card the sunken wash disappears into the ink.
 .teach__card--retrieval .code,
 .card--invert .code {

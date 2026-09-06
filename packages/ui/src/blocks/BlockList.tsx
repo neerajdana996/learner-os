@@ -1,7 +1,7 @@
 import type { PublicBlock } from '@learnos/shared';
-import { CodeBlock } from './CodeBlock';
-import { CodeDiffBlock } from './CodeDiffBlock';
-import { TerminalBlock } from './TerminalBlock';
+import { CodeBlock } from './CodeBlock.js';
+import { CodeDiffBlock } from './CodeDiffBlock.js';
+import { TerminalBlock } from './TerminalBlock.js';
 
 /**
  * The walker (T-085).

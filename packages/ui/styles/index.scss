@@ -1,0 +1,18 @@
+// The whole design system in one @use.
+//
+// Order matters: `themes` defines the custom properties every partial below
+// reads, and `code-palette` is surface-scoped rather than theme-scoped but is
+// read by the block partials (T-085), so it lands after themes and before them.
+//
+// A consumer that only wants tokens — to author its own component partial —
+// should @use "@learnos/ui/styles/variables" directly instead of this file.
+@forward "themes";
+@forward "code-palette";
+@forward "animations";
+@forward "utilities";
+@forward "code";
+@forward "button";
+@forward "field";
+@forward "choice";
+@forward "question";
+@forward "blocks";
