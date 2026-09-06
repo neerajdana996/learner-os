@@ -252,3 +252,92 @@ describe('put the lines in order (T-114)', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
   });
 });
+
+describe('write the code (T-088)', () => {
+  const editor = {
+    itemId: 'i1',
+    conceptId: 'c1',
+    type: 'application' as const,
+    prompt: 'Write debounce.',
+    blocks: [
+      {
+        kind: 'codeEditor' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        signature: 'debounce(fn, ms)',
+        starter: 'function debounce(fn, ms) {\n\n}',
+        cases: [
+          { name: 'returns a function', call: 'typeof debounce(() => {}, 10)' },
+          { name: 'delays the call', call: 'ran' },
+        ],
+      },
+    ],
+  };
+
+  /**
+   * Asserted, not trusted to configuration. A browser that capitalises `const`
+   * or underlines a correct identifier supplies exactly the retrieval cue this
+   * format exists to withhold.
+   */
+  it('turns off every typing aid the browser would otherwise supply', () => {
+    render(<QuestionCard item={editor} value="" onChange={() => {}} />);
+    const area = screen.getByRole('textbox', { name: 'Your code' });
+    expect(area).toHaveAttribute('autocomplete', 'off');
+    expect(area).toHaveAttribute('autocorrect', 'off');
+    expect(area).toHaveAttribute('autocapitalize', 'off');
+    expect(area).toHaveAttribute('spellcheck', 'false');
+  });
+
+  it('starts from the starter and shows the cases as the spec', () => {
+    render(<QuestionCard item={editor} value="" onChange={() => {}} />);
+    expect(screen.getByRole('textbox', { name: 'Your code' })).toHaveValue(editor.blocks[0].starter);
+    // The calls are shown; no expected value is, because the client is never
+    // given one — three of them would largely give the function away.
+    expect(screen.getByText('typeof debounce(() => {}, 10)')).toBeInTheDocument();
+  });
+
+  it('does not offer the hint when there is no way to fetch it', () => {
+    render(<QuestionCard item={editor} value="" onChange={() => {}} />);
+    expect(screen.queryByRole('button', { name: /show me the shape/i })).not.toBeInTheDocument();
+  });
+
+  /** Taking the shape is a lapse whatever the cases do, and the learner is told
+   *  so before they decide rather than finding out on day 30. */
+  it('reports assisted when the shape is taken, and says what it costs', async () => {
+    const user = userEvent.setup();
+    let assisted = false;
+    render(
+      <QuestionCard
+        item={editor}
+        value=""
+        onChange={() => {}}
+        onAssisted={() => { assisted = true; }}
+        onSkeleton={() => Promise.resolve('function debounce(fn, ms) {\n  let t;\n}')}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /show me the shape/i }));
+
+    expect(assisted).toBe(true);
+    expect(await screen.findByText(/counts as a lapse/i)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Your code' })).toHaveValue(
+      'function debounce(fn, ms) {\n  let t;\n}',
+    );
+  });
+
+  /** Tab types an indent rather than leaving the field. Escape then Tab still
+   *  leaves, so a keyboard user is never trapped in the textarea. */
+  it('tabs an indent instead of leaving the field', async () => {
+    const user = userEvent.setup();
+    render(<QuestionCard item={editor} value="" onChange={() => {}} />);
+
+    const area = screen.getByRole('textbox', { name: 'Your code' }) as HTMLTextAreaElement;
+    await user.click(area);
+    const before = area.value;
+    await user.keyboard('{Tab}');
+
+    expect(area).toHaveFocus();
+    expect(area.value).not.toBe(before);
+    expect(area.value).toContain('  ');
+  });
+});

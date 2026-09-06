@@ -128,6 +128,39 @@ export async function grade(payload: ItemPayload, response: string | number): Pr
   }
 
   /**
+   * Write the code (T-088).
+   *
+   * The client never receives `cases[].expect` (T-080): three named expected
+   * outputs largely give the function away, and withholding them is also what
+   * makes the design's own goal reachable — a learner cannot tell a JS item
+   * from a Python one, because both round-trip to the server to be judged.
+   *
+   * So the client posts what the code *actually produced*, keyed by case name,
+   * and the comparison happens here. A case the client did not report is a
+   * failure, not a skip: a runner that crashed before reaching case three has
+   * not passed case three.
+   */
+  if (answerBlock?.kind === 'codeEditor') {
+    let produced: Record<string, string>;
+    try {
+      produced = JSON.parse(text) as Record<string, string>;
+    } catch {
+      return { correct: false, feedback: 'That did not run. Check the function returns something.' };
+    }
+
+    const failed = answerBlock.cases.filter(
+      (c) => normaliseCode(produced[c.name] ?? '\u0000') !== normaliseCode(c.expect),
+    );
+    return {
+      correct: failed.length === 0,
+      feedback:
+        failed.length === 0
+          ? 'Correct — every case passed.'
+          : `Not yet — ${failed.map((c) => c.name).join(', ')} still ${failed.length === 1 ? 'fails' : 'fail'}.`,
+    };
+  }
+
+  /**
    * Put the lines in order (T-114).
    *
    * `order` is the answer key: indices into the shuffled `lines`, in the

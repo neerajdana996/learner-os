@@ -149,9 +149,20 @@ export async function recordReview(
     !answer.dismissed &&
     !NON_SCHEDULING_SURFACES.has(answer.surface);
 
-  const scheduledCard = shouldSchedule
-    ? scheduleReview(fsrsCard, correct ? Rating.Good : Rating.Again, now)
-    : null;
+  /**
+   * An assisted pass schedules as a lapse (T-088).
+   *
+   * Someone who took the skeleton and then made the cases go green has not
+   * demonstrated recall — they demonstrated editing. Scheduling that as a
+   * success pushes the next review out by days on evidence that was never
+   * there, and the shock arrives on day 30, which is the one day the pilot
+   * cannot afford one.
+   *
+   * The event still records `correct` honestly. Only the *schedule* treats it
+   * as a lapse, so the retention numbers can tell the two apart later.
+   */
+  const rating = correct && !answer.assisted ? Rating.Good : Rating.Again;
+  const scheduledCard = shouldSchedule ? scheduleReview(fsrsCard, rating, now) : null;
 
   return database.transaction(async (tx) => {
     let cardId = existingCard?.id ?? null;
@@ -173,6 +184,7 @@ export async function recordReview(
         userId,
         conceptId,
         itemId: answer.itemId,
+        assisted: answer.assisted ?? false,
         cardId: scheduledCard ? cardId : null,
         correct,
         confidence: answer.confidence,

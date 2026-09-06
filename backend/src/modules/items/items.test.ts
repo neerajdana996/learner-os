@@ -100,3 +100,77 @@ describe('POST /items/:id/flag', () => {
     expect((await request(app).post(`/items/${item.id}/flag`)).status).toBe(401);
   });
 });
+
+describe('GET /items/:id/skeleton', () => {
+  async function seedEditorItem() {
+    const user = await seedUser();
+    const [topic] = await db.insert(topics).values({ userId: user.id, title: 'T', status: 'active' }).returning({ id: topics.id });
+    const [concept] = await db.insert(concepts).values({ topicId: topic!.id, slug: 'c', title: 'C', order: 1 }).returning({ id: concepts.id });
+    const [item] = await db
+      .insert(items)
+      .values({
+        conceptId: concept!.id,
+        type: 'application',
+        payload: {
+          type: 'application',
+          prompt: 'Write debounce.',
+          answer: 'a debounce',
+          blocks: [
+            {
+              kind: 'codeEditor',
+              slot: 'answer',
+              lang: 'javascript',
+              signature: 'debounce(fn, ms)',
+              starter: 'function debounce() {}',
+              skeleton: 'function debounce(fn, ms) { let t; }',
+              whyWhole: 'A blank cannot test that the timer handle is kept.',
+              // Two minimum, by schema: the design says 2–4 named cases, and
+              // one case is a spec nobody can debug against.
+              cases: [
+                { name: 'returns a function', call: 'typeof d', expect: 'function' },
+                { name: 'delays', call: 'ran', expect: 'false' },
+              ],
+            },
+          ],
+        },
+      })
+      .returning({ id: items.id });
+    return { user, item: item! };
+  }
+
+  /**
+   * Fetched, never shipped. The skeleton is most of the answer, so sending it in
+   * the payload would hand it to every learner including the ones who never
+   * asked — and `assisted` would then measure who clicked rather than who
+   * needed help.
+   */
+  it('serves the skeleton on request', async () => {
+    const { user, item } = await seedEditorItem();
+    const res = await request(app).get(`/items/${item.id}/skeleton`).set('Cookie', user.cookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.skeleton).toContain('let t');
+  });
+
+  it('is never in the item the learner is served', async () => {
+    const { user, item } = await seedEditorItem();
+    const skeleton = (await request(app).get(`/items/${item.id}/skeleton`).set('Cookie', user.cookie)).body.skeleton;
+
+    const due = await request(app).get('/due').set('Cookie', user.cookie);
+    expect(JSON.stringify(due.body)).not.toContain(skeleton);
+    // The expected outputs stay behind for the same reason (T-080).
+    expect(JSON.stringify(due.body)).not.toContain('"expect"');
+  });
+
+  it('404s an item that has no editor block', async () => {
+    const { user, item } = await seedItem();
+    const res = await request(app).get(`/items/${item.id}/skeleton`).set('Cookie', user.cookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('no_skeleton');
+  });
+
+  it('requires a session', async () => {
+    const { item } = await seedEditorItem();
+    expect((await request(app).get(`/items/${item.id}/skeleton`)).status).toBe(401);
+  });
+});

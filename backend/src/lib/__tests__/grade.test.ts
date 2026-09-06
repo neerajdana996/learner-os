@@ -385,3 +385,53 @@ describe('put the lines in order (T-114)', () => {
     expect((await grade(ordering, ' 1,2,0 ')).correct).toBe(true);
   });
 });
+
+describe('write the code (T-088)', () => {
+  const editor = {
+    type: 'application' as const,
+    prompt: 'Write debounce.',
+    answer: 'a debounce',
+    blocks: [
+      {
+        kind: 'codeEditor' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        signature: 'debounce(fn, ms)',
+        starter: 'function debounce() {}',
+        skeleton: 'function debounce(fn, ms) { let t; }',
+        whyWhole: 'A blank cannot test that the timer handle is kept.',
+        cases: [
+          { name: 'returns a function', call: 'typeof d', expect: 'function' },
+          { name: 'delays', call: 'ran', expect: 'false' },
+        ],
+      },
+    ],
+  };
+
+  /** The client posts what the code produced; the expectations never left the
+   *  server (T-080), which is also why a JS item is indistinguishable from a
+   *  Python one until the verdict comes back. */
+  it('passes when every case produced what was expected', async () => {
+    const produced = JSON.stringify({ 'returns a function': 'function', delays: 'false' });
+    expect((await grade(editor, produced)).correct).toBe(true);
+  });
+
+  it('names the cases that still fail', async () => {
+    const produced = JSON.stringify({ 'returns a function': 'function', delays: 'true' });
+    const result = await grade(editor, produced);
+    expect(result.correct).toBe(false);
+    expect(result.feedback).toMatch(/delays/);
+  });
+
+  /** A runner that crashed before case two has not passed case two. */
+  it('treats a case the client did not report as a failure, not a skip', async () => {
+    const produced = JSON.stringify({ 'returns a function': 'function' });
+    expect((await grade(editor, produced)).correct).toBe(false);
+  });
+
+  it('says so when nothing ran, rather than marking it wrong silently', async () => {
+    const result = await grade(editor, 'not json at all');
+    expect(result.correct).toBe(false);
+    expect(result.feedback).toMatch(/did not run/i);
+  });
+});

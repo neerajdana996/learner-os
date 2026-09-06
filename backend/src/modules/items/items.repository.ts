@@ -19,3 +19,13 @@ export async function incrementFlag(itemId: string) {
 
   return updated ?? null;
 }
+
+/** The stored payload, for the one field the public projection strips. */
+export async function findItemPayload(itemId: string) {
+  const [row] = await db
+    .select({ payload: items.payload })
+    .from(items)
+    .where(eq(items.id, itemId));
+
+  return row?.payload ?? null;
+}

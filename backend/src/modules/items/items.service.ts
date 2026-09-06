@@ -1,8 +1,9 @@
 import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
-import { incrementFlag } from './items.repository.js';
+import { ItemPayloadSchema } from '@learnos/shared';
+import { findItemPayload, incrementFlag } from './items.repository.js';
 
 export class ItemError extends Error {
-  constructor(readonly reason: 'not_found') {
+  constructor(readonly reason: 'not_found' | 'no_skeleton') {
     super(reason);
     this.name = 'ItemError';
   }
@@ -33,4 +34,30 @@ export async function flagItem(itemId: string): Promise<FlagResult> {
   if (!updated) throw new ItemError('not_found');
 
   return { retired: updated.flaggedBad >= RETIRED_FLAG_THRESHOLD };
+}
+
+/**
+ * "Show me the shape" (T-088).
+ *
+ * Fetched rather than shipped with the item, because the skeleton is most of
+ * the answer: the function's structure with the bodies blank. Sending it in the
+ * payload would hand it to every learner for free, including the ones who never
+ * asked — and `assisted` would then be measuring who clicked a button rather
+ * than who needed help.
+ *
+ * Taking it is not recorded here. The client sends `assisted: true` with the
+ * answer, which is the row that matters — a learner who reveals the skeleton
+ * and then closes the tab has not answered anything.
+ */
+export async function getSkeleton(itemId: string): Promise<{ skeleton: string }> {
+  const raw = await findItemPayload(itemId);
+  if (!raw) throw new ItemError('not_found');
+
+  const parsed = ItemPayloadSchema.safeParse(raw);
+  const block = parsed.success
+    ? parsed.data.blocks?.find((b) => b.kind === 'codeEditor' && b.slot === 'answer')
+    : undefined;
+
+  if (!block || block.kind !== 'codeEditor') throw new ItemError('no_skeleton');
+  return { skeleton: block.skeleton };
 }

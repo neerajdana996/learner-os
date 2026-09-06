@@ -21,6 +21,8 @@ export { DrawingBlock } from './blocks/DrawingBlock.js';
 export { ClozeCode, joinCloze, splitCloze, CLOZE_SEPARATOR } from './blocks/ClozeCode.js';
 export { HotspotLine } from './blocks/HotspotLine.js';
 export { OrderLines, parseOrder } from './blocks/OrderLines.js';
+export { CodeEditor } from './blocks/CodeEditor.js';
+export { runCases, RUN_BUDGET_MS, type RunOutcome } from './blocks/runCases.js';
 export { CodeBlock } from './blocks/CodeBlock.js';
 export { CodeDiffBlock, diffRows } from './blocks/CodeDiffBlock.js';
 export { TerminalBlock } from './blocks/TerminalBlock.js';

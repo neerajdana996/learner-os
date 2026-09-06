@@ -3,12 +3,19 @@ import { BlockList } from './blocks/BlockList.js';
 import { ClozeCode } from './blocks/ClozeCode.js';
 import { HotspotLine } from './blocks/HotspotLine.js';
 import { OrderLines } from './blocks/OrderLines.js';
+import { CodeEditor } from './blocks/CodeEditor.js';
 import { Choice } from './Choice.js';
 
 export interface QuestionCardProps {
   item: PublicItem;
   value: string | number | null;
   onChange: (value: string | number) => void;
+  /** `codeEditor` only (T-088): the learner took the skeleton, so the answer
+   *  must carry `assisted` and the scheduler will treat a pass as a lapse. */
+  onAssisted?: () => void;
+  /** `codeEditor` only: fetches the skeleton, which is never in the payload.
+   *  Omitted, the hint is not offered. */
+  onSkeleton?: () => Promise<string>;
 }
 
 /**
@@ -20,7 +27,7 @@ export interface QuestionCardProps {
  * the prompt and the answer surface, and an item that does not renders exactly
  * as it did before, which is every item generated so far.
  */
-export function QuestionCard({ item, value, onChange }: QuestionCardProps) {
+export function QuestionCard({ item, value, onChange, onAssisted, onSkeleton }: QuestionCardProps) {
   /**
    * An answer block replaces the default surface, whatever the item's `type`
    * (T-108). `numeric` is the one implemented; the four code answer surfaces
@@ -46,6 +53,14 @@ export function QuestionCard({ item, value, onChange }: QuestionCardProps) {
           block={answerBlock}
           value={typeof value === 'number' ? value : null}
           onChange={onChange}
+        />
+      ) : answerBlock?.kind === 'codeEditor' ? (
+        <CodeEditor
+          block={answerBlock}
+          value={typeof value === 'string' ? value : ''}
+          onChange={onChange}
+          onAssisted={onAssisted}
+          onSkeleton={onSkeleton}
         />
       ) : answerBlock?.kind === 'orderLines' ? (
         <OrderLines

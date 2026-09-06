@@ -194,6 +194,13 @@ export const AnswerSchema = z.object({
   idempotencyKey: z.string().uuid().optional(),
   snoozed: z.boolean().optional(),
   dismissed: z.boolean().optional(),
+  /**
+   * The learner took the "show me the shape" skeleton on a `codeEditor` item
+   * (T-088). Client-reported, and safe to be: it can only ever count *against*
+   * them, so there is nothing to gain by lying — unlike `correct`, which is
+   * graded on the server precisely because a learner could inflate it.
+   */
+  assisted: z.boolean().optional(),
 });
 
 // ---------- Diagnostic ----------

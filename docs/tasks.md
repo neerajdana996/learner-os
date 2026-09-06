@@ -1908,7 +1908,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:**
 
 ### T-088 · Write the code
-- **status:** todo (unblocked)
+- **status:** done (rationing deferred — see notes)
 - **sprint:** 5
 - **depends_on:** T-085
 - **files:** `frontend/src/components/blocks/CodeEditor.tsx`, `frontend/src/lib/runCases.ts`, `backend/src/modules/reviews/grade.ts`, tests alongside
@@ -1917,9 +1917,17 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **T-080 could not enforce "the first case passes the empty starter"** — it needs the code to run, so it lands here. It is worth keeping: three reds on the first run is a blank page rather than a debugging problem.
 - **acceptance:** Autocomplete is off and asserted by a test, not by configuration alone. The sandbox cannot reach `document.cookie` or the network. An assisted pass writes `assisted = true` and schedules as a lapse. The client never receives an expected value for any case.
 - **tests:** A correct implementation passes all cases; an infinite loop is killed at 2s and reports a timeout rather than hanging the tab; the sandbox has no access to the parent document; taking the hint sets `assisted`; the same concept's next review is a `clozeCode`, not this.
-- **notes:** (2026-09-06) **Unblocked. T-081 decided against a client UI library, so this is a plain `<textarea>`** with tab-inserts-spaces, indent-on-newline and bracket matching — about thirty lines of `keydown`. Native undo comes free.
+- **notes:** (2026-09-06) Built as a textarea, per T-081. **Unblocked. T-081 decided against a client UI library, so this is a plain `<textarea>`** with tab-inserts-spaces, indent-on-newline and bracket matching — about thirty lines of `keydown`. Native undo comes free.
   - That costs the design almost nothing, because it had already turned off autocomplete, type hints and squiggles as retrieval cues. Syntax highlighting goes too, on the same reasoning: a keyword that fails to colour is feedback.
-  - Paths in `files` above predate the design-system consolidation — the component belongs in `packages/ui/src/blocks/` and grading is `backend/src/lib/grade.ts`.
+  - Paths in `files` above predate the design-system consolidation — the component lives in `packages/ui/src/blocks/` and grading is `backend/src/lib/grade.ts`.
+  - **`assisted` was a dead column before this**, exactly as `flagged_bad` was before T-112: `schema.ts` declared it with a comment explaining that the scheduler must treat an assisted pass as a lapse, and nothing wrote it or read it. It is now on `AnswerSchema`, written by `recordReview`, and turned into `Rating.Again` regardless of the cases going green. The event still records `correct` honestly — only the *schedule* treats it as a lapse, so the two remain distinguishable in the numbers.
+  - **`assisted` is client-reported and that is safe**, unlike `correct`. It can only ever count against the learner, so there is nothing to gain by lying; `correct` is graded server-side precisely because it can be inflated.
+  - **The skeleton is fetched, never shipped** — `GET /items/:id/skeleton`. It is most of the answer, so putting it in the payload would hand it to everyone including those who never asked, and `assisted` would then measure who clicked a button rather than who needed help. A test asserts neither it nor `cases[].expect` appears in what `/due` serves.
+  - **The sandbox is an `<iframe sandbox="allow-scripts">` on a blank `srcdoc`, not `eval`.** `allow-same-origin` is deliberately absent — with it the sandbox is not one. The frame gets an opaque origin: no cookies, no storage, no parent document, no session to steal. Two seconds, then it is destroyed, because `while(true)` is the most common wrong answer to a loop question and a hung tab loses the learner's work.
+  - Every value is stringified **inside** the frame: `postMessage` structured-clones, and a function or a cyclic object would throw there rather than here, losing the run for a reason the learner cannot act on.
+  - Non-JS languages show the identical screen with **Submit** and are judged server-side, so a learner cannot tell a JavaScript item from a Python one until the verdict returns.
+  - ⚠ **Deferred: the rationing** — "at most one per session, never in a review, never in the extension". The extension half is already enforced by `popupEligible` (T-089) and the Day-30 half by T-093, but nothing limits it to one per web session or keeps it out of reviews. That belongs in the session planner, not in the block, and is worth its own task.
+  - ⚠ **Deferred: "the same concept's next review is a `clozeCode`, not this"** — the acceptance names it, and it needs the item picker to know what format was last served. Also planner work.
 
 ### T-089 · What the extension is allowed to pop
 - **status:** done

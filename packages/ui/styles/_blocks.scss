@@ -344,3 +344,82 @@
     }
   }
 }
+
+/// Write the code (T-088). A textarea, not an editor — T-081 decided against a
+/// client library, and the design had already removed everything one would add.
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: $s-3;
+
+  &__signature code {
+    font-family: $font-mono;
+    font-size: $text-sm;
+    color: var(--ink-2);
+  }
+
+  &__area {
+    width: 100%;
+    font-family: $font-mono;
+    font-size: $text-sm;
+    line-height: 1.6;
+    tab-size: 2;
+    background: var(--sunken);
+    color: var(--ink);
+    border: 1px solid var(--border-strong);
+    border-radius: $radius;
+    padding: $s-3;
+    resize: vertical;
+    @include focus-ring;
+  }
+
+  /// The cases are the spec, shown before a line is written. No expected value
+  /// appears — the client is never given one, and three of them would largely
+  /// give the function away.
+  &__cases {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $s-2;
+  }
+
+  &__case {
+    display: flex;
+    align-items: baseline;
+    gap: $s-3;
+    flex-wrap: wrap;
+    font-family: $font-mono;
+    font-size: $text-sm;
+  }
+
+  &__call {
+    color: var(--ink-2);
+  }
+
+  &__got {
+    color: var(--ink);
+  }
+
+  &__error {
+    margin: 0;
+    font-size: $text-sm;
+    color: var(--ochre);
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $s-3;
+    flex-wrap: wrap;
+  }
+
+  /// Said plainly, before they decide. Someone who takes the shape should know
+  /// it counts as a lapse rather than discovering it on day 30.
+  &__hinted {
+    margin: 0;
+    font-size: $text-sm;
+    color: var(--ochre);
+  }
+}
