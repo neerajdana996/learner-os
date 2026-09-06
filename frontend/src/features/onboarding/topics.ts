@@ -29,7 +29,7 @@ export const PILOT_TOPICS: PilotTopic[] = [
     blurb:
       'The pattern behind most "longest substring / smallest subarray" problems — when a window can grow, when it must shrink, and what invariant you are holding.',
     fit: {
-      student: 'One pattern that unlocks a whole family of problems — a good first thirty days.',
+      student: 'One pattern that unlocks a whole family of problems — a good first week.',
       product: 'Compact, high-frequency, and the one people re-derive from scratch every time.',
     },
   },

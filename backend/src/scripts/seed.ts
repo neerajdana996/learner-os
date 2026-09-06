@@ -128,7 +128,7 @@ export async function seed(): Promise<SeedResult> {
       why: 'I re-read the docs every time and it never sticks.',
       status: 'active',
       startsAt: now,
-      endsAt: new Date(now.getTime() + 30 * DAY),
+      endsAt: new Date(now.getTime() + 7 * DAY),
       dailyBudgetMin: 10,
     })
     .returning();

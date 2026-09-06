@@ -7,7 +7,7 @@ import { useReveal } from '../useReveal';
  *
  * Until now `/` was the sign-in form, so someone following a link from a
  * recruitment email was asked for their address before being told what this is
- * or what it costs them — and the ask is ten days of their attention plus a
+ * or what it costs them — and the ask is a week of their attention plus a
  * test they will not see coming.
  *
  * The page sells the product and is honest about the pilot, in that order. The
@@ -220,7 +220,7 @@ export default function LandingPage() {
           <h2>Ten people, and a test three weeks after you stop.</h2>
           <p className="landing__lede">
             I don&rsquo;t know yet whether this works. So the first run is small and measured
-            properly: ten people, one topic each, ten days of teaching — and then a test you
+            properly: ten people, one topic each, seven days of teaching — and then a test you
             won&rsquo;t see coming, long after the app has gone quiet.
           </p>
         </div>
@@ -228,11 +228,11 @@ export default function LandingPage() {
         <figure className="landing__timeline">
           <svg viewBox="0 0 900 150" role="img" className="landing__timeline-svg">
             <title>
-              Ten days of daily sessions, then twenty days of silence with no cards or reminders,
-              then one unannounced test on day thirty.
+              Seven days of daily sessions, then twenty-three days of silence with no cards or
+              reminders, then one unannounced test on day thirty.
             </title>
             <line className="landing__axis" x1="40" y1="100" x2="870" y2="100" />
-            {Array.from({ length: 10 }, (_, i) => (
+            {Array.from({ length: 7 }, (_, i) => (
               <rect
                 key={i}
                 className="landing__tick"
@@ -243,25 +243,25 @@ export default function LandingPage() {
                 rx="2"
               />
             ))}
-            <path className="landing__quiet" d="M316,100 L800,100" />
-            <line className="landing__testline" x1="812" y1="42" x2="812" y2="100" />
-            <circle className="landing__testdot" cx="812" cy="42" r="5" />
+            <path className="landing__quiet" d="M235,100 L826,100" />
+            <line className="landing__testline" x1="838" y1="42" x2="838" y2="100" />
+            <circle className="landing__testdot" cx="838" cy="42" r="5" />
             <text className="landing__tl-day" x="55" y="122">
               DAY 1
             </text>
-            <text className="landing__tl-day" x="270" y="122">
-              DAY 10
+            <text className="landing__tl-day" x="185" y="122">
+              DAY 7
             </text>
-            <text className="landing__tl-day" x="780" y="122">
+            <text className="landing__tl-day" x="806" y="122">
               DAY 30
             </text>
             <text className="landing__tl-key" x="55" y="143">
-              Ten days of work
+              Seven days of work
             </text>
-            <text className="landing__tl-key" x="380" y="143">
-              Twenty days of silence
+            <text className="landing__tl-key" x="360" y="143">
+              Twenty-three days of silence
             </text>
-            <text className="landing__tl-key" x="700" y="143">
+            <text className="landing__tl-key" x="726" y="143">
               One cold test
             </text>
           </svg>
@@ -272,7 +272,7 @@ export default function LandingPage() {
             <h3>Why the silence matters</h3>
             <p>
               Remembering something the day after you practised it proves very little. The gap is
-              the measurement. Twenty days with no cards, no sessions and no reminders is the only
+              the measurement. Three weeks with no cards, no sessions and no reminders is the only
               way to find out whether any of it stuck.
             </p>
           </article>
@@ -307,8 +307,8 @@ export default function LandingPage() {
           <div>
             <dt className="u-mono">10 min</dt>
             <dd>
-              <strong>a day, for ten days.</strong> Two or three new ideas, then a few reviews. Then
-              you are done and the app leaves you alone.
+              <strong>a day, for seven days.</strong> Two or three new ideas, then a few reviews.
+              Then you are done and the app leaves you alone.
             </dd>
           </div>
           <div>
@@ -347,7 +347,7 @@ export default function LandingPage() {
       {/* --------------------------------------------------------- close */}
       <Section className="landing__close">
         <p className="u-eyebrow">Ten places</p>
-        <h2>Ten days of work. Then you find out if it stuck.</h2>
+        <h2>Seven days of work. Then you find out if it stuck.</h2>
         <p className="landing__lede">
           With a number rather than a feeling — which is more than I can say for anything else
           either of us has tried.

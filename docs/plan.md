@@ -3,12 +3,13 @@
 > Read this first. It's the "why" and the "what". `loop.md` is the "how you work", `sprint.md` is the "when", `tasks.md` is the "what exactly".
 
 ## 1. One-line vision
-A platform that guarantees you'll **remember** what you learn. Not "learn" — remember. We prove it with a surprise test on day 30 and again on day 45.
+A platform that guarantees you'll **remember** what you learn. Not "learn" — remember. We prove it with a surprise test on day 30 — three weeks after the teaching stopped.
 
 ## 2. The pilot we are building for
-- 10 people from the founder's network, 1 topic each, 30 days.
+- 10 people from the founder's network, 1 topic each. **Seven days of teaching, then silence, then one cold test on day 30.**
+  > **Changed 2026-09-06 (founder decision), replacing "30 days" of teaching with tests on day 30 and day 45.** The measurement did not move; the *ask* did, from thirty days of daily work to one week. Dropout is the real threat to a ten-person pilot, and this both shortens the commitment and *lengthens* the gap before the test, from nothing to twenty-three days. That gap is the whole measurement: the literature is unambiguous that a test at the end of a course flatters cramming, and that spacing only wins on delayed tests (Cepeda et al., 317 experiments — the effect emerges after weeks). The day-45 test is dropped rather than kept: it existed to separate "still practising" from "cold", and with twenty-three days of silence the day-30 test is already cold.
 - Two surfaces: a **web app** (teaching, ~10 min/day) and a **Chrome extension** (retrieval, one question per pop-up, ~20 sec each).
-- Success = Day-30 retention on taught concepts jumps vs. Day-0, held-out (untaught) concepts stay flat, and Day-45 (no pop-ups in between) holds ≥ 80% of Day-30.
+- Success = Day-30 retention on taught concepts jumps vs. Day-0, and held-out (untaught) concepts stay flat. Both measured cold, twenty-three days after the last session.
 
 ## 3. What the research says (and we obey)
 1. **Learning styles (visual/auditory/kinesthetic) matching does not work.** We never ask users how they learn. We infer from behaviour.
@@ -26,7 +27,7 @@ A platform that guarantees you'll **remember** what you learn. Not "learn" — r
 - Today's session: 1–3 new concepts (try-first → feedback → explanation → one retrieval question), then due reviews.
 - Map: concept graph coloured by mastery; "at risk this week" highlighted.
 - Knowledge score: visible everywhere; rises only on correct recall after ≥1 day gap; decays with predicted forgetting.
-- Tests: Day-0 (diagnostic), Day-30 and Day-45 surprise cold tests.
+- Tests: Day-0 (diagnostic) and a Day-30 surprise cold test. Nothing between day 8 and day 30 — no cards, no sessions, no reminders.
 
 ### Chrome extension
 - One question card, from the due queue. Never teaches new concepts.
@@ -50,7 +51,7 @@ learnos/
 ├── .github/workflows/    ci.yml — lint, test, build on real Postgres + Redis
 ├── packages/
 │   ├── shared/           @learnos/shared — Zod schemas + TS types (SOURCE OF TRUTH for all three apps). BUILT: emits dist/*.js + *.d.ts.
-│   └── ui/               @learnos/ui — colour tokens, scale, mixins (SOURCE OF TRUTH for both clients). SCSS only, no build.
+│   └── ui/               @learnos/ui — the design system: colour tokens, scale, mixins, and every presentational component both clients share. styles/ is SCSS; src/ is BUILT.
 ├── backend/              Express + ws (WebSocket) + Drizzle (Postgres) + BullMQ (Redis). Port 3001.
 │   ├── Dockerfile        (build context is the REPO ROOT)
 │   ├── src/db/           schema.ts (SOURCE OF TRUTH), client.ts
@@ -84,8 +85,7 @@ learnos/
 - Daily new-concept load = ceil(remaining_untaught / remaining_days), capped so session ≤ daily budget.
 
 ## 7. Metrics the code must make possible (see tasks T-040..T-045)
-- Retention gain: Day-30 − Day-0, per concept and overall, taught vs. held-out.
-- Durability: Day-45 ÷ Day-30.
+- Retention gain: Day-30 − Day-0, per concept and overall, taught vs. held-out. This *is* the durability measure now: day 30 sits twenty-three days after the last review, so there is no separate Day-45 ratio to compute.
 - Transfer: accuracy on `items.is_transfer = true`.
 - Calibration gap: confidence − accuracy, Day-0 vs. Day-30.
 - Scheduler calibration: mean(predicted_recall) vs. mean(correct) in bins.

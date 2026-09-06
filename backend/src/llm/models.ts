@@ -20,7 +20,7 @@
  * actually differ), and a failure retries once before failing the job loudly.
  */
 export const MODELS = {
-  /** Once per topic, and the foundation the whole 30 days is built on. A better
+  /** Once per topic, and the foundation the whole course is built on. A better
    *  map is also fewer corrections during content QA, which T-045 measures. */
   conceptMap: { model: 'gpt-5.6-sol', reasoningEffort: 'medium' },
   /** Prose the learner actually reads, ~25 calls per topic. */

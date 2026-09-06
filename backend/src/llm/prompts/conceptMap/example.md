@@ -1,4 +1,4 @@
-A short example showing the expected granularity and shape (a real map has 20–40 concepts; this is trimmed for illustration):
+A short example showing the expected granularity and shape (a real map has 14–18 concepts; this is trimmed for illustration):
 
 ```json
 {

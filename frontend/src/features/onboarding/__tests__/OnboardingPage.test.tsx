@@ -83,6 +83,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('onboarding — course length', () => {
+  /**
+   * Seven days of teaching, then silence, then the cold test on day 30
+   * (plan.md §2, founder decision 2026-09-06). This is a bare constant in the
+   * page with nothing else pointing at it, so a stray edit would quietly change
+   * what ten pilot participants are asked to do — and the pacing that falls out
+   * of it, since the planner divides the remaining map by the remaining days.
+   */
+  it('creates a seven-day course', async () => {
+    const user = userEvent.setup();
+    renderAtTopicStep();
+    await submit(user);
+
+    await vi.waitFor(() => expect(created).toHaveLength(1));
+    const { startsAt, endsAt } = created[0] as { startsAt: string; endsAt: string };
+    const days = (new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 86_400_000;
+    expect(days).toBe(7);
+  });
+});
+
 describe('onboarding — language', () => {
   it('submits the language the learner picked', async () => {
     const user = userEvent.setup();

@@ -29,7 +29,19 @@ const ROLES: { value: Role; label: string }[] = [
 
 const BUDGETS = [5, 10, 15, 20];
 const TOTAL_STEPS = 5;
-const DAYS = 30;
+/**
+ * How long the teaching runs, in days.
+ *
+ * Seven, not thirty (founder decision 2026-09-06). The measurement did not move
+ * — the cold test is still day 30 — but the *ask* did, from thirty days of
+ * daily work to one week. Dropout is the real threat to a ten-person pilot, and
+ * the gap before the test grows from nothing to twenty-three days, which is the
+ * only interval at which spacing can be told apart from cramming.
+ *
+ * `MAX_NEW_CONCEPTS` is 3/day, so this caps a map at 21 concepts — which is why
+ * the concept-map prompt asks for 14–18 rather than 20–40.
+ */
+const DAYS = 7;
 
 /**
  * Onboarding as five beats rather than one form: who you are, what you want to
@@ -263,7 +275,7 @@ export default function OnboardingPage() {
         <Step
           kicker="Third"
           title="How much time, honestly?"
-          lede="Be realistic rather than ambitious. Over-promising on day one is the most common way thirty days turns into nine."
+          lede="Be realistic rather than ambitious. Over-promising on day one is the most common way a week turns into two days."
           because="This sizes every session. Pick ten minutes and you’ll get two new ideas plus reviews; pick five and you’ll get one."
           onNext={() => go(3)}
           onBack={() => go(1)}

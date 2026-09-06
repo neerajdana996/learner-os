@@ -58,7 +58,7 @@ export function scoreConcept(concept: ConceptInput, now: Date): ScoredConcept {
  * Mean mastery over taught and known concepts, 0–100.
  *
  * Untaught concepts are excluded rather than counted as zero: including them
- * would peg the score near zero for most of the thirty days and barely move it,
+ * would peg the score near zero for most of the teaching week and barely move it,
  * when plan.md §4 wants a number that rises as recall improves. Held-out
  * concepts are excluded because the learner is never taught them at all.
  */

@@ -2170,3 +2170,20 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - `pnpm build` passes in both clients.
   - `docker compose run --rm extension` still produces a loadable zip.
 - **notes:**
+
+### T-104 · Seven days of teaching, not thirty
+- **status:** done
+- **sprint:** 5
+- **depends_on:** —
+- **files:** `frontend/src/features/onboarding/pages/OnboardingPage.tsx`, `frontend/src/features/onboarding/topics.ts`, `frontend/src/features/landing/pages/LandingPage.tsx`, `backend/src/scripts/seed.ts`, `backend/src/llm/prompts/conceptMap/*`, `backend/src/llm/prompts/items/domains/code.md`, `backend/src/llm/models.ts`, `backend/src/generator/items.ts`, `backend/src/lib/score.ts`, `docs/plan.md`
+- **description:** Founder decision (2026-09-06). The teaching window drops from 30 days to **7**; the cold test stays on **day 30**; the day-45 test is dropped.
+  - **The measurement did not move — the ask did.** Thirty days of daily work from ten people in the founder's network is a dropout problem, and a dropout costs a tenth of the result. One week is a far easier yes, and the gap before the test *grows* from nothing to twenty-three days.
+  - **That gap is the entire measurement.** The literature is unambiguous: a test at the end of a course flatters cramming, and spacing only wins on delayed tests (Cepeda et al., 317 experiments; the effect emerges after weeks). A test inside the teaching window — the first shape proposed — would have produced a good number that could not distinguish this product from a cram.
+  - **Day 45 is dropped, not moved.** It existed to separate "still practising" from "cold". With twenty-three days of silence the day-30 test is already cold, so the second test measured nothing the first did not.
+- **acceptance:** Onboarding creates a 7-day course. The concept-map prompt asks for a map that fits one. Nothing in the app or the docs still claims thirty days of teaching or a day-45 test.
+- **tests:**
+  - Onboarding creates a course exactly 7 days long (`OnboardingPage.test.tsx` — the constant had nothing pointing at it).
+  - Full suite green: 586 tests.
+- **notes:** (2026-09-06) The load-bearing change is not the constant, it is **the concept-map prompt**. `MAX_NEW_CONCEPTS` is 3/day, so seven days caps a map at 21 concepts — and the prompt was asking for **20–40**, sized in its own words for "a ~30-day course". A 40-concept map could not have finished, and an unfinished map makes the day-30 comparison unreadable. Now 14–18, which leaves slack for a missed day rather than requiring three new concepts every single day.
+  - Also corrected four comments that asserted the old length as fact — `models.ts` ("the whole 30 days"), `generator/items.ts` and `items/domains/code.md` (both "comes back seven or eight times over thirty days", now three or four inside the week), and `score.ts`. These are the kind of stale claim that quietly teaches the next reader something false.
+  - `schemas.ts` needed no change: it already enforced `endsAt >= startsAt + 7 days`, so seven sits exactly on the boundary.

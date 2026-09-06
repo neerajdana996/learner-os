@@ -9,9 +9,9 @@ export const MIN_ITEMS = 6;
  * How many of a concept's items may use a rich answer format (T-083).
  *
  * Two, out of six to eight. `clozeCode` is 15–30s and `hotspotLine` 8–15s
- * against a plain item's ~10s, and a concept comes back seven or eight times
- * over thirty days — so the cap is really a cap on the *review* budget, not on
- * this one generation.
+ * against a plain item's ~10s, and a concept comes back three or four times
+ * inside the teaching week — so the cap is really a cap on the *review* budget,
+ * not on this one generation.
  */
 export const MAX_RICH_ITEMS = 2;
 
