@@ -1882,7 +1882,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Scope held:** content blocks only. `.cloze`, `.hotspot` and `.code-editor` from the design canvas's build spec belong to T-086, T-087 and T-088 and are not written.
 
 ### T-086 · Fill in the blank
-- **status:** todo
+- **status:** done
 - **sprint:** 5
 - **depends_on:** T-085
 - **files:** `frontend/src/components/blocks/ClozeCode.tsx`, `backend/src/modules/reviews/grade.ts`, tests alongside
@@ -1892,7 +1892,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:**
 
 ### T-087 · Click the line that is wrong
-- **status:** todo
+- **status:** done
 - **sprint:** 5
 - **depends_on:** T-085
 - **files:** `frontend/src/components/blocks/HotspotLine.tsx`, `extension/src/`, `backend/src/modules/reviews/grade.ts`, tests alongside

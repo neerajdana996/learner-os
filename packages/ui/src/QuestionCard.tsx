@@ -1,5 +1,7 @@
 import type { PublicItem } from '@learnos/shared';
 import { BlockList } from './blocks/BlockList.js';
+import { ClozeCode } from './blocks/ClozeCode.js';
+import { HotspotLine } from './blocks/HotspotLine.js';
 import { Choice } from './Choice.js';
 
 export interface QuestionCardProps {
@@ -24,7 +26,7 @@ export function QuestionCard({ item, value, onChange }: QuestionCardProps) {
    * arrive in T-086–T-088 and until then fall through to the text box below,
    * which is degraded but answerable rather than a dead end.
    */
-  const numeric = item.blocks?.find((b) => b.kind === 'numeric' && b.slot === 'answer');
+  const answerBlock = item.blocks?.find((b) => b.slot === 'answer');
 
   return (
     <div>
@@ -32,7 +34,19 @@ export function QuestionCard({ item, value, onChange }: QuestionCardProps) {
 
       {item.blocks ? <BlockList blocks={item.blocks} /> : null}
 
-      {numeric && numeric.kind === 'numeric' ? (
+      {answerBlock?.kind === 'clozeCode' ? (
+        <ClozeCode
+          block={answerBlock}
+          value={typeof value === 'string' ? value : ''}
+          onChange={onChange}
+        />
+      ) : answerBlock?.kind === 'hotspotLine' ? (
+        <HotspotLine
+          block={answerBlock}
+          value={typeof value === 'number' ? value : null}
+          onChange={onChange}
+        />
+      ) : answerBlock?.kind === 'numeric' ? (
         /* A number, not prose. Grading compares it against the block's own
            tolerance, so an estimate is judged as an estimate — and the unit is
            shown beside the field rather than typed, because asking someone to
@@ -52,7 +66,7 @@ export function QuestionCard({ item, value, onChange }: QuestionCardProps) {
               onChange={(e) => onChange(e.target.value)}
               placeholder="A number"
             />
-            {numeric.unit ? <span className="numeric__unit">{numeric.unit}</span> : null}
+            {answerBlock.unit ? <span className="numeric__unit">{answerBlock.unit}</span> : null}
           </div>
         </div>
       ) : item.type === 'recognition' && item.options ? (

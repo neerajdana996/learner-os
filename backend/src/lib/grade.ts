@@ -7,6 +7,27 @@ export interface Grade {
   feedback: string;
 }
 
+/**
+ * A code answer, compared as code.
+ *
+ * `normalise()` is right for prose and catastrophic here: it strips every
+ * character that is not a letter, a digit or a space, so `lo < hi` and
+ * `lo <= hi` become the same string — and `<=` versus `<` is the single most
+ * common wrong answer to the boundary question this format exists to ask. It
+ * also lowercases, and `Lo` is not `lo` in any language we generate.
+ *
+ * Whitespace is the only thing forgiven, because a blank holds an expression
+ * and `lo<hi` is the same expression as `lo < hi`.
+ */
+function normaliseCode(value: string): string {
+  return value.replace(/\s+/g, '');
+}
+
+function matchesCode(response: string, answer: string, accept: readonly string[] = []): boolean {
+  const given = normaliseCode(response);
+  return [answer, ...accept].some((candidate) => normaliseCode(candidate) === given);
+}
+
 /** Relative tolerance for numeric answers, so 3.14 counts as 3.1416. */
 const NUMERIC_TOLERANCE = 0.01;
 
@@ -82,6 +103,48 @@ export async function grade(payload: ItemPayload, response: string | number): Pr
    * the exact failure the block exists to prevent, since `6GB`, `6e9` and
    * `6,000,000,000` are one answer with infinitely many spellings.
    */
+  const answerBlock = payload.blocks?.find((b) => b.slot === 'answer');
+
+  /**
+   * Fill in the blank (T-086). Whitespace is normalised before comparing, so
+   * `lo<=hi` and `lo <= hi` are the same answer — the question is about the
+   * boundary, never about spacing.
+   *
+   * Two holes are **one** boolean. Partial credit would report a learner who
+   * got the boundary right and the variable wrong as half-remembering, and the
+   * measurement has no room for half.
+   */
+  if (answerBlock?.kind === 'clozeCode') {
+    const given = text.split('\n');
+    const correct = answerBlock.holes.every((hole, i) =>
+      matchesCode(given[i] ?? '', hole.answer, hole.accept),
+    );
+    return {
+      correct,
+      // `failure` names the concrete input where the likely wrong answer breaks
+      // — a far better correction than restating the right token (T-083).
+      feedback: correct ? 'Correct.' : answerBlock.failure,
+    };
+  }
+
+  /**
+   * Click the line that is wrong (T-087).
+   *
+   * `acceptAdjacent` is the honest catch in this format: when the fix is an
+   * *insertion*, the line that should change is not on screen, so the generator
+   * marks the line that has to change and the neighbour counts too. Without it
+   * the format would mark a learner wrong for pointing at the right place.
+   */
+  if (answerBlock?.kind === 'hotspotLine') {
+    const chosen = typeof response === 'number' ? response : Number.parseInt(text, 10);
+    const distance = Math.abs(chosen - answerBlock.line);
+    const correct = distance === 0 || (answerBlock.acceptAdjacent === true && distance === 1);
+    return {
+      correct,
+      feedback: correct ? answerBlock.why : answerBlock.failure,
+    };
+  }
+
   const numericBlock = payload.blocks?.find((b) => b.kind === 'numeric' && b.slot === 'answer');
   if (numericBlock && numericBlock.kind === 'numeric') {
     const given = Number.parseFloat(text.replace(/[\s,]/g, ''));

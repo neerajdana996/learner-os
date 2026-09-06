@@ -217,3 +217,131 @@ describe('a numeric answer block', () => {
     expect(result.feedback).toMatch(/6000000000 bytes/);
   });
 });
+
+describe('fill in the blank (T-086)', () => {
+  const cloze = (holes: { id: number; answer: string; accept?: string[] }[]) => ({
+    type: 'application' as const,
+    prompt: 'Complete the loop condition.',
+    answer: 'lo < hi',
+    blocks: [
+      {
+        kind: 'clozeCode' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        src: 'while ({{1}}) {',
+        holes: holes.map((h) => ({ accept: [], width: 8, ...h })),
+        failure: 'With `lo <= hi` the loop reads a[a.length] on the last step.',
+      },
+    ],
+  });
+
+  it('accepts either spelling, without a model call', async () => {
+    const item = cloze([{ id: 1, answer: 'lo < hi', accept: ['lo<hi'] }]);
+    expect((await grade(item, 'lo < hi')).correct).toBe(true);
+    expect((await grade(item, 'lo<hi')).correct).toBe(true);
+  });
+
+  it('normalises whitespace — the question is the boundary, never the spacing', async () => {
+    const item = cloze([{ id: 1, answer: 'lo < hi' }]);
+    expect((await grade(item, '  lo   <   hi ')).correct).toBe(true);
+  });
+
+  it('surfaces the failure sentence rather than restating the token', async () => {
+    const result = await grade(cloze([{ id: 1, answer: 'lo < hi' }]), 'lo <= hi');
+    expect(result.correct).toBe(false);
+    expect(result.feedback).toMatch(/a\[a\.length\]/);
+  });
+
+  /** Partial credit would report someone who got the boundary right and the
+   *  variable wrong as half-remembering, and the measurement has no half. */
+  it('grades two holes as one boolean', async () => {
+    const item = cloze([
+      { id: 1, answer: 'lo' },
+      { id: 2, answer: 'hi' },
+    ]);
+    expect((await grade(item, 'lo\nhi')).correct).toBe(true);
+    expect((await grade(item, 'lo\nlo')).correct).toBe(false);
+    expect((await grade(item, 'lo')).correct).toBe(false);
+  });
+});
+
+describe('click the line that is wrong (T-087)', () => {
+  const hotspot = (line: number, acceptAdjacent: boolean) => ({
+    type: 'application' as const,
+    prompt: 'Which line leaks?',
+    answer: String(line),
+    blocks: [
+      {
+        kind: 'hotspotLine' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        src: 'a\nb\nc\nd',
+        line,
+        acceptAdjacent,
+        why: 'The subscription is never torn down.',
+        failure: 'Without the cleanup a second mount leaves two listeners.',
+      },
+    ],
+  });
+
+  it('grades the marked line correct and explains why', async () => {
+    const result = await grade(hotspot(3, false), 3);
+    expect(result.correct).toBe(true);
+    expect(result.feedback).toMatch(/never torn down/);
+  });
+
+  /**
+   * The honest catch: when the fix is an insertion the line that should change
+   * is not on screen, so the neighbour is the right answer too. Without this a
+   * learner pointing at exactly the right place would be marked wrong.
+   */
+  it('accepts the neighbour only when the fix is an insertion', async () => {
+    expect((await grade(hotspot(3, true), 2)).correct).toBe(true);
+    expect((await grade(hotspot(3, true), 4)).correct).toBe(true);
+    expect((await grade(hotspot(3, false), 2)).correct).toBe(false);
+  });
+
+  it('rejects a line two away even when adjacency is allowed', async () => {
+    expect((await grade(hotspot(3, true), 1)).correct).toBe(false);
+  });
+
+  it('reads a line sent as a string, which is what a form gives you', async () => {
+    expect((await grade(hotspot(3, false), '3')).correct).toBe(true);
+  });
+});
+
+describe('a blank is graded as code, not prose', () => {
+  const boundary = {
+    type: 'application' as const,
+    prompt: 'Complete the loop condition.',
+    answer: 'lo < hi',
+    blocks: [
+      {
+        kind: 'clozeCode' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        src: 'while ({{1}}) {',
+        holes: [{ id: 1, answer: 'lo < hi', accept: [], width: 8 }],
+        failure: 'With `lo <= hi` the loop reads a[a.length] on the last step.',
+      },
+    ],
+  };
+
+  /**
+   * The prose normaliser strips every non-alphanumeric character, so `lo < hi`
+   * and `lo <= hi` collapse to the same string. `<=` versus `<` is the single
+   * most common wrong answer to the boundary question this format exists to
+   * ask — graded with the prose matcher, the format proved nothing.
+   */
+  it('does not accept <= for <', async () => {
+    expect((await grade(boundary, 'lo <= hi')).correct).toBe(false);
+  });
+
+  it('is case-sensitive, because identifiers are', async () => {
+    expect((await grade(boundary, 'Lo < Hi')).correct).toBe(false);
+  });
+
+  it('still forgives spacing, because a blank holds an expression', async () => {
+    expect((await grade(boundary, 'lo<hi')).correct).toBe(true);
+  });
+});

@@ -97,3 +97,101 @@ describe('answer surfaces respect the item, and the block', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 });
+
+describe('fill in the blank (T-086)', () => {
+  const cloze = {
+    itemId: 'i1',
+    conceptId: 'c1',
+    type: 'application' as const,
+    prompt: 'Complete the loop condition.',
+    blocks: [
+      {
+        kind: 'clozeCode' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        src: 'while ({{1}}) {\n  mid = lo + {{2}};',
+        holes: [
+          { id: 1, width: 8 },
+          { id: 2, width: 6 },
+        ],
+      },
+    ],
+  };
+
+  it('puts a real input at each blank, named by its position', () => {
+    render(<QuestionCard item={cloze} value="" onChange={() => {}} />);
+
+    // A screen reader gets no listing, so "blank 2 of 2" is the only orientation.
+    expect(screen.getByRole('textbox', { name: 'Blank 1 of 2' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Blank 2 of 2' })).toBeInTheDocument();
+  });
+
+  it('keeps the code around the blanks', () => {
+    render(<QuestionCard item={cloze} value="" onChange={() => {}} />);
+    expect(screen.getByText(/while \(/)).toBeInTheDocument();
+    // The marker itself must never be shown — it is a hole, not text.
+    expect(screen.queryByText(/\{\{1\}\}/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * One value, one slot per hole, in reading order. The empty slot matters:
+   * grading splits on the separator and pairs the parts with the holes by
+   * position, so dropping a blank one would shift every later answer onto the
+   * wrong hole.
+   */
+  it('reports both holes as one value, keeping a slot for the empty one', async () => {
+    const user = userEvent.setup();
+    let latest = '';
+    render(<QuestionCard item={cloze} value={latest} onChange={(v) => { latest = String(v); }} />);
+
+    await user.type(screen.getByRole('textbox', { name: 'Blank 1 of 2' }), 'x');
+    expect(latest).toBe('x\n');
+  });
+
+  it('fills the second hole into its own slot', async () => {
+    const user = userEvent.setup();
+    let latest = '';
+    render(<QuestionCard item={cloze} value="lo < hi" onChange={(v) => { latest = String(v); }} />);
+
+    await user.type(screen.getByRole('textbox', { name: 'Blank 2 of 2' }), 'n');
+    expect(latest).toBe('lo < hi\nn');
+  });
+});
+
+describe('click the line that is wrong (T-087)', () => {
+  const hotspot = {
+    itemId: 'i1',
+    conceptId: 'c1',
+    type: 'application' as const,
+    prompt: 'Which line leaks?',
+    blocks: [
+      {
+        kind: 'hotspotLine' as const,
+        slot: 'answer' as const,
+        lang: 'javascript' as const,
+        src: 'useEffect(() => {\n  sub();\n}, []);',
+      },
+    ],
+  };
+
+  /** Not click handlers on divs: arrow keys and space come free with a radio
+   *  group, and a card that needs a mouse is one a third of people cannot use. */
+  it('is a radio group, one option per line', () => {
+    render(<QuestionCard item={hotspot} value={null} onChange={() => {}} />);
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+  });
+
+  it('answers with the 1-based line number, and the tap is the answer', async () => {
+    const user = userEvent.setup();
+    let picked: unknown = null;
+    render(<QuestionCard item={hotspot} value={null} onChange={(v) => { picked = v; }} />);
+
+    await user.click(screen.getAllByRole('radio')[1]!);
+    expect(picked).toBe(2);
+  });
+
+  it('names each line for a screen reader, which gets no gutter', () => {
+    render(<QuestionCard item={hotspot} value={null} onChange={() => {}} />);
+    expect(screen.getByRole('radio', { name: /Line 2:/ })).toBeInTheDocument();
+  });
+});

@@ -229,3 +229,63 @@
     }
   }
 }
+
+/// Fill in the blank (T-086). The input sits inline in the listing, in the
+/// monospace grid, sized to the hole's own width — a full-width field under the
+/// snippet is a text question with a picture above it.
+.cloze__hole {
+  font: inherit;
+  font-family: $font-mono;
+  background: var(--surface);
+  color: var(--ink);
+  border: 0;
+  border-bottom: 2px solid var(--clay);
+  border-radius: 0;
+  padding: 0 3px;
+  margin: 0 1px;
+  min-width: 3ch;
+
+  @include focus-ring;
+
+  &::placeholder {
+    color: var(--muted);
+  }
+}
+
+/// Click the line that is wrong (T-087). Every line is a full-width tap target
+/// at least `$tap` tall — this is the one format that has to work with a thumb,
+/// on a phone, in a popup.
+.hotspot {
+  &__grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__line {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: $s-3;
+    min-height: $tap;
+    padding: 2px $s-2;
+    cursor: pointer;
+    border-radius: $radius;
+    transition: background-color $duration-fast $ease;
+
+    &:hover {
+      background: var(--sunken);
+    }
+
+    /// The selection has to survive being the only visual state on a listing
+    /// that is otherwise uniform, so it takes both a fill and a rule.
+    &--picked {
+      background: var(--clay-wash);
+      box-shadow: inset 2px 0 0 var(--clay);
+    }
+
+    /// The radio is visually hidden, so the focus ring has to land on the row.
+    &:focus-within {
+      @include focus-ring;
+    }
+  }
+}
