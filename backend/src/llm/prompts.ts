@@ -1,7 +1,8 @@
 // Loads and renders file-based prompts. A prompt lives at
-//   src/llm/prompts/<name>/system.md   (static system prompt, required)
-//   src/llm/prompts/<name>/user.md     (user message template with {{vars}}, required)
-//   src/llm/prompts/<name>/example.md  (few-shot example, optional)
+//   src/llm/prompts/<name>/system.md          (static system prompt, required)
+//   src/llm/prompts/<name>/user.md            (user message template, required)
+//   src/llm/prompts/<name>/example.md         (few-shot example, optional)
+//   src/llm/prompts/<name>/domains/<d>.md     (fragment, appended per call — T-083)
 // Editing prompt text = editing a .md file; no code change, easy to diff/QA.
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -13,15 +14,45 @@ export interface PromptTemplate {
   system: string;
   user: string;
   example?: string;
+  /** The domain fragment, when one was asked for and exists. */
+  fragment?: string;
 }
 
-export function loadTemplate(name: string): PromptTemplate {
+/**
+ * A fragment name is a filename, so it is constrained rather than trusted.
+ *
+ * It reaches here from `concepts.domain`, which is a database enum today — but
+ * "today it comes from an enum" is not a property the filesystem knows about,
+ * and one refactor away it could be a topic string.
+ */
+const FRAGMENT_NAME = /^[a-z][a-z0-9-]{0,30}$/;
+
+/**
+ * `fragment` names a file under `<name>/domains/`, appended to the system
+ * prompt for this call only (T-083).
+ *
+ * **Absent is the normal case and must cost nothing.** A topic on Renaissance
+ * painting never asks for one, and a `code` fragment that does not exist yet —
+ * `math`, `systems` — is not an error either: the concept simply gets the
+ * generic prompt, which is what it got before this existed. Only a malformed
+ * name throws, because that is a bug rather than a gap.
+ */
+export function loadTemplate(name: string, fragment?: string): PromptTemplate {
   const dir = join(PROMPTS_DIR, name);
   const system = readFileSync(join(dir, 'system.md'), 'utf8').trim();
   const user = readFileSync(join(dir, 'user.md'), 'utf8').trim();
   const examplePath = join(dir, 'example.md');
   const example = existsSync(examplePath) ? readFileSync(examplePath, 'utf8').trim() : undefined;
-  return { system, user, example };
+
+  return { system, user, example, ...(fragment ? { fragment: loadFragment(dir, fragment) } : {}) };
+}
+
+function loadFragment(dir: string, fragment: string): string | undefined {
+  if (!FRAGMENT_NAME.test(fragment)) {
+    throw new Error(`prompt fragment name is not a plain slug: ${JSON.stringify(fragment)}`);
+  }
+  const path = join(dir, 'domains', `${fragment}.md`);
+  return existsSync(path) ? readFileSync(path, 'utf8').trim() : undefined;
 }
 
 /**

@@ -49,6 +49,7 @@ const hotspotBlock = (over: Partial<Record<string, unknown>> = {}): Record<strin
   src: SRC,
   line: 3,
   why: 'SECRETWHY',
+  failure: 'SECRETHOTFAIL — a.length is exclusive, so the last element is never read',
   acceptAdjacent: false,
   ...over,
 });
@@ -59,6 +60,7 @@ const orderBlock = (over: Partial<Record<string, unknown>> = {}): Record<string,
   lang: 'javascript',
   lines: ['const t = setup();', 'subscribe(t);', 'return () => teardown(t);', 'log(t);'],
   order: [0, 1, 2, 3],
+  swapBreaks: 'SECRETSWAP — subscribing before setup leaves t undefined',
   ...over,
 });
 
@@ -69,6 +71,7 @@ const editorBlock = (over: Partial<Record<string, unknown>> = {}): Record<string
   signature: 'debounce(fn, ms)',
   starter: 'function debounce(fn, ms) {}',
   skeleton: 'SECRETSKELETON',
+  whyWhole: 'SECRETWHYWHOLE — a blank cannot test that the timer handle is kept',
   cases: [
     { name: 'runs once', call: 'debounce(f, 10)', expect: 'SECRETEXPECT1' },
     { name: 'coalesces', call: 'debounce(f, 10)()()', expect: 'SECRETEXPECT2' },
@@ -182,6 +185,18 @@ describe('cross-block rules', () => {
     const result = ItemPayloadSchema.safeParse({ type: 'recall', prompt: 'What is a stoma?', answer: 'a pore' });
     expect(result.success && result.data.blocks).toBeUndefined();
   });
+
+  it('reads an explicit null as "no blocks", because that is what the provider sends', () => {
+    // Strict mode requires every property in `required`, so an absent optional
+    // arrives as null rather than by omission (T-083). Missed once at the block
+    // level and once here; both normalise to undefined.
+    for (const schema of [ItemPayloadSchema, ItemGenerationSchema]) {
+      const result = schema.safeParse({ type: 'recall', prompt: 'Q', answer: 'a', accept: [], blocks: null });
+      expect(result.success && result.data.blocks).toBeUndefined();
+    }
+    const code = BlockGenerationSchema.safeParse({ ...codeBlock({ notes: [] }), short: null, dim: null });
+    expect(code.success && code.data.kind === 'code' && code.data.short).toBeUndefined();
+  });
 });
 
 describe('cloze markers and holes must agree', () => {
@@ -214,6 +229,25 @@ describe('line references stay inside the listing', () => {
 
   it('rejects a hotspot past the end', () => {
     expect(BlockSchema.safeParse(hotspotBlock({ line: 99 })).success).toBe(false);
+  });
+});
+
+describe('listing length', () => {
+  it('rejects a listing over 12 lines — the fragment calls this a hard limit', () => {
+    const long = Array.from({ length: 13 }, (_, i) => `line${i}();`).join('\n');
+    const result = BlockSchema.safeParse(codeBlock({ src: long }));
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).toContain('listing is 13 lines; the limit is 12');
+  });
+
+  it('applies to answer blocks too, not just context', () => {
+    const long = Array.from({ length: 13 }, (_, i) => `line${i}();`).join('\n');
+    expect(BlockSchema.safeParse(hotspotBlock({ src: long })).success).toBe(false);
+  });
+
+  it('accepts exactly 12', () => {
+    const twelve = Array.from({ length: 12 }, (_, i) => `line${i}();`).join('\n');
+    expect(BlockSchema.safeParse(codeBlock({ src: twelve })).success).toBe(true);
   });
 });
 
@@ -298,7 +332,13 @@ describe('the generation schema is what the model may return', () => {
 });
 
 describe('the public projection never carries an answer key', () => {
-  const answerBearing = ['answer', 'accept', 'expect', 'skeleton', 'failure', 'why', 'line', 'order', 'acceptAdjacent'];
+  // `swapBreaks` names the pair whose swap breaks the ordering — that is the
+  // answer. `whyWhole` and `failure` are justification written for content QA,
+  // not for the learner (T-083).
+  const answerBearing = [
+    'answer', 'accept', 'expect', 'skeleton', 'failure', 'why', 'line', 'order',
+    'acceptAdjacent', 'swapBreaks', 'whyWhole',
+  ];
 
   it.each([
     ['clozeCode', clozeBlock()],
@@ -311,7 +351,7 @@ describe('the public projection never carries an answer key', () => {
     const json = JSON.stringify(publicBlocks);
 
     // Values: nothing a learner could read the answer off.
-    for (const secret of ['SECRETANSWER', 'SECRETACCEPT', 'SECRETEXPECT1', 'SECRETEXPECT2', 'SECRETSKELETON', 'SECRETWHY', 'SECRETFAILURE', 'SECRETREVEAL']) {
+    for (const secret of ['SECRETANSWER', 'SECRETACCEPT', 'SECRETEXPECT1', 'SECRETEXPECT2', 'SECRETSKELETON', 'SECRETWHY', 'SECRETFAILURE', 'SECRETREVEAL', 'SECRETSWAP', 'SECRETHOTFAIL', 'SECRETWHYWHOLE']) {
       expect(json, `${secret} leaked`).not.toContain(secret);
     }
 

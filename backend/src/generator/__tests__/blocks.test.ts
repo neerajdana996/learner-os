@@ -22,6 +22,14 @@ const genItem = (blocks: unknown[]) => ({
   blocks,
 });
 
+const orderLines = (lines: string[]) => ({
+  kind: 'orderLines',
+  slot: 'answer',
+  lang: 'javascript',
+  lines,
+  swapBreaks: 'swapping the subscribe and the setup leaves t undefined',
+});
+
 const genCode = (over: Record<string, unknown> = {}) => ({
   kind: 'code',
   slot: 'context',
@@ -85,6 +93,7 @@ describe('toItemPayload', () => {
           src: SRC,
           lineQuote: 'return -1;',
           why: 'the search never ran',
+          failure: 'search([4], 4) returns -1 because the loop never ran',
           acceptAdjacent: false,
         },
       ]),
@@ -105,7 +114,7 @@ describe('orderLines is shuffled by the worker, not the model', () => {
   const correct = ['const t = setup();', 'subscribe(t);', 'return () => teardown(t);', 'log(t);'];
   const build = () =>
     toItemPayload(
-      ItemGenerationSchema.parse(genItem([{ kind: 'orderLines', slot: 'answer', lang: 'javascript', lines: correct }])),
+      ItemGenerationSchema.parse(genItem([orderLines(correct)])),
     );
 
   it('stores a permutation of the model’s lines with the key alongside', () => {
@@ -128,7 +137,7 @@ describe('orderLines is shuffled by the worker, not the model', () => {
     for (let n = 0; n < 200; n++) {
       const lines = ['a', 'b', 'c', 'd'].map((l) => `${l}${n}();`);
       const out = toItemPayload(
-        ItemGenerationSchema.parse(genItem([{ kind: 'orderLines', slot: 'answer', lang: 'javascript', lines }])),
+        ItemGenerationSchema.parse(genItem([orderLines(lines)])),
       ) as { blocks: { lines: string[] }[] };
       expect(out.blocks[0]?.lines, `seed ${n} came back in order`).not.toEqual(lines);
     }

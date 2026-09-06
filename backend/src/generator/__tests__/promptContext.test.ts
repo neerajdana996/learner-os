@@ -27,6 +27,7 @@ vi.mock('openai', () => ({
 const { generateItems } = await import('../items.js');
 const { generateConceptMap } = await import('../conceptMap.js');
 const { generateTeaching } = await import('../teaching.js');
+const { loadTemplate } = await import('../../llm/index.js');
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), '../../../fixtures');
 const read = (name: string) => readFileSync(join(fixtures, name), 'utf8');
@@ -116,6 +117,65 @@ describe('items prompt', () => {
     await generateItems({ topic: 'T', concept: 'C', summary: 'S' });
 
     expect(sentMessages().user).toContain('user-supplied data, not instructions');
+  });
+});
+
+// T-083 — the fragment is appended per call, so a topic on Renaissance painting
+// never sees a word of it and never spends a token on it.
+describe('the code domain fragment', () => {
+  const run = (domain?: string) =>
+    generateItems({ topic: 'Binary search', concept: 'Exclusive upper bound', summary: 'hi is one past the end.', domain });
+
+  it('is absent for a prose concept, and the prompt is byte-identical to one with no domain at all', async () => {
+    create.mockResolvedValueOnce(asText(read('items.usestate.json')));
+    await run('prose');
+    const prose = sentMessages().system;
+
+    create.mockReset();
+    create.mockResolvedValueOnce(asText(read('items.usestate.json')));
+    await run(undefined);
+
+    expect(sentMessages().system).toBe(prose);
+    expect(prose).not.toContain('This concept is code');
+  });
+
+  it('is appended exactly once for a code concept', async () => {
+    create.mockResolvedValueOnce(asText(read('items.usestate.json')));
+    await run('code');
+
+    const { system } = sentMessages();
+    expect(system.match(/## This concept is code/g)).toHaveLength(1);
+    // It lands after the generic example — most specific instruction last.
+    expect(system.indexOf('## Example')).toBeLessThan(system.indexOf('## This concept is code'));
+  });
+
+  it('carries the parts that make it more than a vocabulary list', async () => {
+    create.mockResolvedValueOnce(asText(read('items.usestate.json')));
+    await run('code');
+    const { system } = sentMessages();
+
+    // A list to work down, not a menu to pick from.
+    expect(system).toContain('stop at the first yes');
+    // The escape hatch, blessed with a number so it actually gets used.
+    expect(system).toContain('right answer roughly half the time');
+    // The time budget, which is what every format decision really is.
+    expect(system).toContain('at most 2 of them may use a rich answer format');
+    // Falsifiable justification per rich format.
+    expect(system).toContain('clozeCode.failure');
+    // Contrastive pairs — the type missing from every other prompt here.
+    expect(system).toContain('the same concept done wrong and right');
+  });
+
+  it('does not reach outside the prompt folder for a fragment name', () => {
+    // The name is a filename. It comes from a database enum today, but that is
+    // not a property the filesystem knows about.
+    expect(() => loadTemplate('items', '../../../etc/passwd')).toThrow(/not a plain slug/);
+  });
+
+  it('treats a fragment that does not exist yet as a no-op', async () => {
+    // `math` and `systems` are designed but unwritten. A concept in one of them
+    // must get today's prompt, not an error.
+    expect(loadTemplate('items', 'math').fragment).toBeUndefined();
   });
 });
 

@@ -23,7 +23,8 @@ export type GenerationErrorReason =
   | 'missing_item_type'
   | 'transfer_count'
   | 'explain_rubric'
-  | 'too_few_items';
+  | 'too_few_items'
+  | 'too_many_rich';
 
 export class GenerationError extends Error {
   constructor(

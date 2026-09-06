@@ -65,12 +65,28 @@ export function stripFences(text: string): string {
   return (fence?.[1] ?? text).trim();
 }
 
+export interface RunOptions {
+  /**
+   * Appends `prompts/<name>/domains/<fragment>.md` to the system prompt for
+   * this call only (T-083).
+   *
+   * It goes **last**, after the generic example, because it is the most
+   * specific instruction and it carries its own worked example — a code
+   * example landing before a generic one reads as the exception rather than
+   * the rule. A fragment that does not exist is a no-op, so a `math` concept
+   * gets today's prompt until `math.md` is written.
+   */
+  fragment?: string;
+}
+
 export async function runPrompt<Vars extends Record<string, string>, Out>(
   def: PromptDef<Vars, Out>,
   vars: Vars,
+  options: RunOptions = {},
 ): Promise<Out> {
-  const tpl = loadTemplate(def.name);
-  const system = tpl.example ? `${tpl.system}\n\n## Example\n${tpl.example}` : tpl.system;
+  const tpl = loadTemplate(def.name, options.fragment);
+  const withExample = tpl.example ? `${tpl.system}\n\n## Example\n${tpl.example}` : tpl.system;
+  const system = tpl.fragment ? `${withExample}\n\n${tpl.fragment}` : withExample;
   const user = render(tpl.user, vars);
 
   // Per-prompt tier from MODELS, overridable on the definition. Effort is always

@@ -106,6 +106,8 @@ export async function processGenerationJob(
         // Null means the learner didn't name one, so nothing is asked for and
         // each call decides for itself as it always has (T-091).
         language: topic.language ?? undefined,
+        // Selects the prompt fragment (T-083). Only an exact 'code' gets one.
+        domain: concept.domain,
       });
       itemsBySlug.set(concept.slug, generated.items);
       teachingBySlug.set(

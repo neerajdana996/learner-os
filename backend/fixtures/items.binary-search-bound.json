@@ -1,0 +1,145 @@
+{
+  "topic": "Exclusive upper bound in binary search",
+  "items": [
+    {
+      "type": "recall",
+      "prompt": "In a binary search written with an exclusive upper bound, what does `hi` hold when the search starts?",
+      "answer": "a.length \u2014 one past the last index",
+      "accept": [
+        "the array length",
+        "one past the end",
+        "a.length"
+      ],
+      "isTransfer": false,
+      "blocks": null
+    },
+    {
+      "type": "recognition",
+      "prompt": "Which loop condition goes with an exclusive `hi`?",
+      "options": [
+        "while (lo <= hi)",
+        "while (lo < hi)",
+        "while (lo < hi - 1)",
+        "while (lo !== hi - 1)"
+      ],
+      "answerIndex": 1,
+      "isTransfer": false,
+      "blocks": [
+        {
+          "kind": "code",
+          "slot": "context",
+          "lang": "javascript",
+          "src": "function search(a, x) {\n  let lo = 0;\n  let hi = a.length;\n  while (lo < hi) {\n    const mid = (lo + hi) >> 1;\n    if (a[mid] === x) return mid;\n    a[mid] < x ? (lo = mid + 1) : (hi = mid);\n  }\n  return -1;\n}",
+          "short": null,
+          "notes": [],
+          "dim": null
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "prompt": "Complete the loop condition so every element is still searched and nothing past the end is read.",
+      "answer": "lo < hi",
+      "accept": [
+        "lo<hi"
+      ],
+      "isTransfer": false,
+      "blocks": [
+        {
+          "kind": "code",
+          "slot": "context",
+          "lang": "javascript",
+          "src": "function search(a, x) {\n  let lo = 0;\n  let hi = a.length;\n  while (lo < hi) {\n    const mid = (lo + hi) >> 1;\n    if (a[mid] === x) return mid;\n    a[mid] < x ? (lo = mid + 1) : (hi = mid);\n  }\n  return -1;\n}",
+          "short": null,
+          "notes": [
+            {
+              "lineQuote": "let hi = a.length;",
+              "text": "one past the end, not the last index"
+            }
+          ],
+          "dim": null
+        },
+        {
+          "kind": "clozeCode",
+          "slot": "answer",
+          "lang": "javascript",
+          "src": "while ({{1}}) {",
+          "holes": [
+            {
+              "id": 1,
+              "answer": "lo < hi",
+              "accept": [
+                "lo<hi"
+              ],
+              "width": 8
+            }
+          ],
+          "failure": "With `lo <= hi` the last step reads a[a.length], which is undefined \u2014 search([4], 4) then returns -1."
+        }
+      ]
+    },
+    {
+      "type": "application",
+      "prompt": "This effect adds a listener on every render. Which line has to change?",
+      "answer": "the closing line of the effect \u2014 it needs a dependency array",
+      "accept": [
+        "the last line",
+        "});"
+      ],
+      "isTransfer": false,
+      "blocks": [
+        {
+          "kind": "hotspotLine",
+          "slot": "answer",
+          "lang": "javascript",
+          "src": "useEffect(() => {\n  const on = () => setW(window.innerWidth);\n  window.addEventListener('resize', on);\n});",
+          "lineQuote": "});",
+          "why": "With no dependency array the effect re-runs after every render, adding a listener each time.",
+          "failure": "After ten renders there are ten resize listeners and the first nine are unreachable.",
+          "acceptAdjacent": true
+        }
+      ]
+    },
+    {
+      "type": "explain",
+      "prompt": "Why is an exclusive upper bound easier to get right than an inclusive one?",
+      "rubric": "Must mention: hi = length needs no -1; the loop ends when lo === hi; no element is read twice.",
+      "isTransfer": false,
+      "blocks": null
+    },
+    {
+      "type": "recall",
+      "prompt": "With an exclusive bound, what is true of `lo` and `hi` when the loop exits without a match?",
+      "answer": "they are equal",
+      "accept": [
+        "lo === hi",
+        "lo equals hi"
+      ],
+      "isTransfer": false,
+      "blocks": null
+    },
+    {
+      "type": "application",
+      "prompt": "A sliding window keeps `end` as the first index NOT yet in the window. What is the window's length?",
+      "answer": "end - start",
+      "accept": [
+        "end minus start"
+      ],
+      "isTransfer": true,
+      "blocks": null
+    },
+    {
+      "type": "recognition",
+      "prompt": "Which change turns an exclusive-bound search into an off-by-one?",
+      "options": [
+        "let hi = a.length - 1, keeping while (lo < hi)",
+        "let lo = 1",
+        "const mid = (lo + hi) >>> 1",
+        "return -1 instead of null"
+      ],
+      "answerIndex": 0,
+      "isTransfer": false,
+      "blocks": null
+    }
+  ]
+}

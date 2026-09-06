@@ -8,13 +8,14 @@ vi.mock('openai', () => ({
   },
 }));
 
-const { itemsJsonSchema, itemsPrompt } = await import('../items.js');
+const { itemsJsonSchema, itemsPrompt, blockJsonSchemas } = await import('../items.js');
 const { conceptMapJsonSchema, ConceptMapSchema, conceptMapPrompt } = await import('../conceptMap.js');
 const { teachingJsonSchema, teachingPrompt } = await import('../teaching.js');
-const { ItemGenerationSchema } = await import('../../shared/index.js');
+const { ItemGenerationSchema, BlockGenerationSchema } = await import('../../shared/index.js');
 
 type JsonSchema = {
-  type?: string;
+  /** An array when the node is nullable — strict mode's way of saying optional. */
+  type?: string | string[];
   properties?: Record<string, JsonSchema>;
   required?: string[];
   additionalProperties?: boolean;
@@ -33,11 +34,15 @@ function assertStrict(schema: JsonSchema, path = 'root'): void {
     schema.anyOf.forEach((variant, i) => assertStrict(variant, `${path}.anyOf[${i}]`));
     return;
   }
-  if (schema.type === 'array' && schema.items) {
+  // A nullable node's `type` is `['array', 'null']` rather than `'array'`
+  // (T-083). Before this, such a node was skipped entirely — and every block
+  // schema hangs off one, so the whole union went unchecked.
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  if (types.includes('array') && schema.items) {
     assertStrict(schema.items, `${path}[]`);
     return;
   }
-  if (schema.type !== 'object') return;
+  if (!types.includes('object')) return;
 
   expect(schema.additionalProperties, `${path}: additionalProperties must be false`).toBe(false);
 
@@ -86,9 +91,8 @@ describe('JSON schemas do not drift from the Zod schemas', () => {
     for (const variant of variants) {
       // isTransfer is a sibling column on the items table, not part of the
       // jsonb payload, so the model must emit it but the payload schema does
-      // not declare it — hence the explicit addition here. `blocks` is excluded
-      // for the opposite reason: see the test below.
-      const expected = [...zodKeys(variant).filter((k) => k !== 'blocks'), 'isTransfer'].sort();
+      // not declare it — hence the explicit addition here.
+      const expected = [...zodKeys(variant), 'isTransfer'].sort();
       const match = jsonVariants.find((v) => [...(v.required ?? [])].sort().join() === expected.join());
       expect(match, `no JSON variant matches Zod keys ${expected.join(',')}`).toBeDefined();
     }
@@ -99,20 +103,42 @@ describe('JSON schemas do not drift from the Zod schemas', () => {
    * `blocks`, in both directions.
    *
    * Strict mode sets `additionalProperties: false`, so **the model cannot emit
-   * a field this JSON schema omits**. `blocks` is deliberately absent here
-   * today: T-080 defines the shapes, and `T-083` is the task that asks the
-   * model for them. That means `domains/code.md` on its own would be inert —
-   * T-083 has to extend this schema in the same change, and this test is where
-   * it will notice.
+   * a field this JSON schema omits** — which is why `domains/code.md` on its
+   * own would have been completely inert. T-080 left this false deliberately
+   * and T-083 flipped it, in the same change as the fragment.
    */
-  it('agrees with the Zod schema about whether blocks are on offer', () => {
+  it('offers blocks to the provider, on every item variant', () => {
     const jsonVariants = (itemsJsonSchema as unknown as JsonSchema).properties?.items?.items?.anyOf ?? [];
-    const inJson = jsonVariants.some((v) => 'blocks' in (v.properties ?? {}));
-    const inZod = generationVariants().some((v) => zodKeys(v).includes('blocks'));
+    expect(generationVariants().every((v) => zodKeys(v).includes('blocks'))).toBe(true);
+    expect(jsonVariants.every((v) => 'blocks' in (v.properties ?? {}))).toBe(true);
+    // Optional is expressed as a nullable type, never by omission: strict mode
+    // requires the key in `required` regardless.
+    for (const variant of jsonVariants) {
+      expect(variant.required).toContain('blocks');
+      expect(variant.properties?.blocks?.type).toEqual(['array', 'null']);
+    }
+  });
 
-    expect(inZod, 'ItemGenerationSchema should declare blocks — that is T-080').toBe(true);
-    // Flip this to `true` in T-083, in the same commit as domains/code.md.
-    expect(inJson, 'blocks reach the provider only once T-083 asks for them').toBe(false);
+  it('every block kind the Zod union accepts is on offer, with the same keys', () => {
+    const zodBlocks = (
+      (BlockGenerationSchema.innerType() as unknown as { options: z.ZodTypeAny[] }).options
+    );
+    const jsonBlocks = [...blockJsonSchemas] as unknown as JsonSchema[];
+
+    expect(jsonBlocks).toHaveLength(zodBlocks.length);
+    for (const variant of zodBlocks) {
+      const expected = zodKeys(variant);
+      const match = jsonBlocks.find((v) => [...(v.required ?? [])].sort().join() === expected.join());
+      expect(match, `no JSON block matches Zod keys ${expected.join(',')}`).toBeDefined();
+    }
+  });
+
+  it('never offers the model a line number — only quotes', () => {
+    // The failure this prevents is silent: a wrong line number stores fine and
+    // a learner sees an annotation pointing at the wrong line on day six.
+    const json = JSON.stringify(blockJsonSchemas);
+    expect(json).not.toMatch(/"(line|from|to)":/);
+    expect(json).toContain('lineQuote');
   });
 
   it('every item variant requires isTransfer — the field that broke real generation', () => {

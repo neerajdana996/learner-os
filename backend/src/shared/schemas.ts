@@ -4,7 +4,7 @@
 // Browser-safe: only `zod` may be imported here. No `node:*`, drizzle, postgres,
 // bullmq or ioredis (sync-shared.sh fails the build if it finds any).
 import { z } from 'zod';
-import { BlockSchema, BlockGenerationSchema, PublicBlockSchema } from './blocks.js';
+import { BlockSchema, BlockGenerationSchema, PublicBlockSchema, optionalOrNull } from './blocks.js';
 
 function daysBetween(from: Date, to: Date): number {
   return (to.getTime() - from.getTime()) / 86_400_000;
@@ -121,7 +121,7 @@ function itemBlockRules(item: { type: string; blocks?: { kind: string; slot: str
 // parameter widens it to ZodTypeAny and discriminatedUnion loses its
 // discriminator.
 const payloadVariant = <T extends z.ZodRawShape>(fields: T) =>
-  z.object({ ...fields, blocks: z.array(BlockSchema).min(1).max(6).optional() });
+  z.object({ ...fields, blocks: optionalOrNull(z.array(BlockSchema).min(1).max(6)) });
 
 export const ItemPayloadSchema = z
   .discriminatedUnion('type', [
@@ -139,8 +139,11 @@ export const ItemPayloadSchema = z
  * that isn't listed. The worker derives the payload from this — see
  * `src/generator/blocks.ts`.
  */
+// `optionalOrNull`, not `.optional()`: the provider's strict mode requires every
+// property in `required`, so a plain-prompt item arrives as `blocks: null`
+// rather than with the key missing (T-083).
 const generationVariant = <T extends z.ZodRawShape>(fields: T) =>
-  z.object({ ...fields, blocks: z.array(BlockGenerationSchema).min(1).max(6).optional() });
+  z.object({ ...fields, blocks: optionalOrNull(z.array(BlockGenerationSchema).min(1).max(6)) });
 
 export const ItemGenerationSchema = z
   .discriminatedUnion('type', [
