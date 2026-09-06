@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+drizzle/
+*.log
+
+# Content QA exports contain every answer key for a live topic (T-024).
+qa/
