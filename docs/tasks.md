@@ -1792,14 +1792,20 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **discovered:** `T-099` — nothing serves a `reveal` block to the client after answering. The projection correctly refuses to send one with the question, and no endpoint sends one afterwards, so today a reveal block is written and never seen.
 
 ### T-081 · Founder call — CodeMirror on the client
-- **status:** blocked
+- **status:** done — no client UI library
 - **sprint:** 5
 - **depends_on:** —
 - **files:** `docs/loop.md`, `docs/plan.md`
 - **description:** `loop.md §2` says "UI: plain React, inline styles or a single `styles.css` — no UI library for the pilot." The design for `codeEditor` (T-088) needs CodeMirror 6 in the browser, and it is a UI library by any reading. The argument for an exception is that these are content renderers rather than a component kit — nothing here supplies a button, a layout or a theme — and that three of the four packages in the design (`shiki`, `diff`, `katex`) stay in the generator worker precisely to hold that line. The argument against is that this is how "no UI library" becomes four of them. **This is a founder decision, not one a task should make quietly**, which is why it is written down rather than assumed. Blocks T-088 only; every other task in this sprint ships without it.
 - **acceptance:** `loop.md §2` either carries a written exception naming the package and the screen, or T-088 is rewritten around a plain `<textarea>` with tab handling.
 - **tests:** —
-- **notes:** Raised 2026-09-05 while designing the code category. Note that `loop.md §2` is already stale in the other direction: it says inline styles, and the frontend moved to SCSS classes under `src/styles/` some time ago — so this section needs a pass regardless.
+- **notes:** (2026-09-06) **Decided: no UI library on the client, and `codeEditor` is a plain `<textarea>` with tab and indent handling.** `loop.md §2` now carries the rule rather than the question.
+  - The argument that made it easy came out of **T-088's own design**, not from a preference about dependencies. That design already turns off autocomplete, inline type hints and squiggles, because each is a retrieval cue and retrieval is what is being measured. What CodeMirror would still contribute is bracket matching and indent-on-newline — about thirty lines of `keydown` — plus syntax highlighting, which is itself arguably a cue: a keyword that fails to colour is feedback the design says should not be there. A large dependency for a very small remainder, on one block, on one screen.
+  - Blast radius was already small: `codeEditor` is barred from the extension (T-089) and from the Day-30 test (T-093), so it only ever appears in a web session.
+  - **Reversible and additive.** The data contract does not change, so if pilot participants struggle with a bare textarea that is evidence, and evidence can overturn this.
+  - ⚠ **It does not settle `graphBuild`.** A textarea cannot substitute for drawing a graph, so T-108's deferred block still needs its own call — canvas, or a non-drawing answer format. Recorded in `loop.md` so the rule is not read as blanket permission.
+  - The staleness this task also flagged — `loop.md §2` claiming inline styles — was already fixed during the design-system consolidation (T-090's successor).
+- **notes (original):** Raised 2026-09-05 while designing the code category. Note that `loop.md §2` is already stale in the other direction: it says inline styles, and the frontend moved to SCSS classes under `src/styles/` some time ago — so this section needs a pass regardless.
 
 ### T-082 · The concept map decides each concept's domain
 - **status:** done
@@ -1902,16 +1908,18 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:**
 
 ### T-088 · Write the code
-- **status:** todo
+- **status:** todo (unblocked)
 - **sprint:** 5
-- **depends_on:** T-085, T-081
+- **depends_on:** T-085
 - **files:** `frontend/src/components/blocks/CodeEditor.tsx`, `frontend/src/lib/runCases.ts`, `backend/src/modules/reviews/grade.ts`, tests alongside
 - **description:** The design canvas's *Write the code* artboard. Deliberately not an IDE: **no autocomplete, no inline type hints, no squiggles while typing** — every one of them is a retrieval cue, and the retrieval is what is being measured. Bracket matching, indent-on-newline and undo stay; those are typing, not knowing. Cases are visible up front as the spec, and the first case passes with almost any attempt on purpose — starting from two reds and one green is a debugging problem, starting from three reds is a blank page. "Show me the shape" reveals a skeleton with the bodies blank and sets `review_events.assisted`, and the scheduler treats an assisted pass as a lapse whatever the cases say. JS and TS run for real in a `<iframe sandbox="allow-scripts">` on a blank `srcdoc` with a 2-second budget — no dependency, a real origin boundary, no cookies and no network. Every other language shows the identical screen with **Submit** and grades server-side. Rationed: at most one per session, never in a review, never in the extension.
   - ⚠ **The client never sees `cases[].expect` (decided in T-080), so the runner posts actual outputs and the server compares.** The expected output of three named cases largely gives the function away, and stripping it is also what makes the design's own goal reachable — a learner cannot tell a JS item from a Python one until they press the button, because both round-trip. `skeleton` is stripped for the same reason and is fetched only when "Show me the shape" is taken, which is the moment `assisted` is set.
   - **T-080 could not enforce "the first case passes the empty starter"** — it needs the code to run, so it lands here. It is worth keeping: three reds on the first run is a blank page rather than a debugging problem.
 - **acceptance:** Autocomplete is off and asserted by a test, not by configuration alone. The sandbox cannot reach `document.cookie` or the network. An assisted pass writes `assisted = true` and schedules as a lapse. The client never receives an expected value for any case.
 - **tests:** A correct implementation passes all cases; an infinite loop is killed at 2s and reports a timeout rather than hanging the tab; the sandbox has no access to the parent document; taking the hint sets `assisted`; the same concept's next review is a `clozeCode`, not this.
-- **notes:** ⚠ Blocked on **T-081** — needs a founder call on CodeMirror before it can start.
+- **notes:** (2026-09-06) **Unblocked. T-081 decided against a client UI library, so this is a plain `<textarea>`** with tab-inserts-spaces, indent-on-newline and bracket matching — about thirty lines of `keydown`. Native undo comes free.
+  - That costs the design almost nothing, because it had already turned off autocomplete, type hints and squiggles as retrieval cues. Syntax highlighting goes too, on the same reasoning: a keyword that fails to colour is feedback.
+  - Paths in `files` above predate the design-system consolidation — the component belongs in `packages/ui/src/blocks/` and grading is `backend/src/lib/grade.ts`.
 
 ### T-089 · What the extension is allowed to pop
 - **status:** done

@@ -23,7 +23,11 @@
 - Every write to `review_events` must set `predicted_recall` and `gap_days_since_last` (see plan §6).
 - Never call the model API from the web app or extension. Only `backend/src/generator`, only from a BullMQ worker.
 - UI: plain React. **Zero inline styles** — SCSS classes under `frontend/src/styles/`, components take `className`. Colour tokens, the spacing/type scale and the shared mixins live in `@learnos/ui` (`packages/ui/styles/`) and are imported as `@use "@learnos/ui/styles/variables"`; never re-declare a colour or a spacing value in a component partial.
-- No UI library for the pilot. ⚠ **Open:** the `codeEditor` question format (T-088) needs CodeMirror in the browser, which is a UI library by any reading. Argued both ways in **T-081**; until that is decided, do not add one.
+- **No UI library on the client. Decided, not open** (T-081, founder call 2026-09-06). This covers component kits *and* editor/renderer packages: CodeMirror, Monaco, a drag library, a graph library. `codeEditor` (T-088) is a plain `<textarea>` with tab and indent handling.
+  - The reason it is not a close call: T-088's own design already turns off **autocomplete, inline type hints and squiggles**, because each is a retrieval cue and retrieval is the thing being measured. What CodeMirror would still contribute is bracket matching and indent-on-newline — about thirty lines of `keydown` — plus syntax highlighting, which is itself arguably a cue, since a keyword that fails to colour is feedback the design says should not be there. That is a very small return for a large dependency on one block, on one screen.
+  - Blast radius was already tiny: `codeEditor` is barred from the extension (T-089, too slow) and from the Day-30 test (T-093), so it appears only in a web session.
+  - **Revisiting is cheap and additive** — the data contract does not change. If pilot participants struggle with a bare textarea, that is evidence, and evidence can overturn this.
+  - ⚠ **This does not settle `graphBuild`** (T-108, deferred). A textarea cannot substitute for drawing a graph, so that block needs its own decision — a canvas, or a non-drawing answer format — when it is picked up. Do not read this line as permission.
 - Frontend data: **all** API calls go through RTK Query (`frontend/src/store/api.ts`); all client state lives in Redux Toolkit slices. No `fetch`/`axios` in components.
 
 ## 3. Testing (mandatory, not optional)
