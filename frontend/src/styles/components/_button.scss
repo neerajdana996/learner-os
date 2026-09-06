@@ -1,0 +1,67 @@
+@use "../../shared-ui/styles/variables" as *;
+@use "../../shared-ui/styles/mixins" as *;
+
+.btn {
+  @include control;
+
+  &--primary {
+    background: var(--clay);
+    color: var(--clay-on);
+
+    &:hover:not(:disabled) {
+      background: var(--clay-ink);
+    }
+  }
+
+  &--secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--border-strong);
+
+    &:hover:not(:disabled) {
+      background: var(--sunken);
+    }
+  }
+
+  &--quiet {
+    background: transparent;
+    color: var(--muted);
+    padding: 0 $s-1;
+
+    &:hover:not(:disabled) {
+      color: var(--ink);
+    }
+  }
+
+  &--block {
+    width: 100%;
+  }
+
+  /// An OAuth button: the provider's mark, then the label, both centred. The
+  /// design puts these on `surface` rather than the transparent secondary fill
+  /// — a provider button is a destination, not a secondary action, and the
+  /// white ground is what makes the coloured Google mark legible.
+  &--with-mark {
+    gap: 11px;
+    background: var(--surface);
+
+    &:hover:not(:disabled) {
+      background: var(--sunken);
+    }
+  }
+
+  /// Primary calls to action on sign-in and marketing surfaces sit at 48px in
+  /// the design, taller than the 44px floor used for in-page controls.
+  &--lg {
+    min-height: 48px;
+    padding: 0 $s-6;
+    font-size: $text-md;
+  }
+
+  &:disabled {
+    background: var(--sunken);
+    color: var(--stone);
+    border-color: transparent;
+    cursor: not-allowed;
+  }
+}

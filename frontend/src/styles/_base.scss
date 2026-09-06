@@ -1,0 +1,104 @@
+@use "../shared-ui/styles/variables" as *;
+@use "../shared-ui/styles/mixins" as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: $font-ui;
+  font-size: $text-base;
+  line-height: 1.6;
+  font-synthesis-weight: none;
+  transition: background-color $duration $ease, color $duration $ease;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: $font-display;
+  font-weight: $weight-medium;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-wrap: pretty;
+}
+
+h1 {
+  font-size: $display-md;
+}
+h2 {
+  font-size: $display-sm;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--clay);
+  text-decoration: none;
+  transition: color $duration-fast $ease;
+
+  &:hover {
+    color: var(--clay-ink);
+  }
+  @include focus-ring;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+/// Inline code inside generated prose. The model writes examples as code
+/// spans — `[2, 3, 1, 2]`, `distinctCount <= 2` — and rendering the backticks
+/// literally reads as a bug in the product rather than a quirk of the text.
+/// One rule here rather than per-screen, because every surface that shows
+/// teaching prose needs it: session, map tooltip, and the extension card.
+.code {
+  font-family: $font-mono;
+  font-size: 0.92em;
+  background: var(--sunken);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/// On an inverted card the sunken wash disappears into the ink.
+.teach__card--retrieval .code,
+.card--invert .code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/// The quiet line at the foot of a page — what we collect, why a thing is
+/// hidden. Separated by a rule rather than by distance, so it reads as a
+/// footnote to the page above it and not as another section.
+.fine-print {
+  margin: $s-6 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}

@@ -1,0 +1,131 @@
+@use "../../shared-ui/styles/variables" as *;
+@use "../../shared-ui/styles/mixins" as *;
+
+/// The score and the at-risk callout, side by side above the map. Stacks on a
+/// phone, where two columns of 300px is neither.
+.map-header {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $s-5;
+  align-items: start;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+    gap: $s-7;
+  }
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  gap: $s-4;
+
+  &__value {
+    font-family: $font-mono;
+    font-variant-numeric: tabular-nums;
+    font-size: 62px;
+    font-weight: $weight-medium;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  &__caption {
+    font-size: $text-sm;
+    color: var(--muted);
+    max-width: 220px;
+    line-height: 1.45;
+  }
+}
+
+.at-risk {
+  @include card;
+  border-left: 3px solid var(--ochre);
+  padding: 17px 20px;
+
+  &__title {
+    font-weight: $weight-semibold;
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+
+  /// Clay, not ochre: this is something to act on, not something slipping.
+  /// (Was an inline style; the project's rule is classes only.)
+  &--nudge {
+    border-left-color: var(--clay);
+  }
+
+  &__body {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+}
+
+.legend {
+  display: flex;
+  gap: $s-5;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: $s-4;
+  border-bottom: 1px solid var(--border);
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: $text-sm;
+    color: var(--ink-2);
+  }
+}
+
+.layers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: $s-5;
+
+  &__title {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: $s-3;
+  }
+}
+
+.concept {
+  display: flex;
+  align-items: center;
+  gap: $s-3;
+  padding: 11px 14px;
+  border-radius: $radius;
+  background: var(--surface);
+  border: 1px solid var(--border);
+
+  &--risk {
+    border-color: var(--ochre-soft);
+  }
+
+  &--quiet {
+    background: var(--sunken);
+  }
+
+  &__name {
+    font-size: 14.5px;
+    flex-grow: 1;
+  }
+
+  &__value {
+    font-family: $font-mono;
+    font-variant-numeric: tabular-nums;
+    font-size: $text-sm;
+    color: var(--ink-2);
+
+    &--risk {
+      color: var(--ochre);
+    }
+    &--none {
+      color: var(--stone);
+    }
+  }
+}

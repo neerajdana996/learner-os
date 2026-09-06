@@ -1,0 +1,183 @@
+@use "../../shared-ui/styles/variables" as *;
+@use "../../shared-ui/styles/mixins" as *;
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: $s-3;
+  margin-bottom: $s-7;
+
+  &__bar {
+    height: 3px;
+    width: 56px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background-color $duration $ease;
+
+    &--done {
+      background: var(--clay);
+    }
+  }
+
+  &__label {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  @include until($breakpoint-sm) {
+    &__bar {
+      width: 100%;
+      flex: 1;
+    }
+  }
+}
+
+.step {
+  max-width: 620px;
+  animation: rise-in $duration $ease both;
+
+  &__kicker {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: $s-3;
+  }
+
+  &__title {
+    font-family: $font-display;
+    font-size: $display-md;
+    font-weight: $weight-medium;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: $s-2;
+  }
+
+  &__lede {
+    font-size: $text-md;
+    line-height: 1.65;
+    color: var(--ink-2);
+    margin-bottom: $s-6;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: $s-5;
+  }
+
+  /// Every step says what it does with the answer. Asking without explaining is
+  /// what made the first version feel like a form rather than a conversation.
+  ///
+  /// It is a sibling of `__body`, not a child, so it inherited none of the
+  /// body's own 22px rhythm and sat flush against the last control — the note
+  /// read as part of the field rather than as a remark about it. Closer to what
+  /// it explains (22px) than to the actions below it (30px).
+  &__because {
+    margin-top: $s-5;
+    display: flex;
+    gap: $s-3;
+    background: var(--sunken);
+    border-radius: 5px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+
+    svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--muted);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $s-3;
+    margin-top: $s-6;
+  }
+}
+
+.window-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &__to {
+    font-size: $text-sm;
+    color: var(--muted);
+  }
+
+  &__remove {
+    @include control;
+    min-height: 36px;
+    width: 36px;
+    padding: 0;
+    color: var(--muted);
+    background: transparent;
+
+    &:hover {
+      color: var(--ink);
+      background: var(--sunken);
+    }
+  }
+
+  .field {
+    flex: 1;
+  }
+}
+
+.protocol {
+  display: flex;
+  flex-direction: column;
+  gap: $s-4;
+
+  &__row {
+    display: flex;
+    gap: $s-4;
+    align-items: baseline;
+  }
+
+  &__when {
+    font-family: $font-mono;
+    font-size: $text-xs;
+    color: var(--clay);
+    min-width: 64px;
+    flex-shrink: 0;
+  }
+
+  &__what {
+    font-size: 14.5px;
+    line-height: 1.5;
+
+    &--quiet {
+      color: var(--muted);
+    }
+  }
+}
+
+.recommendation {
+  display: flex;
+  align-items: baseline;
+  gap: $s-2;
+  font-size: 13px;
+  color: var(--clay-ink);
+  margin-bottom: $s-2;
+
+  &__tag {
+    font-family: $font-mono;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--clay-wash);
+    color: var(--clay-ink);
+    padding: 2px 7px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+}

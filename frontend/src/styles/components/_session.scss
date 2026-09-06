@@ -1,0 +1,167 @@
+@use "../../shared-ui/styles/variables" as *;
+@use "../../shared-ui/styles/mixins" as *;
+
+.teach {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 660px;
+
+  &__card {
+    @include card;
+    padding: 26px 28px;
+    animation: rise-in $duration $ease both;
+  }
+
+  /// A misconception the learner just walked into. Ochre, never red: being
+  /// wrong here is the mechanism working.
+  &__card--correction {
+    border-left: 3px solid var(--ochre);
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+
+    &--warn {
+      color: var(--ochre);
+    }
+    &--invert {
+      color: var(--stone);
+    }
+  }
+
+  &__prompt {
+    font-family: $font-display;
+    font-size: 21px;
+    line-height: 1.4;
+  }
+
+  &__prose {
+    font-size: $text-md;
+    line-height: 1.7;
+  }
+
+  &__more {
+    @include control;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    min-height: $tap;
+    color: var(--clay);
+    font-size: 14px;
+    font-weight: $weight-medium;
+  }
+
+  /// The learner's own words, quoted back before the explanation answers them.
+  /// Sunken rather than another card: it is what they said, not what we say.
+  &__attempt {
+    margin-top: $s-4;
+    background: var(--sunken);
+    border-radius: $radius;
+    padding: 14px 16px;
+    font-size: $text-base;
+    line-height: 1.6;
+  }
+
+  &__attempt-form {
+    margin-top: $s-4;
+  }
+
+  &__confidence {
+    margin-top: 20px;
+  }
+
+  /// The retrieval check, inverted so it reads as a different kind of moment
+  /// from the reading above it.
+  ///
+  /// Everything the inversion touches lives here, in one block: a white field
+  /// or a white option chip on ink is the brightest thing on the screen, which
+  /// puts the eye on the input instead of the question it is meant to read
+  /// first. Splitting the colours from the controls they affect is how a card
+  /// ends up half-inverted after someone adds a control to it.
+  &__card--retrieval {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+
+    .field__input,
+    .field__textarea {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.16);
+      color: var(--paper);
+
+      &::placeholder {
+        color: var(--stone);
+      }
+
+      &:focus-visible {
+        border-color: var(--clay);
+        outline-color: var(--clay);
+      }
+    }
+
+    .choice {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.16);
+      color: var(--paper);
+    }
+  }
+}
+
+/// Check, skip, and how much of today is left — the design's footer row.
+.session-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $s-4;
+  flex-wrap: wrap;
+
+  &__left {
+    margin: 0;
+    font-family: $font-mono;
+    font-size: $text-xs;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+}
+
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: $s-2;
+  font-size: $text-base;
+  font-weight: $weight-semibold;
+
+  &--right {
+    color: var(--sage);
+  }
+}
+
+.summary-stat {
+  display: flex;
+  gap: $s-6;
+
+  &__value {
+    font-family: $font-mono;
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    font-weight: $weight-medium;
+  }
+
+  &__label {
+    font-size: $text-sm;
+    color: var(--muted);
+  }
+}

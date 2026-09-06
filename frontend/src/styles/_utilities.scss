@@ -1,0 +1,58 @@
+@use "../shared-ui/styles/variables" as *;
+@use "../shared-ui/styles/mixins" as *;
+
+.u-serif {
+  font-family: $font-display;
+}
+
+.u-mono {
+  font-family: $font-mono;
+  // Digits must not shift width as a score changes.
+  font-variant-numeric: tabular-nums;
+}
+
+.u-muted {
+  color: var(--muted);
+}
+
+.u-eyebrow {
+  font-family: $font-mono;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+
+  /// The one the eye should land on when two eyebrows stack — the concept's
+  /// name above a session card, the topic above the map.
+  &--strong {
+    color: var(--ink-2);
+  }
+}
+
+.u-sr-only {
+  @include visually-hidden;
+}
+
+.u-stack {
+  display: flex;
+  flex-direction: column;
+  gap: $s-4;
+
+  &--tight {
+    gap: 10px;
+  }
+  &--loose {
+    gap: $s-6;
+  }
+}
+
+.u-row {
+  display: flex;
+  align-items: center;
+  gap: $s-3;
+  flex-wrap: wrap;
+}
+
+.u-measure {
+  max-width: 620px;
+}

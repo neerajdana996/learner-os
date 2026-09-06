@@ -1,0 +1,70 @@
+// Colours for a code listing (T-085), from the design canvas's build spec.
+//
+// **Not in _themes.scss, and not keyed to the theme.** These are scoped to the
+// *surface a listing sits on*, which is a different axis. `_themes.scss` stays
+// the file where the theme is decided; this is the file where a listing decides
+// what it is sitting on.
+//
+// The reason is `.teach__card--retrieval`, which sets `background: var(--ink)`.
+// In light mode `--ink` is near-black; in dark mode it is near-white. **The
+// retrieval card is always the opposite of the page.** So a palette keyed to
+// `prefers-color-scheme` would be wrong half the time — and wrong in a way no
+// light-mode screenshot ever shows you: dark text on a dark card.
+//
+// Five syntax colours, all at roughly one lightness. A VS Code theme drops
+// eight saturated hues onto warm paper, and the clay button — the only thing on
+// the screen you can act on — stops being the loudest thing in the room.
+//
+// The syntax entries (`--code-kw` … `--code-punc`) are unused until T-084
+// highlights in the worker; they are defined here because they are one designed
+// set and splitting the file would be worse than a few unread lines.
+
+@mixin code-on-light {
+  --code-surface: #f4f0ea;
+  --code-gutter: #c6bab1;
+  --code-line-hit: #fbf3ec;
+  --code-border: #e6e1da;
+  --code-fg: #2b2723;
+  --code-kw: #8a4225;
+  --code-str: #4f7a5b;
+  --code-num: #b8873a;
+  --code-com: #a9a29b;
+  --code-punc: #8a827a;
+  --diff-add: #edf3ee;
+  --diff-del: #f6ecec;
+}
+
+@mixin code-on-dark {
+  --code-surface: #221f1c;
+  --code-gutter: #6b645d;
+  --code-line-hit: #3a342f;
+  --code-border: #453f39;
+  --code-fg: #e8e2da;
+  --code-kw: #d98a63;
+  --code-str: #8fb79b;
+  --code-num: #d9b072;
+  --code-com: #7a736c;
+  --code-punc: #948c84;
+  --diff-add: #1e2a21;
+  --diff-del: #2e1f1d;
+}
+
+// The page follows the theme, in all three of its states — an explicit choice
+// either way, and `prefers-color-scheme` when nothing was chosen.
+:root { @include code-on-light; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { @include code-on-dark; }
+}
+
+:root[data-theme="dark"] { @include code-on-dark; }
+:root[data-theme="light"] { @include code-on-light; }
+
+// …and the inversion, which is the whole point of the file: the retrieval card
+// is the opposite of whatever the page is, so a listing inside it flips too.
+.teach__card--retrieval { @include code-on-dark; }
+:root[data-theme="dark"] .teach__card--retrieval { @include code-on-light; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .teach__card--retrieval { @include code-on-light; }
+}
