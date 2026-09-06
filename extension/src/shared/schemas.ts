@@ -15,6 +15,16 @@ export const ConfidenceSchema = z.enum(['guess', 'think', 'sure']).nullable();
 export const SurfaceSchema = z.enum(['web', 'extension', 'diagnostic', 'test']);
 export const TeachModeSchema = z.enum(['try_first', 'example_first']);
 export const ItemTypeSchema = z.enum(['recall', 'recognition', 'application', 'explain']);
+/**
+ * What a *correct answer* to a concept looks like — not what subject it belongs
+ * to (T-082). Source code → `code`; a number or an expression → `math`; a
+ * topology or an ordering of events → `systems`; a sentence → `prose`.
+ *
+ * It is per concept and not per topic on purpose: "Big-O of a hash lookup" and
+ * "write a hash function" live in the same topic and want different formats.
+ * Mirrors `concept_domain` in db/schema.ts (T-079).
+ */
+export const ConceptDomainSchema = z.enum(['code', 'math', 'systems', 'prose']);
 
 // ---------- Route params ----------
 /** `:id` path params. Rejects a malformed id with 400 before it reaches a
