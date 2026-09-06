@@ -18,9 +18,22 @@ export async function truncateAll(): Promise<void> {
     ORDER BY table_name DESC;
   `;
 
-  for (const { table_name } of tables) {
-    await pg.unsafe(`TRUNCATE TABLE "${table_name}" RESTART IDENTITY CASCADE;`);
-  }
+  if (tables.length === 0) return;
+
+  /**
+   * One statement, not one per table.
+   *
+   * This ran thirteen sequential TRUNCATEs — thirteen round trips before every
+   * single test — and each gap between them is a window in which a request
+   * still in flight from the previous test sees a half-emptied database. That
+   * is the race T-100 described from the other end: the orphaned request comes
+   * back 401 and it reads as a random auth flake in an unrelated test.
+   *
+   * Postgres truncates a list atomically, so there is no half-emptied state to
+   * observe, and the window shrinks from thirteen round trips to one.
+   */
+  const list = tables.map(({ table_name }) => `"${table_name}"`).join(', ');
+  await pg.unsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE;`);
 
   await db.execute(sql`SELECT 1;`);
 }

@@ -2339,18 +2339,22 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Three rendering bugs the real output found**, none of which a hand-written test would have caught: self-messages (`Node B → Node B`, a standard idiom the generator reaches for unprompted) were **silently dropped**, taking half of one diagram with them; a self-message on the last lane had its label clipped off the canvas; and `width="100%"` stretched a 414px drawing across an 800px column and doubled every label. All three now have tests, and the canvas measures its overhang rather than padding by a guess.
   - **Two stale things found while debugging.** The concept-count warning still read *"20–40 … thin for a 30-day course"*, so every correct 16-concept map warned; it now reads 14–16 and gains the opposite check that did not exist — above 21 a 7-day course cannot finish the map, which is exactly the risk T-104 introduced. And a provider `Connection error` is reported with reason **`invalid_shape`**, which would send the next person debugging in entirely the wrong direction. Not fixed here; worth its own task.
 
-### T-111 · Three different backend tests flaked under parallel load
-- **status:** todo
+### T-111 · Backend tests flaked under parallel load
+- **status:** fix written, unverified
 - **sprint:** 5
 - **depends_on:** —
 - **files:** `backend/vitest.config.ts`, `backend/src/test/*`
-- **description:** Three distinct failures in one session, each passing on a re-run with no code change between: `dev.test.ts` ("scope=progress keeps the generated course") failed with a 401; a `jsonSchemas` case failed once; and `session.test.ts` ("rejects a concept that was not offered today") failed once. Two of the three were during runs that touched no backend code at all.
+- **description:** **Two** distinct failures in one session, each passing on a re-run with no code change between: `dev.test.ts` ("scope=progress keeps the generated course") failed with a 401, and `session.test.ts` ("rejects a concept that was not offered today") failed once. Both were during runs that touched no backend code at all.
+  - *(Originally logged as three. The third, a `jsonSchemas` case, was a **real** failure — new block kinds added to the Zod union without the provider schema. Mislabelling a genuine failure as flakiness is the more expensive mistake of the two, so it is corrected here rather than quietly dropped.)*
   - **T-100 fixed one class of this** — vitest's 5s default timeout on the DB suites — and marked it done. This is a different one, or the same one incompletely fixed.
   - A suite that fails one run in five teaches people to re-run rather than read, and the day it catches something real it will be re-run too. That is the cost, not the minute it wastes.
   - Likely candidates: shared Postgres state between parallel files (`truncateAll` racing another file's insert), or Redis db 1 shared across workers despite T-068.
 - **acceptance:** The backend suite passes twenty consecutive runs.
 - **tests:** —
-- **notes:**
+- **notes:** (2026-09-06) Two defects found by reading, not by re-running — the fix is unverified until the suite is run repeatedly, which is the founder's to do.
+  - **`truncateAll` issued one `TRUNCATE` per table — thirteen round trips before every test.** Each gap between them is a window in which a request still in flight from the previous test observes a half-emptied database, comes back 401, and surfaces as a random auth failure somewhere unrelated. That is T-100's race seen from the other end. Postgres truncates a list atomically, so it is now one statement: no half-emptied state to observe, and the window is one round trip instead of thirteen.
+  - **`hookTimeout` was never set, so it defaulted to 10s** — half the configured `testTimeout`, on a hook that does a database round trip before every test in the suite. A timed-out hook is worse than a timed-out test: vitest reports it against whichever test came next, and the tables are left in whatever state the truncate reached. Now explicit at 20s.
+  - Both attack the same mechanism rather than papering over it. **No retries were added on purpose**: a retry makes a flaky suite quiet, not honest, and the day it hides something real is the day it costs the most.
 
 
 - **Additional observation (2026-09-06, before day-30 changes):** The unchanged baseline failed `auth.test.ts > rejects a malformed email` with `socket hang up`; 649/650 tests passed. The later full workspace run passed all 670 tests. This is recorded as another observation, not a claim that the flake is fixed.

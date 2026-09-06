@@ -22,5 +22,16 @@ export default defineConfig({
      * still short enough that a genuinely hung test fails rather than hangs.
      */
     testTimeout: 20_000,
+    /**
+     * Explicit, because the default is **10s** — half the test timeout — and
+     * `beforeEach(truncateAll)` is a database round trip that runs before every
+     * test in the suite.
+     *
+     * A hook that times out is worse than a test that does: vitest reports the
+     * hook failure against whichever test was next, and the tables are left
+     * in whatever state the truncate reached. The symptom is an assertion
+     * failure in a test that has nothing to do with the cause.
+     */
+    hookTimeout: 20_000,
   },
 });
