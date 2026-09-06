@@ -506,7 +506,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - `PATCH /me` distinguishes an omitted key (leave alone) from an explicit `null` (clear), using `'name' in body` rather than an undefined check.
   - curl: `curl -b cookies.txt localhost:3001/me` → the full profile; `curl -XPATCH -b cookies.txt localhost:3001/me -H 'content-type: application/json' -d '{"timezone":"Asia/Kolkata","activeWindows":[{"start":"09:00","end":"12:00"}]}'`.
 
-### T-053 · Teaching content generator — try-first prompts, explanations, corrections
+### T-053 (pointer) · Teaching content generator — try-first prompts, explanations, corrections
 > Moved into the Sprint 2 build order (originally logged under "Fix / discovered tasks").
 > Full entry is below in that section — it is the missing input to T-016 and T-021, and
 > must land before either. `depends_on` updated to include T-054.
@@ -885,7 +885,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **The verdict leads with the gap**: "Right — 9 days since you last saw this". `recordReview` already returned `gapDaysSinceLast`; nothing needed adding. A right answer after nine days is the thing being measured, and the same answer after ten minutes is not.
   - **Snooze pushes `lastShownAt` forward, not back.** `shouldShow` gates on `now - lastShownAt < MIN_GAP_MS`, so a snooze is expressed by advancing the stamp until the 20-minute gap expires 30 minutes out. The first version rewound it, which would have made the next card arrive *sooner* — the opposite of "later".
   - Snooze is deliberately **not** a dismissal: someone asking for it later has not refused it, and counting it as one would back the extension off for the whole day.
-  - **"Report bad question" and `POST /items/:id/flag` landed in T-112**, immediately after. Until then `RETIRED_FLAG_THRESHOLD` guarded a column nothing incremented. The concept name in the card header is also missing — `PublicItem` carries only `conceptId`, and the title is withheld from the client on purpose for held-out concepts (T-010).
+  - **"Report bad question" and `POST /items/:id/flag` landed in T-117**, immediately after. Until then `RETIRED_FLAG_THRESHOLD` guarded a column nothing incremented. The concept name in the card header is also missing — `PublicItem` carries only `conceptId`, and the title is withheld from the client on purpose for held-out concepts (T-010).
   - Same card retry uses the same `idempotencyKey`.
   - Flag link → POST `/items/:id/flag`.
 
@@ -1944,7 +1944,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** (2026-09-06) Built as a textarea, per T-081. **Unblocked. T-081 decided against a client UI library, so this is a plain `<textarea>`** with tab-inserts-spaces, indent-on-newline and bracket matching — about thirty lines of `keydown`. Native undo comes free.
   - That costs the design almost nothing, because it had already turned off autocomplete, type hints and squiggles as retrieval cues. Syntax highlighting goes too, on the same reasoning: a keyword that fails to colour is feedback.
   - Paths in `files` above predate the design-system consolidation — the component lives in `packages/ui/src/blocks/` and grading is `backend/src/lib/grade.ts`.
-  - **`assisted` was a dead column before this**, exactly as `flagged_bad` was before T-112: `schema.ts` declared it with a comment explaining that the scheduler must treat an assisted pass as a lapse, and nothing wrote it or read it. It is now on `AnswerSchema`, written by `recordReview`, and turned into `Rating.Again` regardless of the cases going green. The event still records `correct` honestly — only the *schedule* treats it as a lapse, so the two remain distinguishable in the numbers.
+  - **`assisted` was a dead column before this**, exactly as `flagged_bad` was before T-117: `schema.ts` declared it with a comment explaining that the scheduler must treat an assisted pass as a lapse, and nothing wrote it or read it. It is now on `AnswerSchema`, written by `recordReview`, and turned into `Rating.Again` regardless of the cases going green. The event still records `correct` honestly — only the *schedule* treats it as a lapse, so the two remain distinguishable in the numbers.
   - **`assisted` is client-reported and that is safe**, unlike `correct`. It can only ever count against the learner, so there is nothing to gain by lying; `correct` is graded server-side precisely because it can be inflated.
   - **The skeleton is fetched, never shipped** — `GET /items/:id/skeleton`. It is most of the answer, so putting it in the payload would hand it to everyone including those who never asked, and `assisted` would then measure who clicked a button rather than who needed help. A test asserts neither it nor `cases[].expect` appears in what `/due` serves.
   - **The sandbox is an `<iframe sandbox="allow-scripts">` on a blank `srcdoc`, not `eval`.** `allow-same-origin` is deliberately absent — with it the sandbox is not one. The frame gets an opaque origin: no cookies, no storage, no parent document, no session to steal. Two seconds, then it is destroyed, because `while(true)` is the most common wrong answer to a loop question and a hung tab loses the learner's work.
@@ -2423,7 +2423,9 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:** A diagnostic with no held-out answers yields null/unmeasured held-out change; observed and inferred baseline values are distinguishable; a synthetic measured baseline produces the expected change only if the chosen protocol collects it.
 - **notes:** Logged without changing T-015’s existing held-out protection. The new learner page labels its output as cold recall scores, not retention gain.
 
-### T-112 · The flag route — a threshold nothing could reach
+### T-117 · The flag route — a threshold nothing could reach
+> Renumbered from T-112 on 2026-09-06 — that ID was already taken by "A learner can
+> open and finish the cold test". Commits and notes written the same day say T-112.
 - **status:** done
 - **sprint:** 5
 - **depends_on:** T-029
@@ -2440,7 +2442,9 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Not deduplicated per learner, deliberately.** That needs a table of who-flagged-what, which is a schema task, and at ten participants it would buy nothing: reporting the same question three times means meeting it three times, days apart, and someone who does that is telling us something real. The card disables the control after one use so a single card cannot file three complaints with three taps. **Revisit before opening the pilot up.**
   - **The control appears only after answering.** Before you see the answer, a hard question and a broken one look identical.
 
-### T-113 · `numeric` was half-built — I shipped a field nothing read
+### T-118 · `numeric` was half-built — I shipped a field nothing read
+> Renumbered from T-113 on 2026-09-06 — that ID was already taken by "Day-0 controls
+> are unmeasured". Commits written the same day say T-113.
 - **status:** done
 - **sprint:** 5
 - **depends_on:** T-108
