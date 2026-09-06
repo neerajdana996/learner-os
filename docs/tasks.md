@@ -2207,3 +2207,19 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - `courseComplete` is a new field on `SessionResponse` rather than a reuse of `completedToday`. They mean different things — "come back tomorrow" versus "there is no tomorrow" — and an app that says the first for three weeks reads as broken.
   - **The dashboard deliberately does not show a countdown to the test.** It is unannounced by design; a date on the dashboard is exactly the revision cue that would make it measure revision instead of retention.
   - A null `endsAt` still counts as teaching: that is the bare Sprint 1 demo topic, which has no deadline to be past.
+
+### T-106 · The questions read like a spec, not like teaching
+- **status:** done
+- **sprint:** 5
+- **depends_on:** —
+- **files:** `backend/src/llm/prompts/items/system.md`, `backend/src/llm/prompts/teaching/system.md`
+- **description:** Raised by the founder (2026-09-06): *"the questions we generate should be clear and in English which is normal and simple to understand — the goal is to make people learn, not to communicate."* Assessed against real output, not guesswork: `qa/sliding-window-4e755cd0.md`, 40 concepts and 260 items from a live generation.
+  - **The concept map is not the problem.** It is a genuine sliding-window curriculum, correctly ordered, ending at the monotonic deque. The summaries are accurate and on-topic — concept 30's says *"how many required values currently meet their target frequencies"*, which is minimum-window-substring stated properly.
+  - **The item generator ignores the summary it was handed** when a concept's *name* sounds generic. Given that summary it produced *"A system satisfies 7 of 10 listed requirements. What is its requirement-satisfaction count?"* — no window, no frequencies, no sequence, answer 7, nothing recalled. Same for concept 37 (deque pruning), which came out as a business question about accuracy and cost. 9 of 260 items carry off-topic framing.
+  - **Nothing in either prompt asked for plain language.** `items/system.md` said nothing at all; `teaching/system.md` said "plain language" for one field of four. The observed symptoms are exactly what that predicts: invented terminology used as though standard ("window validity predicate"), and hedges that make a question unanswerable ("what should the algorithm *generally* do next?").
+- **acceptance:** Both generation prompts state the plain-language rules explicitly, and the item prompt carries a worked negative example of name-drift.
+- **tests:** Backend suite unchanged and green (449) — the suites use fixtures, so a prompt change cannot break them. **Which is the point below.**
+- **notes:** (2026-09-06) The anti-drift fix is a **worked example**, not another rule sentence. The rule already existed — *"an item that would make sense in a different course is wrong even if it is factually correct"* — and was ignored. This repo already learned that lesson once, in T-082: *"the load-bearing trick turned out to be the example"*. So the prompt now shows the bad item and its corrected twin side by side, using the exact concept that failed.
+  - A hypothesis worth recording as **wrong**: the drift is *not* caused by the transfer-item rule ("a context that wasn't the one it was taught in"), which was the obvious suspect. The drifted items are all `isTransfer: false`. Transfer items are behaving.
+  - **This change is unverified.** Prompt quality cannot be tested against fixtures — the only way to know whether it worked is to regenerate a topic and read the output. That costs a real model call and a real hand-review, and it should happen before the pilot rather than after.
+  - The existing export is also **2× oversized** for the current design: 40 concepts against T-104's 14–18. The pilot's three topics need regenerating for length regardless, which is the natural moment to check whether these prompts read better.
