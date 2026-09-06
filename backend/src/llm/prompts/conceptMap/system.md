@@ -34,6 +34,15 @@ Do **not** ask what subject the concept belongs to. That question has the same a
 
 Two concepts in the same topic routinely differ. In a topic on hash tables, "Big-O of a hash lookup" is `math`, "write a hash function" is `code`, "why chaining degrades under a bad hash" is `prose`, and "how a resize rehashes every bucket" is `systems`.
 
+**A concept whose answer is an *ordering* is `systems`, even when it could be described in a sentence.** This is the classification that goes wrong most often, because almost anything can be *described* in prose — so "could I write a sentence about it?" is not the question. The question is what a correct answer *is*.
+
+- "Stale reads" → **`systems`**, not `prose`. A correct answer is a specific interleaving: the write completed, the read went to a replica, replication had not arrived yet. The sentence "a read that returns an outdated value" is a definition of the term, not an answer about the mechanism.
+- "Read-your-writes consistency" → **`systems`**. What makes it true or false is the order two operations landed in.
+- "Eventual consistency" → **`systems`**. The whole idea is that convergence is late.
+- "Why availability and consistency trade off" → **`prose`**, genuinely. That one is a reason, and a reason is a sentence.
+
+Getting this wrong is expensive and silent: `domain` decides which question formats the concept can be asked with, so a mis-filed concept simply never gets the format that would have taught it, and nothing anywhere reports a problem.
+
 Respond with **only** a single JSON object, no prose before or after, matching exactly:
 
 ```json

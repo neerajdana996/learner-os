@@ -7,16 +7,24 @@ import { ConceptDomainSchema, type ConceptDomain } from '@learnos/shared';
  * the session planner and the ~10% held-out selection all degrade — so the job
  * fails loudly instead of enrolling someone in a 3-concept "course".
  *
- * **The gap between this and the prompt's 20–40 is deliberate** (T-FIX-006).
- * The prompt asks for the size a 30-day course actually needs; this is the line
- * below which something is *broken*, and sprint.md's Sprint 1 demo expects
- * 10–40, so raising it would fail that demo. A map that lands in between is
- * thin rather than broken, so it warns instead of failing — the founder sees it
- * during content QA (T-024) and can regenerate.
+ * **The gap between this and the prompt's 14–16 is deliberate** (T-FIX-006).
+ * The prompt asks for the size a course actually needs; this is the line below
+ * which something is *broken*, and sprint.md's Sprint 1 demo expects 10–40, so
+ * raising it would fail that demo. A map that lands in between is thin rather
+ * than broken, so it warns instead of failing — the founder sees it during
+ * content QA (T-024) and can regenerate.
  */
 export const MIN_CONCEPTS = 10;
 /** What the prompt asks for. A map below this is thin, not broken. */
-export const EXPECTED_MIN_CONCEPTS = 20;
+export const EXPECTED_MIN_CONCEPTS = 14;
+/**
+ * Above this the map cannot be finished in the time available, which is the
+ * failure T-104 introduced the risk of: `MAX_NEW_CONCEPTS` is 3 a day and a
+ * course runs 7 days, so 21 is the hard ceiling. A map that overruns leaves
+ * concepts untaught, and untaught concepts make the day-30 comparison
+ * unreadable — the pilot's entire output.
+ */
+export const MAX_TEACHABLE_CONCEPTS = 21;
 
 import { GenerationError, type GenerationErrorReason } from './errors.js';
 
@@ -163,7 +171,14 @@ export async function generateConceptMap(topic: string): Promise<ConceptMap> {
   if (map.concepts.length < EXPECTED_MIN_CONCEPTS) {
     console.warn(
       `concept map for "${topic}" has ${map.concepts.length} concepts; the prompt asks for ` +
-        `${EXPECTED_MIN_CONCEPTS}–40. Thin for a 30-day course — worth regenerating before QA.`,
+        `${EXPECTED_MIN_CONCEPTS}–16. Thin for a 7-day course — worth regenerating before QA.`,
+    );
+  }
+  if (map.concepts.length > MAX_TEACHABLE_CONCEPTS) {
+    console.warn(
+      `concept map for "${topic}" has ${map.concepts.length} concepts; at 3 new a day a 7-day ` +
+        `course can teach ${MAX_TEACHABLE_CONCEPTS}. The tail would never be taught, and untaught ` +
+        `concepts make the day-30 comparison unreadable — regenerate before QA.`,
     );
   }
   warnOnUniformDomain(topic, map);

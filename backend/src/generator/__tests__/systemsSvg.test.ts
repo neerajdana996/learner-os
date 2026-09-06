@@ -148,3 +148,39 @@ describe('domainFragment', () => {
     expect(domainFragment(undefined)).toBeUndefined();
   });
 });
+
+describe('self-messages', () => {
+  /**
+   * "Node B → Node B: receive, then forward" is a standard sequence idiom and
+   * the generator reaches for it unprompted — it produced two of them in the
+   * first real distributed-systems topic. Dropped, they took half that diagram
+   * with them and nothing said so.
+   */
+  it('draws a message from a lane to itself as a loop', () => {
+    const svg = renderSequence(['A', 'B'], [{ from: 'B', to: 'B', label: 'process' }]);
+    expect(svg).toContain('process');
+    expect(svg).toContain('h 22');
+  });
+
+  it('still drops a message naming a lane that does not exist', () => {
+    const svg = renderSequence(['A', 'B'], [{ from: 'A', to: 'ghost', label: 'x' }]);
+    expect(svg).not.toContain('>x<');
+  });
+});
+
+describe('canvas sizing', () => {
+  it('widens for a self-message on the last lane, so its label is not clipped', () => {
+    const plain = renderSequence(['A', 'B'], [{ from: 'A', to: 'B', label: 'x' }]);
+    const looped = renderSequence(['A', 'B'], [{ from: 'B', to: 'B', label: 'a long label here' }]);
+    const w = (svg: string) => Number(/viewBox="0 0 (\d+)/.exec(svg)?.[1]);
+    expect(w(looped)).toBeGreaterThan(w(plain));
+  });
+
+  it('carries its natural size rather than stretching to the container', () => {
+    // width="100%" scaled a 414px drawing across an 800px column and doubled
+    // every label. The stylesheet caps it instead.
+    const svg = renderSequence(['A', 'B'], [{ from: 'A', to: 'B', label: 'x' }]);
+    expect(svg).not.toContain('width="100%"');
+    expect(svg).toMatch(/width="\d+" height="\d+"/);
+  });
+});

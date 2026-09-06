@@ -114,7 +114,14 @@ const MSG_GAP = 34;
  */
 export function renderSequence(lanes: string[], messages: Message[]): string {
   const index = new Map(lanes.map((l, i) => [l, i]));
-  const width = PAD * 2 + lanes.length * LANE_W;
+  // A self-message loops out 22px and then labels itself past that, so a loop
+  // on the last lane hangs off the right edge. Measured rather than padded by a
+  // guess: the first real topic clipped "receive update" clean off.
+  const selfOnLast = messages.some((m) => m.from === m.to && index.get(m.from) === lanes.length - 1);
+  const overhang = selfOnLast
+    ? 28 + Math.max(...messages.filter((m) => m.from === m.to).map((m) => m.label.length)) * 6
+    : 0;
+  const width = PAD * 2 + lanes.length * LANE_W + overhang;
   const top = 34;
   const height = top + messages.length * MSG_GAP + 18;
   const laneX = (i: number) => PAD + i * LANE_W + LANE_W / 2;
@@ -132,9 +139,23 @@ export function renderSequence(lanes: string[], messages: Message[]): string {
     .map((m, i) => {
       const a = index.get(m.from);
       const b = index.get(m.to);
-      if (a === undefined || b === undefined || a === b) return '';
+      if (a === undefined || b === undefined) return '';
 
       const y = top + i * MSG_GAP;
+
+      // A self-message — "receive, then forward" — is a real idiom and the
+      // generator reaches for it unprompted. Dropped, it took a quarter of the
+      // messages in the first real distributed-systems topic with it, silently.
+      // Drawn as the standard loop out and back.
+      if (a === b) {
+        const x0 = laneX(a);
+        return (
+          `<path d="M ${x0} ${y} h 22 v 14 h -22" fill="none" stroke="var(--edge)" ` +
+          `stroke-width="1.25" marker-end="url(#a)"/>` +
+          `<text x="${x0 + 28}" y="${y + 5}" font-size="10" fill="var(--edge)" ` +
+          `font-family="IBM Plex Mono, monospace">${esc(m.label)}</text>`
+        );
+      }
       // A delayed message lands lower than it left: the slope is the delay, and
       // it is the only thing on the drawing that is not horizontal.
       const y2 = m.delayed ? y + 16 : y;
@@ -162,8 +183,12 @@ function arrowMarker(): string {
 /** `role="img"` with no `<title>`: the block carries `alt`, and the renderer
  *  puts it on the wrapping element. Two descriptions would be read twice. */
 function wrap(width: number, height: number, body: string): string {
+  // Natural width, not `100%`. With `100%` a 414px drawing stretched to fill an
+  // 800px column and every label came out at twice its intended size. The
+  // stylesheet caps it with `max-width: 100%`, so it scales *down* into a
+  // narrow card and never up past 1:1.
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" ` +
-    `width="100%" role="img" aria-hidden="true">${body}</svg>`
+    `width="${width}" height="${height}" role="img" aria-hidden="true">${body}</svg>`
   );
 }

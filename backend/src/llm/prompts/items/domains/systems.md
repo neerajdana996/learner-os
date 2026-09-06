@@ -76,6 +76,15 @@ This concept **is** an ordering, so one item gets a `sequence` and the rest stay
 
 Note the `delayed: true` on the replication. That single flag *is* the concept — it is what makes the drawing show a bug rather than a happy path.
 
+### `delayed` is not decoration — decide about it every time
+
+Before writing any `sequence`, answer this: **is the concept the thing working, or the thing failing?**
+
+- **Failing** — a stale read, a lost update, a write that overtook another, convergence that has not happened yet. **Exactly one message is `delayed: true`**, and it is the one that arrives too late. Without it the drawing shows the happy path and the question has no answer, because nothing on the page is wrong.
+- **Working** — a causal chain, a valid history, an ordering that holds. **No message is delayed.** Adding one would draw a violation and then ask why the rule is satisfied.
+
+A sequence with no delayed message is correct only when the concept really is about the ordering holding. If you are drawing a failure and every arrow is horizontal, you have drawn the case where the bug does not happen.
+
 ### Contrastive pairs — the same concept done wrong and right
 
 **A drawing that is decoration.**
