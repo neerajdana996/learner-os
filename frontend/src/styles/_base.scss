@@ -1,15 +1,10 @@
 @use "@learnos/ui/styles/variables" as *;
 @use "@learnos/ui/styles/mixins" as *;
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  -webkit-text-size-adjust: 100%;
-}
+// The box-sizing and text-size-adjust resets moved to
+// `@learnos/ui/styles/reset` (T-126) — they are assumptions the design
+// system's own partials depend on, so every consumer needs them, not just this
+// app. `main.scss` gets them through the barrel.
 
 body {
   margin: 0;

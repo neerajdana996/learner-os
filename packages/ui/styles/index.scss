@@ -6,6 +6,9 @@
 //
 // A consumer that only wants tokens — to author its own component partial —
 // should @use "@learnos/ui/styles/variables" directly instead of this file.
+// First: every partial below is drawn assuming border-box, and a consumer
+// without it renders the same components at the wrong size (T-126).
+@forward "reset";
 @forward "themes";
 @forward "code-palette";
 @forward "animations";

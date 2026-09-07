@@ -1,0 +1,25 @@
+/// The assumptions every partial in this package is written against (T-126).
+///
+/// **`border-box` is not a preference here, it is a dependency.** `_field.scss`
+/// sizes an input as `min-height: $tap` with `padding: $s-3 14px`; under the
+/// default `content-box` that is 44px of *content* plus 24px of padding plus
+/// borders — a 70px control where a 44px one was specified. Every sized
+/// component in this package has the same shape.
+///
+/// It lived in the web app's own `_base.scss`, so the extension — which imports
+/// the same design system — rendered every control half again too tall. The
+/// symptom was "the extension looks bad" with nothing obviously wrong in its
+/// stylesheet, because nothing was: the reset simply was not there.
+///
+/// Forwarded from `index.scss`, so anything that takes the design system takes
+/// the box model it was drawn in.
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/// Stops iOS inflating text in landscape, which silently breaks the type scale.
+html {
+  -webkit-text-size-adjust: 100%;
+}

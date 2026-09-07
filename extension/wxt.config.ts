@@ -12,6 +12,18 @@ const API_URL = process.env.WXT_API_URL ?? 'http://localhost:3001';
 
 export default defineConfig({
   srcDir: 'src',
+  /**
+   * Not 3000 — that is the web app (T-127).
+   *
+   * WXT's dev server defaults to 3000, the same port `docker compose` publishes
+   * the frontend on. Both bind successfully because they take different stacks:
+   * Docker listens on `*:3000` and WXT on `[::1]:3000`. macOS resolves
+   * `localhost` to `::1` first, so with the extension dev server running,
+   * `http://localhost:3000` silently serves **WXT's 404** instead of the web
+   * app — no error anywhere, and the frontend container looks broken while
+   * `127.0.0.1:3000` works fine.
+   */
+  dev: { server: { port: 3002 } },
   modules: ['@wxt-dev/module-react'],
   // Sass has no notion of node resolution, so `@use "@learnos/ui/..."` means
   // nothing to it without a load path. pnpm links the workspace package in as

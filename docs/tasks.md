@@ -2657,3 +2657,46 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **The pattern requires the artefact to be *named*.** A bare "shown" is not enough: "what must be shown to prove the property for an object x" is ordinary mathematical prose and is in the real database. My first version rejected it.
   - A SQL approximation of the rule appeared to flag "Explain the sequence that occurs…" — that was my missing word boundary matching the "in" inside "Expla**in**". The real regex has `\b` and does not.
   - **The near-duplicate rule is a prompt change only**, and it is a real observed problem: one concept produced "What is a replica?", "Where must replicas be stored?", "What is node B's copy called?" and "What does this describe?" — four of seven items with the same one-word answer. There is no cheap mechanical check for it, so the prompt names the failure and lists what to vary instead.
+
+### T-126 · The extension rendered the design system in the wrong box model
+- **status:** done
+- **sprint:** 5
+- **files:** `packages/ui/styles/_reset.scss`, `packages/ui/styles/index.scss`, `frontend/src/styles/_base.scss`, `extension/src/entrypoints/base.scss`, `extension/src/entrypoints/options/Options.tsx`
+- **description:** Founder: "the existing design in the extension looks bad." It was, and the cause was structural: **`box-sizing: border-box` lived only in the web app's `_base.scss`.** `@learnos/ui`'s partials are drawn assuming it — `_field.scss` sizes an input as `min-height: $tap` with `padding: $s-3 14px` — so under the default `content-box` every control rendered 44px of *content* plus 24px of padding plus borders. A 70px input where a 44px one was specified, on every screen the extension has.
+- **acceptance:** The reset ships with the design system; both apps render controls at the specified size.
+- **notes:** (2026-09-07) **The reset is a dependency of the package, not a preference of the app**, so it moved into `@learnos/ui/styles/_reset.scss` and is forwarded first from the barrel. Anything that takes the design system now takes the box model it was drawn in. The web app's copy was deleted rather than left as a duplicate.
+  - This was invisible to every check: SCSS is not typechecked, the tests do not build CSS, and both apps *looked* plausible in isolation. It took rendering the built extension over a static server to see it.
+  - Layout work on top: the options page is a real browser tab and was pinning its content to the top-left corner of a 1400px window, so it is now a centred card with the product mark and a proper title. Both entrypoints became flex stacks with a `gap` — the old rhythm came from each element's own default margin, which is why a `<p>` wrapper around a button was quietly setting the spacing.
+
+### T-127 · The extension dev server was shadowing the web app on port 3000
+- **status:** done
+- **sprint:** 5
+- **severity:** high — the frontend appeared dead with nothing wrong with it
+- **files:** `extension/wxt.config.ts`
+- **description:** Founder: "frontend not starting in 3000". It was running perfectly. **WXT's dev server defaults to port 3000, the same port `docker compose` publishes the frontend on** — and both bind successfully because they take different stacks: Docker listens on `*:3000`, WXT on `[::1]:3000`. macOS resolves `localhost` to `::1` first, so `http://localhost:3000` served **WXT's 404** while `http://127.0.0.1:3000` served the app.
+- **acceptance:** The extension dev server cannot take the web app's port.
+- **notes:** (2026-09-07) Moved to 3002 in `wxt.config.ts`. No error appears anywhere for this — both processes report success, the container logs look healthy, and the only symptom is a 404 with an empty body that looks like a broken frontend. Diagnosed by `lsof` showing two listeners on one port and by the two loopback addresses answering differently.
+
+### T-128 · `POST /dev/due-now` — bring the review queue forward
+- **status:** done
+- **sprint:** 5
+- **files:** `backend/src/lib/makeDue.ts`, `backend/src/modules/dev/dev.routes.ts`, `packages/shared/src/schemas.ts`, tests alongside
+- **description:** After a session, FSRS schedules the first review hours or days out. That is correct and it makes the extension impossible to try — the popup says "nothing due right now" and there is no way to move time. This moves the cards instead of the clock.
+- **acceptance:** Only cards `/due` would actually serve are moved; nobody else's rows are touched.
+- **tests:** Cards move and `/due` then serves them; the soonest go first; a held-out or untaught card is never moved; another learner is untouched; `stability`/`reps`/`taughtAt` survive; the count defaults to five; 401 without a session.
+- **notes:** (2026-09-07) Mounted inside the existing `if (!isProd)` block, so like `/dev/reset` it does not exist in production rather than merely refusing there. It filters on the same conditions as `findDueCards`: moving a held-out card would create a queue entry the due query silently drops, which looks precisely like the endpoint not working.
+  - `due` is set a second in the past, not to `now` — `findDueCards` uses `due <= now`, and a card stamped in the same millisecond as the request is an intermittent race that reads as a bug in the extension.
+  - `countDue` needed drizzle's `lte` rather than a raw `sql` fragment: postgres.js cannot bind a JS `Date` through a template hole.
+
+### T-129 · Opening the popup deliberately said "nothing due" while a card was waiting
+- **status:** done
+- **sprint:** 5
+- **severity:** high — the extension looked empty to a learner who had work queued
+- **depends_on:** T-029
+- **files:** `extension/src/entrypoints/popup/Popup.tsx`, `extension/src/contract.test.tsx`, tests alongside
+- **description:** Found while chasing the founder's "Nothing due right now" report. `/due` was returning a card the whole time. **The popup never asked** — it rendered only what the background worker had stored, and the worker stores one when it decides to *interrupt*, on a five-minute alarm. So clicking the extension icon on purpose showed an empty popup until an alarm happened to fire.
+- **acceptance:** An opened popup fetches a due item when nothing is pending.
+- **tests:** A card appears when `/due` has one; "nothing due" when it does not; the same message on a failed request rather than a status code; no request at all when there is no token.
+- **notes:** (2026-09-07) **The daily cap, the active windows and the backoff are deliberately not consulted on this path.** Every one of them exists to decide when it is acceptable to *interrupt* someone. None is a reason to refuse a person who just asked for a question.
+  - It records `card_shown` with `opened: 'manually'`, because the answer rate needs the same denominator whichever surface offered the card (T-035) — and the meta distinguishes the two so they can be compared later.
+  - **A contract test asserted the old behaviour** — "the popup itself fetches nothing" — and had to be corrected. It now pins something stronger and still true: the popup has exactly one source of items, and it is `/due`.

@@ -109,16 +109,18 @@ describe('the extension renders only the public shape', () => {
   });
 
   it('does not render a held-out or untaught concept, because it never receives one', async () => {
-    // The filter is the server's (`findDueCards` requires taughtAt and
-    // heldOut = false, asserted in due.test.ts). What is asserted here is that
-    // the extension adds no second path to an item: the popup renders what the
-    // worker stored from /due, and nothing else.
+    // The filter is the server's — `findDueCards` requires `taughtAt` and
+    // `heldOut = false`, asserted in due.test.ts. What matters here is that the
+    // extension adds no *second* path to an item: the popup reads the card the
+    // worker stored, or asks `/due` for one (T-129), and has no third source.
     await setToken('tok_abc123');
 
     render(<Popup />);
 
     await screen.findByText(/Nothing due right now/);
-    expect(fetchMock).not.toHaveBeenCalled(); // the popup itself fetches nothing
+    // Exactly one request, and it is the due query.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${API_URL}/due?limit=1`);
   });
 });
 

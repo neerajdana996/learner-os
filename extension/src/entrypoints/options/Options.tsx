@@ -62,9 +62,13 @@ export function Options() {
 
   return (
     <main className="ext ext--options">
-      <h1 className="ext__title">learnos</h1>
+      <div className="ext__card">
+        <div className="ext__brand">
+          <span className="ext__mark" aria-hidden="true" />
+          <h1 className="ext__title">learnos</h1>
+        </div>
 
-      {state.kind === 'connected' ? (
+        {state.kind === 'connected' ? (
         <>
           <p className="ext__muted">
             Connected as <strong>{state.email}</strong>. Questions will appear during your active
@@ -89,19 +93,20 @@ export function Options() {
             spellCheck={false}
             error={state.kind === 'error' ? state.message : null}
           />
-          <p>
-            <Button
-              type="button"
-              disabled={token.trim() === '' || state.kind === 'checking'}
-              onClick={() => void connect()}
-            >
-              {state.kind === 'checking' ? 'Checking…' : 'Connect'}
-            </Button>
-          </p>
+          {/* Not wrapped in a <p>: the paragraph's own margin was what made
+              the spacing here uneven, and the card is a flex stack with a gap. */}
+          <Button
+            type="button"
+            disabled={token.trim() === '' || state.kind === 'checking'}
+            onClick={() => void connect()}
+          >
+            {state.kind === 'checking' ? 'Checking…' : 'Connect'}
+          </Button>
         </>
-      )}
+        )}
+      </div>
 
-      <p className="ext__muted ext__endpoint">Talking to {API_URL}</p>
+      <p className="ext__endpoint">Talking to {API_URL}</p>
     </main>
   );
 }

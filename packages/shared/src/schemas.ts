@@ -464,6 +464,23 @@ export const DevResetSchema = z.object({
 });
 
 /**
+ * `POST /dev/due-now` (T-128) — pull the caller's review queue forward so the
+ * extension has something to pop.
+ *
+ * After a session, FSRS schedules the first review hours or days out, which is
+ * correct and makes the extension impossible to try: the popup says "nothing
+ * due right now" and there is no way to move time. This moves the cards
+ * instead.
+ */
+export const DevDueNowSchema = z.object({
+  /** How many cards to bring forward. Not all of them by default — a queue of
+   *  forty is not what a real day looks like. */
+  count: z.number().int().min(1).max(50).default(5),
+});
+
+export const DevDueNowResponseSchema = z.object({ due: z.number().int() });
+
+/**
  * Dev-only password sign-in (T-070). The route that accepts this is not mounted
  * under `NODE_ENV=production` — it exists so a developer can reach the app
  * without a mail round trip, and it is the only place in the product where a
