@@ -2621,3 +2621,39 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A request with **no** `Origin` header is allowed: CORS is a browser mechanism, and refusing curl, `pnpm seed` and every example in `docs/api.md` would protect nothing.
   - The refusal is an exact match against the configured list, not a prefix test — a test pins `http://localhost:3000.evil.com`.
   - **Also asked and answered: Docker's ports are correct.** `3000:5173` maps host 3000 to the container's 5173, which is where Vite listens inside the container. The `5173` in the logs is Vite printing its own internal port; `http://localhost:3000` is the right address and works.
+
+### T-123 · A control arm of one concept is a coin flip
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-120
+- **files:** `backend/src/lib/heldOut.ts`, tests alongside
+- **description:** At the seven-day shape a topic is 14–16 concepts, where `max(1, floor(n * 0.1))` produced exactly **one** held-out concept — and `assembleTest` asks one non-transfer question per held-out concept. The control arm was therefore a single question scored 0 or 1, standing in for half of the pilot's headline comparison.
+- **acceptance:** A 15-concept topic holds out 3; a large topic still scales; no topic loses more than a quarter of its concepts.
+- **tests:** 15 concepts → 3; 40 → 4; 8 → capped at 2, below the floor; nothing under `HELD_OUT_MIN_ORDER` is ever held out; the pick is reproducible for a seed.
+- **notes:** (2026-09-07) **A floor and a cap, applied in that order so the cap always wins.** `HELD_OUT_MIN = 3` gives a small topic a measurable control; `HELD_OUT_MAX_SHARE = 0.25` stops the floor from taking half of a six-concept topic. Every held-out concept is one the learner paid for and never receives, so the control arm has to stay a minority of the course.
+  - `floor` became `round` at the same time: 15 × 0.1 = 1.5, and flooring it discarded the half.
+- **notes-open:** Whether to also ask **more than one question per held-out concept** in the cold test. Three concepts × one question is three data points; two questions each would be six, out of a 25–30 item budget. That is a change to `assembleTest`'s stratification and deserves its own task rather than being slipped in here.
+
+### T-124 · A cached response outlived the config change that broke it
+- **status:** done
+- **sprint:** 5
+- **severity:** high — reported as "the backend is down" while it answered 200
+- **depends_on:** T-122
+- **files:** `backend/src/app.ts`, tests alongside
+- **description:** Reported by the founder immediately after T-122: `/me` returned **304 Not Modified** and the extension still said "Could not reach http://localhost:3001". Express weak-ETags every JSON response, so the extension's five-minute `/me` poll became a conditional request — and the response cached *before* T-122 allowed the extension's origin has no `Access-Control-Allow-Origin`. Revalidating it returned 304, the browser served the stale entry, and the CORS check failed against a server that was by then configured correctly.
+- **acceptance:** No ETag on any response; every response is `no-store`.
+- **tests:** `/me` carries no `etag`; `/me` and `/health` both carry `Cache-Control: no-store`.
+- **notes:** (2026-09-07) **Two reasons, and the second one stands on its own.** The caching bug is nasty because it is undiagnosable from the client — the fix was already deployed and the symptom did not change. But these responses are also *personal*: `/me` carries an email and a profile, `/due` carries the next question, and a few hundred saved bytes is not a reason to leave those in a disk cache on a shared machine.
+
+### T-125 · A question may not point at something the learner cannot see
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-080
+- **files:** `backend/src/generator/items.ts`, `backend/src/generator/errors.ts`, `backend/src/llm/prompts/items/system.md`, tests alongside
+- **description:** Generation now rejects an item whose prompt names a diagram, listing, history, table or snippet when the item carries no block to show one. The prompt gained the matching rule, plus a second one against near-duplicate items.
+- **acceptance:** A prompt naming an absent artefact fails generation with `dangling_reference`; ordinary prose is untouched.
+- **tests:** "the history shown", "in the diagram", "the code below" are caught; "which of the following", "the cell above", "the node above it in the tree" and "what must be shown to prove" are not; the same prompt passes when the item does carry a block.
+- **notes:** (2026-09-07) **Preventive, and I over-claimed it first.** I reported *"Which operations overlap in the history shown?"* to the founder as a confirmed defect. It is not — that item **does** carry a block, so the history is shown. Checked against all 1312 items in the database: **none violate this rule.** The guard is worth having because the failure is unanswerable when it happens and one unanswerable question makes a learner distrust the rest, but it repairs nothing that exists.
+  - **The pattern requires the artefact to be *named*.** A bare "shown" is not enough: "what must be shown to prove the property for an object x" is ordinary mathematical prose and is in the real database. My first version rejected it.
+  - A SQL approximation of the rule appeared to flag "Explain the sequence that occurs…" — that was my missing word boundary matching the "in" inside "Expla**in**". The real regex has `\b` and does not.
+  - **The near-duplicate rule is a prompt change only**, and it is a real observed problem: one concept produced "What is a replica?", "Where must replicas be stored?", "What is node B's copy called?" and "What does this describe?" — four of seven items with the same one-word answer. There is no cheap mechanical check for it, so the prompt names the failure and lists what to vary instead.

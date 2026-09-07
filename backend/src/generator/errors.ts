@@ -24,6 +24,9 @@ export type GenerationErrorReason =
   | 'transfer_count'
   | 'explain_rubric'
   | 'too_few_items'
+  /** The prompt points at a diagram, listing or history the item does not
+   *  carry — unanswerable, and it makes every other question look unreliable. */
+  | 'dangling_reference'
   | 'too_many_rich';
 
 export class GenerationError extends Error {

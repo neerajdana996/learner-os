@@ -4,6 +4,26 @@
 // gain. Pure and seedable so the choice is reproducible in tests.
 
 export const HELD_OUT_RATIO = 0.1;
+
+/**
+ * Never fewer than this many, however small the topic (T-123).
+ *
+ * At the seven-day shape a topic is 14–16 concepts, where the old
+ * `max(1, floor(n * 0.1))` produced exactly **one** held-out concept — and the
+ * cold test asks one question per held-out concept, so the control arm was a
+ * single question scored 0 or 1. That is a coin flip standing in for half of
+ * the pilot's headline comparison.
+ */
+export const HELD_OUT_MIN = 3;
+
+/**
+ * ...and never more than this share of the topic.
+ *
+ * The floor above would otherwise hold out half of a six-concept topic. Every
+ * held-out concept is one the learner paid for and never receives, so the
+ * control arm has to stay a minority of the course.
+ */
+export const HELD_OUT_MAX_SHARE = 0.25;
 /** The first 3 concepts by order are always taught — holding out a foundation
  *  concept would break every concept that depends on it. */
 export const HELD_OUT_MIN_ORDER = 3;
@@ -25,8 +45,13 @@ export function seededRng(seed: number): () => number {
 }
 
 /**
- * Picks the slugs to hold out: `max(1, floor(n * ratio))` of them, drawn only
- * from concepts with `order > minOrder`, capped at however many are eligible.
+ * Picks the slugs to hold out, drawn only from concepts with `order > minOrder`.
+ *
+ * The count is `ratio` of the topic, raised to `HELD_OUT_MIN` so a small topic
+ * still has a measurable control arm, then capped at `HELD_OUT_MAX_SHARE` of
+ * the topic and at however many concepts are eligible — in that order, so the
+ * cap always wins over the floor and a six-concept topic cannot end up half
+ * untaught.
  */
 export function pickHeldOut(
   concepts: readonly OrderedConcept[],
@@ -35,7 +60,12 @@ export function pickHeldOut(
   rng: () => number = Math.random,
 ): Set<string> {
   const eligible = concepts.filter((concept) => concept.order > minOrder);
-  const target = Math.min(Math.max(1, Math.floor(concepts.length * ratio)), eligible.length);
+  const wanted = Math.max(HELD_OUT_MIN, Math.round(concepts.length * ratio));
+  const target = Math.min(
+    wanted,
+    Math.floor(concepts.length * HELD_OUT_MAX_SHARE),
+    eligible.length,
+  );
 
   // Sort by a random key rather than index-swapping: same uniform result, no
   // array indexing to type-guard.

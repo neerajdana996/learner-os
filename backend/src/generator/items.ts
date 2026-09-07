@@ -29,6 +29,19 @@ export interface GeneratedItems {
   items: GeneratedItem[];
 }
 
+/**
+ * A prompt pointing at an artefact the item does not carry (T-125).
+ *
+ * The artefact has to be **named**: "the history shown", "the code below", "in
+ * the diagram". A bare "shown" is not enough — "what must be shown to prove the
+ * property" is ordinary mathematical prose and appears in the real database.
+ * Nor does this match "which of the following", "the cell above" or "the node
+ * above it in the tree". Rejecting those would cost good items to catch a rare
+ * bad one.
+ */
+export const REFERS_TO_SHOWN =
+  /\b(?:(?:diagram|figure|snippet|listing|history|table|code|output|graph|sequence)\s+(?:shown|below|above)|(?:in|from)\s+the\s+(?:diagram|figure|snippet|listing|history|table|graph|sequence)\b)/i;
+
 const RawItemsResponseSchema = z.object({
   topic: z.string().min(1),
   items: z.array(z.unknown()).min(1),
@@ -94,6 +107,31 @@ export function validateItems(data: unknown): GeneratedItems {
   for (const item of items) {
     if (item.payload.type === 'explain' && item.payload.rubric.length > 200) {
       throw new GenerationError('explain_rubric', 'explain rubric must be 200 characters or less');
+    }
+  }
+
+  /**
+   * A question may not point at something the learner cannot see (T-125).
+   *
+   * **Preventive, not a repair.** Checked against all 1312 items in the
+   * database: none violate it. The one that looked like a violation —
+   * *"Which operations overlap in the history shown?"* — turned out to carry a
+   * block after all, so the history *was* shown. The rule exists because the
+   * failure is unanswerable when it does happen, and one unanswerable question
+   * makes a learner distrust every other one.
+   *
+   * The pattern is deliberately narrow. "The cell above", "the node above it in
+   * the tree" and "which of the following" are all legitimate prose that a
+   * looser rule would reject; this only fires on a reference to a *shown*
+   * artefact, and only when the item carries no block to show one.
+   */
+  for (const item of items) {
+    if (item.payload.blocks?.length) continue;
+    if (REFERS_TO_SHOWN.test(item.payload.prompt)) {
+      throw new GenerationError(
+        'dangling_reference',
+        `item refers to something shown but carries no block: "${item.payload.prompt.slice(0, 80)}"`,
+      );
     }
   }
 

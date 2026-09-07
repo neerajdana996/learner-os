@@ -60,6 +60,30 @@ export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
+
+  /**
+   * No ETags, and nothing cached (T-124).
+   *
+   * Express weak-ETags every JSON response, so the extension's five-minute
+   * `/me` poll became a conditional request. Two things go wrong with that:
+   *
+   * 1. **A cached response outlives a config change.** A `/me` stored while the
+   *    extension's origin was still refused kept being revalidated afterwards,
+   *    and the stale entry has no `Access-Control-Allow-Origin` — so the fetch
+   *    kept failing after the server was fixed, reported as "could not reach a
+   *    backend" that was answering 200. Diagnosing that from the client is
+   *    close to impossible.
+   * 2. **These responses are personal.** `/me` carries an email and a profile,
+   *    `/due` carries the next question. None of it belongs in a disk cache on
+   *    a shared machine, and a few hundred saved bytes is not a reason to put
+   *    it there.
+   */
+  app.disable('etag');
+  app.use((_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   app.use(cors({ origin: allowOrigin, credentials: true }));
   app.use(express.json({ limit: '1mb' }));
 
