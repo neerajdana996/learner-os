@@ -160,13 +160,22 @@ body {
     /// in a 344px column. Only the size changes.
     .question__prompt {
       font-size: $text-lg;
-      margin-bottom: 0;
+      /// The question and the thing you answer it with are one unit, and this
+      /// gap is what says so. Equal spacing between prompt, field and actions
+      /// made three unrelated bands.
+      margin-bottom: $s-3;
     }
   }
 
+  /// Separated by a rule, not by a bigger gap. The actions are a different kind
+  /// of thing from the question — one is read, the other is pressed — and on a
+  /// card this small the distinction has to be drawn rather than implied.
   &__actions {
     display: flex;
-    gap: $s-2;
+    align-items: center;
+    gap: $s-3;
+    padding-top: $s-3;
+    border-top: 1px solid var(--border);
   }
 
   &__result {

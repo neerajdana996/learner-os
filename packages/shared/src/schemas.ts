@@ -168,6 +168,19 @@ export const ItemGenerationSchema = z
 export const PublicItemSchema = z.object({
   itemId: z.string().uuid(),
   conceptId: z.string().uuid(),
+  /**
+   * The concept's name, when it is safe to show (T-130).
+   *
+   * Optional and populated **only by `/due`**, whose items are always taught
+   * and never held out — so naming the concept reveals nothing the learner has
+   * not already been taught. The diagnostic and the Day-30 test leave it off,
+   * because those *do* include held-out concepts and the title is withheld
+   * there on purpose (T-010).
+   *
+   * Without it the extension card's header read "Due now", which tells a
+   * learner nothing about what they are being asked.
+   */
+  conceptTitle: z.string().optional(),
   type: ItemTypeSchema,
   prompt: z.string(),
   options: z.array(z.string()).length(4).optional(),

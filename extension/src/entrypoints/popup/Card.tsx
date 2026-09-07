@@ -216,11 +216,12 @@ export function Card({ item, onClose }: CardProps) {
   return (
     <main className="card">
       <header className="card__bar">
-        {/* The design shows the concept's name here. `PublicItem` carries only
-            `conceptId` — the title is deliberately withheld from the client for
-            held-out concepts (T-010) — so this stays generic until the due
-            response carries a title it is safe to show. */}
-        <span className="card__concept">Due now</span>
+        {/* The concept's name, as the design canvas specifies (T-130). `/due`
+            supplies it because every due item is taught and not held out, so
+            naming it reveals nothing. "Due now" remains the fallback for an
+            item from anywhere else — it says when, which is better than an
+            empty header, but it never says what. */}
+        <span className="card__concept">{item.conceptTitle ?? 'Due now'}</span>
         <button type="button" className="card__x" onClick={() => void dismiss()} aria-label="Dismiss">
           ✕
         </button>

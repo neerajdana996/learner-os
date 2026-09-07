@@ -9,7 +9,7 @@ export const RECENT_WINDOW = 3;
 
 export async function findDueCards(userId: string, now: Date, limit: number) {
   const rows = await db
-    .select({ conceptId: cards.conceptId, due: cards.due, taughtAt: cards.taughtAt, heldOut: concepts.heldOut, topicStatus: topics.status })
+    .select({ conceptId: cards.conceptId, conceptTitle: concepts.title, due: cards.due, taughtAt: cards.taughtAt, heldOut: concepts.heldOut, topicStatus: topics.status })
     .from(cards)
     .innerJoin(concepts, eq(cards.conceptId, concepts.id))
     .innerJoin(topics, eq(concepts.topicId, topics.id))
@@ -26,7 +26,9 @@ export async function findDueCards(userId: string, now: Date, limit: number) {
     .limit(limit);
 
 
-  return rows.map((row) => ({ conceptId: row.conceptId, due: row.due }));
+  // The title comes back because `/due` may show it: every row here is taught
+  // and not held out, so naming the concept reveals nothing (T-130).
+  return rows.map((row) => ({ conceptId: row.conceptId, conceptTitle: row.conceptTitle, due: row.due }));
 }
 
 /** Retired items (T-024's `pnpm qa:retire`, and the backlog's auto-retire) are

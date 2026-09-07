@@ -126,7 +126,10 @@ export function QuestionCard({ item, value, onChange, onAssisted, onSkeleton }: 
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(e.target.value)}
           aria-label="Your answer"
-          placeholder="Your answer"
+          // Says how much, not what — the card promises twenty seconds, and a
+          // blank box labelled "Your answer" invites a paragraph nobody has
+          // time to write. The accessible name stays plain.
+          placeholder="A few words is enough"
           autoComplete="off"
         />
       )}

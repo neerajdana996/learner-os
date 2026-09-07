@@ -58,10 +58,21 @@
     font-size: $text-md;
   }
 
+  /**
+   * Dimmed, not repainted.
+   *
+   * This used to overwrite background, colour and border on every variant, so a
+   * disabled primary became a filled grey slab — indistinguishable from a
+   * broken control, and on the extension card it was the largest thing on
+   * screen. A learner reads "this is broken", not "this needs an answer first".
+   *
+   * Fading the variant keeps its identity: the primary still looks like the
+   * primary, waiting. Disabled controls are not interactive, so they carry no
+   * contrast obligation of their own — what they must not do is impersonate a
+   * failure.
+   */
   &:disabled {
-    background: var(--sunken);
-    color: var(--stone);
-    border-color: transparent;
+    opacity: 0.42;
     cursor: not-allowed;
   }
 }

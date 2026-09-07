@@ -44,7 +44,10 @@ export async function getDueItems(
     const recent = new Set(recentByConcept.get(card.conceptId) ?? []);
     const unseen = pool.filter((item) => !recent.has(item.id));
     const chosen = (unseen.length > 0 ? unseen : pool)[0];
-    if (chosen) payload.items.push(toPublicItem(chosen));
+    // Named here rather than inside `toPublicItem`: that projection is shared
+    // with the diagnostic and the Day-30 test, which *do* carry held-out
+    // concepts and must keep withholding the title (T-010).
+    if (chosen) payload.items.push({ ...toPublicItem(chosen), conceptTitle: card.conceptTitle });
   }
   return payload;
 }
