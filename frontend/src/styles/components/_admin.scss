@@ -1,3 +1,6 @@
+@use "@learnos/ui/styles/variables" as *;
+@use "@learnos/ui/styles/mixins" as *;
+
 /// The founder dashboard (T-041).
 ///
 /// A dense table on purpose. Ten participants is a sample you read row by row,
@@ -41,7 +44,7 @@
   }
 
   &__stat-value {
-    font-size: $text-xl;
+    font-size: $text-lg;
     font-variant-numeric: tabular-nums;
     margin-top: 2px;
   }

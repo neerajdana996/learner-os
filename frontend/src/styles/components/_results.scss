@@ -1,3 +1,6 @@
+@use "@learnos/ui/styles/variables" as *;
+@use "@learnos/ui/styles/mixins" as *;
+
 /// The learner's own results (T-042).
 ///
 /// Reading width, not dashboard width. This is prose with numbers in it — the

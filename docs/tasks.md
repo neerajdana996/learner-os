@@ -1103,6 +1103,8 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **The calibration sentence names overconfidence without scolding**, and has a real sentence for the other two cases — being harder on yourself than the answers were is worth saying, and a gap near zero gets the plainest wording because it deserves no drama.
   - Access control is the `and(userId, topicId)` in one query, and a stranger gets **404 rather than 403**: a 403 would confirm the topic exists. This page is the most personal thing the product produces — a list of what someone failed to remember.
   - Tone is deliberately flat about what did not stick. A page that congratulated or commiserated would be doing something other than reporting.
+  - **Both new stylesheets failed to compile and `tsc` said nothing**, because SCSS is not typechecked and neither `pnpm lint` nor the vitest suites build CSS. Two faults: partials do not inherit `@use` from `main.scss` (each needs its own `@use "@learnos/ui/styles/variables"`), and I reached for a `$text-xl` that does not exist — the scale stops at `$text-lg`. **`pnpm build` is the only check that catches this**, and it belongs in the loop after any stylesheet change; the founder hit it in the dev server first, which it should not have taken.
+  - Rendered and read on the dev server afterwards, with a temporary Day-30 row that was deleted again: all four sections behave, including the "Not asked this time" one that did not exist an hour earlier.
 
 ### T-043 · Email transport (real)
 - **status:** in_progress
