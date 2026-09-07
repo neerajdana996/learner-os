@@ -593,3 +593,30 @@ export const AdminReportSchema = z.object({
     answerRate: z.number().nullable(),
   }),
 });
+
+// ---------- What the learner is told afterwards (T-042) ----------
+
+export const ConceptResultSchema = z.object({
+  conceptId: z.string().uuid(),
+  title: z.string(),
+  /** True for a concept we deliberately never taught — the control arm. */
+  heldOut: z.boolean(),
+  /** 0–1 on the Day-30 test, or null if no question on this concept was asked. */
+  score: z.number().min(0).max(1).nullable(),
+});
+
+export const ResultsResponseSchema = z.object({
+  topicId: z.string().uuid(),
+  topicTitle: z.string(),
+  /** Null until the Day-30 test is finished — the page has nothing to say
+   *  before then, and must say that rather than showing zeros. */
+  taught: z.number().min(0).max(1).nullable(),
+  heldOut: z.number().min(0).max(1).nullable(),
+  /** Positive when the learner was more confident than correct. */
+  calibrationGap: z.number().nullable(),
+  concepts: z.array(ConceptResultSchema),
+  /** Whether a Day-45 check is still ahead. The page promises it only when it
+   *  is actually coming, because a promise the product then fails to keep is
+   *  worse than not making it. */
+  day45Pending: z.boolean(),
+});

@@ -32,6 +32,8 @@ import type {
   PulseCreateSchema,
   PulseResponseSchema,
   AdminReportSchema,
+  ResultsResponseSchema,
+  ConceptResultSchema,
   AdminRowSchema,
   CalibrationBinSchema,
   ExtensionStatsSchema,
@@ -99,6 +101,8 @@ export type PulseCreate = z.infer<typeof PulseCreateSchema>;
 export type Mood = PulseCreate['mood'];
 export type PulseResponse = z.infer<typeof PulseResponseSchema>;
 export type AdminReport = z.infer<typeof AdminReportSchema>;
+export type ResultsResponse = z.infer<typeof ResultsResponseSchema>;
+export type ConceptResult = z.infer<typeof ConceptResultSchema>;
 export type AdminRow = z.infer<typeof AdminRowSchema>;
 export type CalibrationBin = z.infer<typeof CalibrationBinSchema>;
 export type ExtensionStats = z.infer<typeof ExtensionStatsSchema>;

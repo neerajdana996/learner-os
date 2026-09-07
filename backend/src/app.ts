@@ -14,6 +14,7 @@ import { devRouter } from './modules/dev/dev.routes.js';
 import { testsRouter } from './modules/tests/tests.routes.js';
 import { itemsRouter } from './modules/items/items.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
+import { resultsRouter } from './modules/results/results.routes.js';
 import { pulseRouter } from './modules/pulse/pulse.routes.js';
 import { telemetryRouter } from './modules/telemetry/telemetry.routes.js';
 
@@ -38,6 +39,8 @@ export function createApp(): Express {
   app.use(sessionRouter);
   // Ahead of topicsRouter so /topics/:id/map isn't shadowed by /topics/:id.
   app.use(mapRouter);
+  // Ahead of topicsRouter so /topics/:id/results isn't shadowed by /topics/:id.
+  app.use(resultsRouter);
   app.use(testsRouter);
   app.use(topicsRouter);
   app.use(reviewsRouter);

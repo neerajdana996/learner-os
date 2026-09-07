@@ -1087,12 +1087,22 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **The route existing is not the permission.** Client-side hiding is a courtesy; the server decides, and a non-admin who reaches `/admin` is told why instead of seeing an empty table that looks like no data.
 
 ### T-042 · User-facing results page
-- **status:** todo
+- **status:** done
 - **sprint:** 4
 - **depends_on:** T-040
 - **files:** `frontend/src/pages/Results.tsx`
 - **description:** After Day-30/45: "You remembered X% of what we taught, vs Y% of what we didn't. Here's what stuck and what didn't." Per-concept list, calibration message, and the Day-45 note ("we'll check once more without reminders").
 - **tests:** Renders held-out vs taught comparison from scores.
+
+- **notes:** (2026-09-07) **The comparison is the page.** "You remembered 78%" means very little on its own — people pick things up over a month regardless — so the headline is always the pair, and showing the held-out number is the only honest way to show the taught one.
+  - **Held-out concept titles are returned here and nowhere else.** They are withheld during the experiment (T-010) because knowing what is *not* being taught is knowing what to go and read; once the Day-30 test is submitted that reason is gone, and continuing to hide them would be withholding the learner's own result from them.
+  - **A bug this task's own test found.** With only "what stuck" and "what didn't", a taught concept the test never asked about matched neither filter and **vanished from the page** — which reads as though it was never taught at all. A 25-item test cannot cover 16 concepts, so this is the common case, not an edge one. There is now a "Not asked this time" section, and a test asserts every concept appears exactly once: a learner should be able to find everything they were taught somewhere on the page.
+  - **Blank, never 0%.** "We did not ask" and "you got it wrong" must not look the same to the person reading this.
+  - **Before the Day-30 test the page says there is nothing yet**, rather than rendering zeros — a page of 0% reads as a catastrophic result rather than an absent one.
+  - **The Day-45 line is only shown while it is genuinely ahead** (`day45Pending`), because a promise the product then fails to keep is worse than not making it.
+  - **The calibration sentence names overconfidence without scolding**, and has a real sentence for the other two cases — being harder on yourself than the answers were is worth saying, and a gap near zero gets the plainest wording because it deserves no drama.
+  - Access control is the `and(userId, topicId)` in one query, and a stranger gets **404 rather than 403**: a 403 would confirm the topic exists. This page is the most personal thing the product produces — a list of what someone failed to remember.
+  - Tone is deliberately flat about what did not stick. A page that congratulated or commiserated would be doing something other than reporting.
 
 ### T-043 · Email transport (real)
 - **status:** in_progress

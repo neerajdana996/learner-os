@@ -25,6 +25,7 @@ const ConnectExtensionPage = lazy(() => import('../features/extension/pages/Conn
  *  existing is not the permission — a non-admin reaching it gets a 403 from the
  *  API and the page says so. Client-side hiding is a courtesy, never a control. */
 const AdminPage = lazy(() => import('../features/admin/pages/AdminPage'));
+const ResultsPage = lazy(() => import('../features/results/pages/ResultsPage'));
 
 export function AppRoutes() {
   return (
@@ -102,6 +103,14 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <ConnectExtensionPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/results/:topicId"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <ResultsPage />
             </Suspense>
           }
         />

@@ -1,0 +1,101 @@
+/// The learner's own results (T-042).
+///
+/// Reading width, not dashboard width. This is prose with numbers in it — the
+/// comparison is a sentence, not a chart — and the page after it is a list of
+/// things someone failed to remember, which wants air rather than density.
+.results {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: $s-6 $s-4;
+
+  &__title {
+    margin: 0 0 $s-4;
+  }
+
+  /// The one number pair the whole pilot produces.
+  &__headline {
+    font-size: $text-lg;
+    line-height: 1.5;
+    margin: 0 0 $s-3;
+  }
+
+  &__lede {
+    margin: 0 0 $s-4;
+    color: var(--ink-2);
+    font-size: $text-sm;
+    line-height: 1.6;
+  }
+
+  &__calibration {
+    margin: 0 0 $s-5;
+    padding: $s-3;
+    border-left: 2px solid var(--clay);
+    background: var(--sunken);
+    font-size: $text-sm;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  &__section {
+    margin-bottom: $s-5;
+  }
+
+  &__subtitle {
+    font-size: $text-base;
+    margin: 0 0 $s-2;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  &__concept {
+    display: flex;
+    align-items: baseline;
+    gap: $s-2;
+    padding: $s-2 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__concept-title {
+    flex: 1;
+  }
+
+  &__concept-score {
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  /// Blank, not 0% — a concept the test never asked about is not a concept
+  /// the learner got wrong.
+  &__unasked {
+    color: var(--muted);
+  }
+
+  &__tag {
+    font-size: $text-xs;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    border: 1px solid var(--border-strong);
+    border-radius: $radius;
+    padding: 1px 6px;
+  }
+
+  &__empty {
+    color: var(--muted);
+    font-size: $text-sm;
+  }
+
+  &__day45 {
+    margin-top: $s-5;
+    padding-top: $s-4;
+    border-top: 1px solid var(--border);
+    font-size: $text-sm;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+}
