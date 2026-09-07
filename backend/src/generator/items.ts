@@ -411,5 +411,42 @@ export async function generateItems(input: ItemsInput): Promise<GeneratedItems> 
   if (result.items.length < MIN_ITEMS) {
     throw new GenerationError('too_few_items', `got ${result.items.length} items, need at least ${MIN_ITEMS}`);
   }
-  return result;
+  return { ...result, items: result.items.map((item) => shuffleOptions(item)) };
 }
+
+/**
+ * Moves the correct answer to a uniformly random position (T-121).
+ *
+ * **Measured, not suspected.** Across the 369 recognition items in the database
+ * the correct option sat at index 1 in 52.3% of them and at index 3 in 1.4% —
+ * five items out of 369. Always answering "B" scored 52% without reading the
+ * question, and this contaminates the Day-0 and Day-30 tests equally, which is
+ * to say it contaminates the measurement the pilot exists to take.
+ *
+ * Done here rather than in the prompt because position bias is a property of
+ * the model, not of the instructions: asking for variety produces slightly
+ * different bias, while shuffling produces none. The prompt still carries the
+ * one thing a shuffle cannot fix — distractors that match the answer's length
+ * and grammatical form.
+ */
+export function shuffleOptions(item: GeneratedItem, rng: () => number = Math.random): GeneratedItem {
+  const payload = item.payload;
+  if (payload.type !== 'recognition') return item;
+
+  const answer = payload.options[payload.answerIndex];
+  if (answer === undefined) return item;
+
+  const order = payload.options
+    .map((option, index) => ({ option, index, key: rng() }))
+    .sort((a, b) => a.key - b.key);
+
+  // Located by original index, not by string equality: two options can carry
+  // identical text, and matching on text would silently point at the wrong one.
+  const answerIndex = order.findIndex((entry) => entry.index === payload.answerIndex);
+
+  return {
+    ...item,
+    payload: { ...payload, options: order.map((entry) => entry.option), answerIndex },
+  };
+}
+

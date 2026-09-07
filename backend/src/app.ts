@@ -25,11 +25,42 @@ import { telemetryRouter } from './modules/telemetry/telemetry.routes.js';
  * Route modules are registered here (loop.md §4: "If the task adds a route:
  * it's in backend/src/index.ts" — app.ts is where index.ts delegates to).
  */
+/**
+ * Which origins may call this API (T-122).
+ *
+ * The web app is a fixed list. **The extension is not**: an unpacked build's id
+ * comes from its directory, so it differs on every machine and cannot be
+ * committed — and without an allowance the options page's request is blocked by
+ * the browser and the extension reports "Could not reach the backend", which
+ * reads as the server being down when it is answering perfectly.
+ *
+ * Outside production any `chrome-extension://` origin is allowed, so a freshly
+ * loaded build connects with no configuration. Under `NODE_ENV=production` the
+ * ids must be named in `EXTENSION_ORIGINS`: "any extension the learner happens
+ * to have installed" is not an access policy.
+ *
+ * A missing origin (curl, same-origin, a server-side call) is allowed — CORS is
+ * a browser mechanism and blocking those would break `pnpm seed` and every
+ * example in `docs/api.md` without protecting anything.
+ */
+export function allowOrigin(
+  origin: string | undefined,
+  done: (err: Error | null, allow?: boolean) => void,
+): void {
+  if (!origin) return done(null, true);
+  if (env.CORS_ORIGINS.includes(origin)) return done(null, true);
+
+  if (origin.startsWith('chrome-extension://')) {
+    return done(null, !isProd || env.EXTENSION_ORIGINS.includes(origin));
+  }
+  return done(null, false);
+}
+
 export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(cors({ origin: env.CORS_ORIGINS, credentials: true }));
+  app.use(cors({ origin: allowOrigin, credentials: true }));
   app.use(express.json({ limit: '1mb' }));
 
   app.use(healthRouter);

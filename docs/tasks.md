@@ -2590,3 +2590,34 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The progress bar now counts all concepts. Reporting 18/18 while doing twenty calls' worth of waiting is a progress bar that lies about the wait.
 - **notes-open:** (2026-09-07) **Every existing topic is unusable for the pilot** — the five generated topics all have item-less held-out concepts and cannot be tested. They must be regenerated, which was already planned ("regenerate the three pilot topics at 14–16 concepts and hand-review") and is now mandatory rather than a quality improvement.
   - **The held-out arm may be too thin at 15 concepts.** `HELD_OUT_RATIO = 0.1` with `max(1, ...)` gives exactly **one** held-out concept for a 15-concept topic, and the Day-30 test asks one non-transfer question about it. A control arm measured by a single question is close to a coin flip, and `heldOut` is half of the pilot's headline comparison. Worth a founder decision before generating the pilot topics: either raise the ratio, set a floor of 2–3 held-out concepts, or ask several questions per held-out concept.
+
+### T-121 · A test-wise learner scored 61% without reading the question
+- **status:** done
+- **sprint:** 5
+- **severity:** high — contaminates Day-0 and Day-30 alike, which is the measurement
+- **depends_on:** T-007
+- **files:** `backend/src/generator/items.ts`, `backend/src/llm/prompts/items/system.md`, tests alongside
+- **description:** Found by measuring the 369 recognition items in the database rather than reading the prompt. Two independent biases, both large:
+  - **Position.** The correct option sat at index 1 in **52.3%** of items and at index 3 in **1.4%** — five items out of 369. Always answering "B" scored 52% without reading anything. Chance is 25%.
+  - **Length.** The correct option was the longest in **61.2%** of items (chance 25%), averaging 52.4 characters against 44.3 across all options. Always picking the longest scored 61%.
+- **acceptance:** The answer position is uniform; the prompt asks for length- and form-matched distractors.
+- **tests:** `answerIndex` still points at the same text after shuffling; the answer reaches all four positions; non-recognition items are untouched; an answer not starting at index 0 is followed; duplicate option text resolves to the right one.
+- **notes:** (2026-09-07) **Position is fixed in code, not in the prompt.** Position bias is a property of the model rather than of the instructions — asking for variety produces slightly different bias, while shuffling produces none. `shuffleOptions` runs on every generated item after validation, so every path gets it.
+  - **Length is fixed in the prompt, because a shuffle cannot touch it.** The instruction is concrete and carries the measurement, since "write plausible distractors" was already there and produced this: *a distractor visibly shorter or vaguer than the answer is not a distractor, it is a hint.* The prompt also now tells the model not to worry about position, so it does not waste attention on something the server guarantees.
+  - **Why this matters more than it looks.** It inflates the taught and held-out arms together, so `retentionGain` partly survives — but the Day-0 baseline is inflated too, the absolute retention numbers become uninterpretable, and the guessing floor moves from 25% to 61%. A pilot that reports "they remembered 78%" cannot also say a naive strategy scores 61%.
+  - The answer is located by **original index, not string equality**: two options can carry identical text, and matching on text would silently point at the duplicate. Pinned by a test.
+  - **The existing 1312 items keep their bias.** They need regeneration for T-120 anyway, which now fixes this at the same time.
+
+### T-122 · The extension could not reach a backend that was answering fine
+- **status:** done
+- **sprint:** 5
+- **severity:** high — the connect flow was impossible on a fresh install
+- **depends_on:** T-027
+- **files:** `backend/src/app.ts`, `backend/src/lib/env.ts`, tests alongside
+- **description:** Reported by the founder with a screenshot: the options page said *"Could not reach http://localhost:3001. Is the backend running?"* while `/health` returned 200. **`CORS_ORIGINS` listed only the two web origins**, so the browser blocked the options page's response and the extension reported a network failure — which reads as the server being down when it is answering perfectly.
+- **acceptance:** An unpacked extension connects with no configuration; production requires the ids to be named.
+- **tests:** The configured web origin passes; a `chrome-extension://` origin passes outside production; a request with no origin passes; an unrelated site is refused; a host merely *prefixed* with an allowed origin (`http://localhost:3000.evil.com`) is refused.
+- **notes:** (2026-09-07) **An unpacked extension's id is derived from its build directory**, so it differs per machine and cannot be committed — which is why this is a predicate rather than another entry in `CORS_ORIGINS`. Outside production any `chrome-extension://` origin is accepted so a freshly loaded build works immediately; under `NODE_ENV=production` the ids must be listed in `EXTENSION_ORIGINS`, because "any extension the learner happens to have installed" is not an access policy.
+  - A request with **no** `Origin` header is allowed: CORS is a browser mechanism, and refusing curl, `pnpm seed` and every example in `docs/api.md` would protect nothing.
+  - The refusal is an exact match against the configured list, not a prefix test — a test pins `http://localhost:3000.evil.com`.
+  - **Also asked and answered: Docker's ports are correct.** `3000:5173` maps host 3000 to the container's 5173, which is where Vite listens inside the container. The `5173` in the logs is Vite printing its own internal port; `http://localhost:3000` is the right address and works.

@@ -32,6 +32,19 @@ const EnvSchema = z.object({
     .string()
     .default('http://localhost:3000,http://localhost:5173')
     .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
+  /**
+   * Extension origins allowed to call the API (T-122).
+   *
+   * An unpacked extension's id is derived from its build directory, so it
+   * differs per machine and cannot be committed. Outside production any
+   * `chrome-extension://` origin is accepted so a freshly loaded build works
+   * without configuration; in production the ids must be listed here, because
+   * "any extension the learner has installed" is not an access policy.
+   */
+  EXTENSION_ORIGINS: z
+    .string()
+    .default('')
+    .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
   // Where /auth/verify sends the browser after setting the session cookie (T-013).
   APP_URL: z.string().url().default('http://localhost:3000'),
   // Magic-link and session lifetimes, in minutes and days respectively. Kept in
