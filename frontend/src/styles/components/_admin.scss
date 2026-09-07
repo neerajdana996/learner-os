@@ -1,0 +1,179 @@
+/// The founder dashboard (T-041).
+///
+/// A dense table on purpose. Ten participants is a sample you read row by row,
+/// and a screen of headline tiles would hide the only thing worth knowing at
+/// this scale: which person it did not work for.
+.admin {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: $s-6 $s-4;
+
+  &__title {
+    margin: 0 0 $s-2;
+  }
+
+  &__lede {
+    margin: 0 0 $s-5;
+    color: var(--ink-2);
+    font-size: $text-sm;
+  }
+
+  &__cohort {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $s-3;
+    margin-bottom: $s-5;
+  }
+
+  &__stat {
+    flex: 1 1 140px;
+    padding: $s-3;
+    border: 1px solid var(--border);
+    border-radius: $radius-lg;
+    background: var(--surface);
+  }
+
+  &__stat-label {
+    font-size: $text-xs;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  &__stat-value {
+    font-size: $text-xl;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+
+  /// Never omitted. A mean without its n is a claim without a sample size.
+  &__stat-n {
+    font-size: $text-xs;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /// The table is wider than a phone and must scroll in its own box rather
+  /// than making the whole page scroll sideways.
+  &__scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: $radius-lg;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: $text-sm;
+
+    th,
+    td {
+      padding: $s-2 $s-3;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      font-size: $text-xs;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      font-weight: $weight-semibold;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+  }
+
+  &__num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /// A dash, not a zero. Blank and 0.00 are opposite findings.
+  &__missing {
+    color: var(--muted);
+  }
+
+  &__who {
+    font-weight: $weight-semibold;
+  }
+
+  &__topic,
+  &__counts {
+    font-size: $text-xs;
+    color: var(--ink-2);
+  }
+
+  &__csv {
+    font-size: $text-xs;
+  }
+
+  &__empty {
+    color: var(--muted);
+    font-size: $text-sm;
+    padding: $s-3;
+  }
+
+  &__calibration {
+    margin-top: $s-5;
+  }
+
+  &__subtitle {
+    font-size: $text-base;
+    margin: 0 0 $s-3;
+  }
+
+  &__chart {
+    display: flex;
+    gap: $s-3;
+    align-items: flex-end;
+    padding: $s-3;
+    border: 1px solid var(--border);
+    border-radius: $radius-lg;
+    overflow-x: auto;
+  }
+
+  &__bin {
+    text-align: center;
+    min-width: 54px;
+  }
+
+  /// Two bars, not one: "how did people do" and "was the scheduler right" are
+  /// different questions, and only the pair answers the second.
+  &__bars {
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    height: 110px;
+  }
+
+  &__bar {
+    width: 16px;
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+
+    &--predicted {
+      background: var(--stone);
+    }
+
+    &--actual {
+      background: var(--clay);
+    }
+  }
+
+  &__bin-label {
+    font-size: $text-xs;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /// Printed under every bin: three reviews look exactly as tall as three
+  /// hundred, and the eye will believe both.
+  &__bin-n {
+    font-size: $text-xs;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+}

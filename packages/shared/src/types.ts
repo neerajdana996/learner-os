@@ -31,6 +31,11 @@ import type {
   TestAvailabilitySchema,
   PulseCreateSchema,
   PulseResponseSchema,
+  AdminReportSchema,
+  AdminRowSchema,
+  CalibrationBinSchema,
+  ExtensionStatsSchema,
+  TeachModeRowSchema,
   ClientEventSchema,
   ClientEventNameSchema,
   TelemetrySchema,
@@ -93,6 +98,11 @@ export type PulseCreate = z.infer<typeof PulseCreateSchema>;
  *  deliberation, and this has to cost less than the card did (T-032). */
 export type Mood = PulseCreate['mood'];
 export type PulseResponse = z.infer<typeof PulseResponseSchema>;
+export type AdminReport = z.infer<typeof AdminReportSchema>;
+export type AdminRow = z.infer<typeof AdminRowSchema>;
+export type CalibrationBin = z.infer<typeof CalibrationBinSchema>;
+export type ExtensionStats = z.infer<typeof ExtensionStatsSchema>;
+export type TeachModeRow = z.infer<typeof TeachModeRowSchema>;
 export type ClientEvent = z.infer<typeof ClientEventSchema>;
 export type ClientEventName = z.infer<typeof ClientEventNameSchema>;
 export type Telemetry = z.infer<typeof TelemetrySchema>;

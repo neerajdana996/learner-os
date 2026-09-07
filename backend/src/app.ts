@@ -13,6 +13,7 @@ import { dueRouter } from './modules/due/due.routes.js';
 import { devRouter } from './modules/dev/dev.routes.js';
 import { testsRouter } from './modules/tests/tests.routes.js';
 import { itemsRouter } from './modules/items/items.routes.js';
+import { adminRouter } from './modules/admin/admin.routes.js';
 import { pulseRouter } from './modules/pulse/pulse.routes.js';
 import { telemetryRouter } from './modules/telemetry/telemetry.routes.js';
 
@@ -41,6 +42,7 @@ export function createApp(): Express {
   app.use(topicsRouter);
   app.use(reviewsRouter);
   app.use(itemsRouter);
+  app.use(adminRouter);
   app.use(pulseRouter);
   app.use(telemetryRouter);
   app.use(dueRouter);

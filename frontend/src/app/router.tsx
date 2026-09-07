@@ -21,6 +21,10 @@ const SessionPage = lazy(() => import('../features/session/pages/SessionPage'));
 const MapPage = lazy(() => import('../features/map/pages/MapPage'));
 const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'));
 const ConnectExtensionPage = lazy(() => import('../features/extension/pages/ConnectExtensionPage'));
+/** Founder-only, and gated on the server by `ADMIN_EMAILS` (T-041). The route
+ *  existing is not the permission — a non-admin reaching it gets a 403 from the
+ *  API and the page says so. Client-side hiding is a courtesy, never a control. */
+const AdminPage = lazy(() => import('../features/admin/pages/AdminPage'));
 
 export function AppRoutes() {
   return (
@@ -98,6 +102,14 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <ConnectExtensionPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <AdminPage />
             </Suspense>
           }
         />

@@ -531,3 +531,65 @@ export const TelemetrySchema = z.object({
 });
 
 export const TelemetryResponseSchema = z.object({ stored: z.number().int().nonnegative() });
+
+// ---------- Founder dashboard (T-041) ----------
+
+/**
+ * Defined here rather than hand-written on the client (T-075's complaint).
+ *
+ * Every number is nullable, and that is load-bearing: `metrics.ts` returns null
+ * for a measurement that does not exist, and a schema that coerced those to 0
+ * would undo the whole point at the last step.
+ */
+export const CalibrationBinSchema = z.object({
+  bin: z.number(),
+  predicted: z.number(),
+  actual: z.number(),
+  n: z.number().int(),
+});
+
+export const ExtensionStatsSchema = z.object({
+  shown: z.number().int(),
+  answered: z.number().int(),
+  snoozed: z.number().int(),
+  dismissed: z.number().int(),
+  closedNoAction: z.number().int(),
+  answerRate: z.number().nullable(),
+  medianLatencyMs: z.number().nullable(),
+});
+
+export const TeachModeRowSchema = z.object({
+  teachMode: TeachModeSchema.nullable(),
+  meanCorrect: z.number(),
+  n: z.number().int(),
+});
+
+export const AdminRowSchema = z.object({
+  userId: z.string().uuid(),
+  email: z.string(),
+  topicId: z.string().uuid(),
+  topicTitle: z.string(),
+  retentionGain: z.number().nullable(),
+  taughtDelta: z.number().nullable(),
+  heldOutDelta: z.number().nullable(),
+  durability: z.number().nullable(),
+  transfer: z.number().nullable(),
+  calibrationGapDelta: z.number().nullable(),
+  extension: ExtensionStatsSchema,
+  teachMode: z.array(TeachModeRowSchema),
+  calibration: z.array(CalibrationBinSchema),
+});
+
+export const AdminReportSchema = z.object({
+  rows: z.array(AdminRowSchema),
+  cohort: z.object({
+    /** How many rows carried each number. Shown beside every mean, because
+     *  "0.4 across ten people" and "0.4 across one" are different claims. */
+    n: z.record(z.number().int()),
+    retentionGain: z.number().nullable(),
+    durability: z.number().nullable(),
+    transfer: z.number().nullable(),
+    calibrationGapDelta: z.number().nullable(),
+    answerRate: z.number().nullable(),
+  }),
+});

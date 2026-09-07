@@ -1068,12 +1068,23 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - One test failed first time on row order. Postgres sorts a `pgEnum` by **declaration order**, not alphabetically, so `try_first` precedes `example_first`. The code was right and the assertion was wrong.
 
 ### T-041 · Metrics dashboard (founder-only)
-- **status:** todo
+- **status:** done
 - **sprint:** 4
 - **depends_on:** T-040
 - **files:** `frontend/src/pages/Admin.tsx`, `backend/src/routes/admin.ts`
 - **description:** `ADMIN_EMAILS` env gate. Table per user × topic with every metric from T-040 plus cohort means. Simple bar chart for scheduler calibration (predicted vs actual per bin). Export CSV of `review_events` per topic.
 - **tests:** Non-admin → 403. CSV has the expected header.
+
+- **notes:** (2026-09-07) **An unset `ADMIN_EMAILS` locks everyone out, and that is the point.** This endpoint puts every participant's results side by side, so the failure mode of a forgotten environment variable has to be a closed door rather than an open one. Asserted by its own test. The 403 message says nothing about whether the list is empty or who is on it — a different message for "no admins configured" would tell an attacker which deployments are worth returning to.
+  - **401 and 403 stay distinct.** `requireUser` then `requireAdmin`, never merged: collapsing them would tell a signed-out founder they are not allowed, rather than not signed in.
+  - The email is read **from the database**, never from the request — there is no header, query parameter or body field in this path that could claim an identity. Compared lowercased, because `users.email` is stored lowercased and an env file typed in mixed case must not silently lock the founder out of their own dashboard.
+  - **One row per user × topic, not per user.** A learner on two topics is two independent measurements; averaging them into one person-shaped number would hide the finding this pilot is most likely to produce — that it works on one kind of material and not another.
+  - **Every cohort mean ships with its `n`, and nulls are excluded rather than counted as zero.** Same rule as T-040, applied one layer up: a participant with no Day-45 test must not drag a cohort durability toward zero. A test seeds a participant with no tests at all and asserts the mean stays 0.4 with n=1 rather than becoming 0.2.
+  - **A dash, never a 0.00.** A blank cell and a zero are opposite findings — "no test yet" versus "they remembered nothing" — and the table would otherwise present them identically.
+  - **The calibration chart draws two bars per bin, with `n` under each.** A single bar of accuracy says how people did; only the pair says whether the scheduler was right, which is the actual question. `n` is printed because a bin holding three reviews is exactly as tall as one holding three hundred, and the eye believes both.
+  - **The CSV carries no prompt and no answer text** — asserted by a test on the header. That file gets mailed to a co-founder and left in a downloads folder; it holds what happened, not what was said. A slug containing a comma is quoted, because a shifted column is a wrong analysis rather than a broken file.
+  - The response shape lives in `@learnos/shared` and the backend derives its types from it, rather than adding to T-075's pile of hand-written client shapes.
+  - **The route existing is not the permission.** Client-side hiding is a courtesy; the server decides, and a non-admin who reaches `/admin` is told why instead of seeing an empty table that looks like no data.
 
 ### T-042 · User-facing results page
 - **status:** todo

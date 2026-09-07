@@ -63,6 +63,22 @@ const EnvSchema = z.object({
   // NODE_ENV=production — these are convenience defaults, never a credential.
   DEV_LOGIN_EMAIL: z.string().email().default('dev@learnos.local'),
   DEV_LOGIN_PASSWORD: z.string().default('learnos'),
+  /**
+   * Who may read the founder dashboard (T-041).
+   *
+   * **Empty means nobody, never everybody.** The dashboard shows every pilot
+   * participant's results side by side, so the failure mode of an unset variable
+   * has to be a locked door rather than an open one — a deployment that forgets
+   * to set this should be inconvenient, not a disclosure.
+   *
+   * Lowercased here because `users.email` is stored lowercased, and a comparison
+   * that depends on how someone typed their address in an env file is a
+   * comparison that fails at the worst moment.
+   */
+  ADMIN_EMAILS: z
+    .string()
+    .default('')
+    .transform((s) => s.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
