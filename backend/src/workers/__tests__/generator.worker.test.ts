@@ -127,12 +127,23 @@ describe('processGenerationJob', () => {
     const prereqRows = await db.select().from(conceptPrereqs);
     expect(prereqRows).toHaveLength(19);
 
-    // every held-out concept has 0 items; every taught one has items
+    /**
+     * **Every concept gets items, held-out included (T-120).**
+     *
+     * This assertion previously required held-out concepts to have *zero*
+     * items, which encoded the defect as intended behaviour: `assembleTest`
+     * throws `Missing eligible held-out question` without one, so no topic
+     * could produce a Day-30 test, and the control arm — the entire basis of
+     * the pilot's claim — could never be measured. The suite was green because
+     * `tests.fixtures.ts` seeds held-out items directly.
+     *
+     * It is corrected here, not deleted: the rule it asserted was wrong.
+     */
     const itemRows = await db.select().from(items);
     const heldIds = new Set(held.map((r) => r.id));
-    expect(itemRows.filter((i) => heldIds.has(i.conceptId))).toHaveLength(0);
-    expect(itemRows).toHaveLength(18 * 2);
-    expect(generateItems).toHaveBeenCalledTimes(18);
+    expect(itemRows.filter((i) => heldIds.has(i.conceptId)).length).toBeGreaterThan(0);
+    expect(itemRows).toHaveLength(20 * 2);
+    expect(generateItems).toHaveBeenCalledTimes(20);
 
     const [after] = await db.select().from(topics).where(eq(topics.id, topic.id));
     expect(after?.status).toBe('active');
@@ -279,13 +290,16 @@ describe('processGenerationJob', () => {
 
     expect(progress[0]).toMatchObject({ stage: 'map', completed: 0 });
 
-    // 18 taught concepts (2 of 20 are held out), one report each, monotonic.
+    // All 20 concepts, one report each, monotonic. Held-out concepts are in the
+    // count because they now get items (T-120) — the bar tracks work actually
+    // being done, and reporting 18/18 while doing twenty calls' worth of waiting
+    // is a progress bar that lies about the wait.
     const content = progress.filter((p) => p.stage === 'content');
-    expect(content.at(-1)).toMatchObject({ completed: 18, total: 18 });
-    expect(content.map((p) => p.completed)).toEqual([0, ...Array.from({ length: 18 }, (_, i) => i + 1)]);
+    expect(content.at(-1)).toMatchObject({ completed: 20, total: 20 });
+    expect(content.map((p) => p.completed)).toEqual([0, ...Array.from({ length: 20 }, (_, i) => i + 1)]);
     expect(content.at(-1)?.concept).toBe('Concept 20');
 
-    expect(progress.at(-1)).toMatchObject({ stage: 'saving', completed: 18, total: 18 });
+    expect(progress.at(-1)).toMatchObject({ stage: 'saving', completed: 20, total: 20 });
   });
 
   it('does not require a progress reporter', async () => {
@@ -325,5 +339,28 @@ describe('processGenerationJob', () => {
     expect(await db.select().from(items)).toHaveLength(0);
     const [after] = await db.select().from(topics).where(eq(topics.id, topic.id));
     expect(after?.status).toBe('failed');
+  });
+  // T-120 — the control arm has to be answerable or it measures nothing.
+  it('gives a held-out concept items but never teaching content', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(20));
+    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+
+    await processGenerationJob({ topicId: topic.id }, seededRng(42));
+
+    const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
+    const held = rows.filter((r) => r.heldOut);
+    const itemRows = await db.select().from(items);
+
+    expect(held.length).toBeGreaterThan(0);
+    for (const row of held) {
+      // Askable on the Day-30 test...
+      expect(itemRows.filter((i) => i.conceptId === row.id).length).toBeGreaterThan(0);
+      // ...and unteachable. An explanation that exists is one something can
+      // render, and the control arm's whole value is that it was never taught.
+      expect(row.explanationShort).toBeNull();
+      expect(row.explanationLong).toBeNull();
+      expect(row.tryFirstPrompt).toBeNull();
+    }
   });
 });

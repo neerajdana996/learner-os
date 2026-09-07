@@ -87,16 +87,31 @@ export async function processGenerationJob(
       teachMode: (rng() < 0.5 ? 'try_first' : 'example_first') as 'try_first' | 'example_first',
     }));
 
-    // Held-out concepts are never taught or reviewed, so they get neither items
-    // nor teaching content (plan.md §6). They still appear in tests, where
-    // T-038 generates an item for them on demand.
+    /**
+     * **Every concept gets items. Only taught concepts get teaching content.**
+     *
+     * Held-out concepts are never taught and never reviewed (plan.md §6), but
+     * they *are* the control arm, and a control arm the Day-30 test cannot ask
+     * about measures nothing. The previous version skipped them entirely on the
+     * strength of a comment saying T-038 would "generate an item for them on
+     * demand" — T-038 never did, `assembleTest` throws
+     * `Missing eligible held-out question` without one, and every topic in the
+     * database was therefore incapable of producing a Day-30 test (T-120).
+     *
+     * Generating them here rather than at test time is deliberate: assembling a
+     * surprise test must not depend on an LLM call succeeding while the learner
+     * waits, and the item generator needs only the map's title and summary, so
+     * there is nothing to wait for.
+     *
+     * Teaching content is still skipped for a held-out concept. One with
+     * an explanation is one accidental render away from being taught.
+     */
     const itemsBySlug = new Map<string, Awaited<ReturnType<typeof generateItems>>['items']>();
     const teachingBySlug = new Map<string, Awaited<ReturnType<typeof generateTeaching>>>();
-    const teachable = ordered.filter((concept) => !concept.heldOut);
     let completed = 0;
-    await onProgress({ stage: 'content', completed, total: teachable.length });
+    await onProgress({ stage: 'content', completed, total: ordered.length });
 
-    for (const concept of teachable) {
+    for (const concept of ordered) {
       // Topic and summary, not just the title: an ambiguous concept name
       // otherwise gets items from the wrong domain entirely (T-FIX-006).
       const generated = await generateItems({
@@ -110,26 +125,33 @@ export async function processGenerationJob(
         domain: concept.domain,
       });
       itemsBySlug.set(concept.slug, generated.items);
-      teachingBySlug.set(
-        concept.slug,
-        await generateTeaching({
-          topic: topic.title,
-          concept: concept.title,
-          summary: concept.summary ?? '',
-          teachMode: concept.teachMode,
-          language: topic.language ?? undefined,
-        }),
-      );
+
+      // Not for a held-out concept: an explanation that exists is an
+      // explanation something can render, and the control arm's whole value is
+      // that the learner never saw it.
+      if (!concept.heldOut) {
+        teachingBySlug.set(
+          concept.slug,
+          await generateTeaching({
+            topic: topic.title,
+            concept: concept.title,
+            summary: concept.summary ?? '',
+            teachMode: concept.teachMode,
+            language: topic.language ?? undefined,
+          }),
+        );
+      }
+
       completed += 1;
       await onProgress({
         stage: 'content',
         completed,
-        total: teachable.length,
+        total: ordered.length,
         concept: concept.title,
       });
     }
 
-    await onProgress({ stage: 'saving', completed: teachable.length, total: teachable.length });
+    await onProgress({ stage: 'saving', completed: ordered.length, total: ordered.length });
 
     await db.transaction(async (tx) => {
       const inserted = await tx
