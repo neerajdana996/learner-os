@@ -4,7 +4,6 @@ import { clientEvents, concepts, reviewEvents, tests, topics } from '../../db/sc
 import { seedUser, truncateAll } from '../../test/db.js';
 import {
   calibrationGapDelta,
-  durability,
   extensionStats,
   retentionGain,
   schedulerCalibration,
@@ -108,27 +107,6 @@ describe('retentionGain', () => {
     await seedTest('day30', {});
 
     expect((await retentionGain(user.id, topicId)).gain).toBeNull();
-  });
-});
-
-describe('durability', () => {
-  it('is the fraction of Day-30 still there at Day-45', async () => {
-    await seedTest('day30', scores({ taught: 0.8 }));
-    await seedTest('day45', scores({ taught: 0.6 }));
-
-    expect(await durability(user.id, topicId)).toBe(0.75);
-  });
-
-  it('is null when Day-45 has not happened', async () => {
-    await seedTest('day30', scores({ taught: 0.8 }));
-    expect(await durability(user.id, topicId)).toBeNull();
-  });
-
-  it('is null rather than infinite when Day-30 was zero', async () => {
-    await seedTest('day30', scores({ taught: 0 }));
-    await seedTest('day45', scores({ taught: 0.4 }));
-
-    expect(await durability(user.id, topicId)).toBeNull();
   });
 });
 

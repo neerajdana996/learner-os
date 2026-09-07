@@ -17,7 +17,6 @@ const base = (): ResultsResponse => ({
   taught: 0.78,
   heldOut: 0.31,
   calibrationGap: 0.25,
-  day45Pending: true,
   concepts: [
     { conceptId: id(1), title: 'Leases', heldOut: false, score: 0.9 },
     { conceptId: id(2), title: 'Vector clocks', heldOut: false, score: 0.2 },
@@ -121,22 +120,19 @@ describe('ResultsPage', () => {
     expect(await screen.findByText(/tracked what you actually knew/i)).toBeInTheDocument();
   });
 
-  it('promises the Day-45 check only while it is still ahead', async () => {
-    mount();
-    expect(await screen.findByText(/without any reminders/i)).toBeInTheDocument();
-  });
-
-  it('makes no promise once Day-45 has happened', async () => {
-    results = { ...base(), day45Pending: false };
+  it('describes the measurement that happened, promising no second one', async () => {
+    // plan.md dropped the Day-45 test on 2026-09-06, and nothing creates one —
+    // so a "we'll check again" line was a promise to every learner that the
+    // product could never keep.
     mount();
 
-    await screen.findByText('78%');
-    expect(screen.queryByText(/without any reminders/i)).toBeNull();
+    expect(await screen.findByText(/twenty-three days after the last session/i)).toBeInTheDocument();
+    expect(screen.queryByText(/check once more/i)).toBeNull();
   });
 
   it('says there is nothing yet rather than showing a page of zeros', async () => {
     // Before the test, zeros would read as a catastrophic result.
-    results = { ...base(), taught: null, heldOut: null, calibrationGap: null, day45Pending: false };
+    results = { ...base(), taught: null, heldOut: null, calibrationGap: null };
     mount();
 
     expect(await screen.findByText(/Nothing to show yet/i)).toBeInTheDocument();

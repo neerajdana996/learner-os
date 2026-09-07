@@ -156,12 +156,10 @@ export default function ResultsPage() {
         </section>
       ) : null}
 
-      {data.day45Pending ? (
-        <p className="results__day45">
-          We’ll check once more in a couple of weeks, without any reminders in between. That one
-          measures what stays without upkeep.
-        </p>
-      ) : null}
+      <p className="results__coda">
+        This was the measurement: twenty-three days after the last session, with no cards and no
+        reminders in between. Nothing here was revised for.
+      </p>
     </main>
   );
 }

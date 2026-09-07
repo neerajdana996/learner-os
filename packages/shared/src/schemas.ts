@@ -572,7 +572,6 @@ export const AdminRowSchema = z.object({
   retentionGain: z.number().nullable(),
   taughtDelta: z.number().nullable(),
   heldOutDelta: z.number().nullable(),
-  durability: z.number().nullable(),
   transfer: z.number().nullable(),
   calibrationGapDelta: z.number().nullable(),
   extension: ExtensionStatsSchema,
@@ -587,7 +586,6 @@ export const AdminReportSchema = z.object({
      *  "0.4 across ten people" and "0.4 across one" are different claims. */
     n: z.record(z.number().int()),
     retentionGain: z.number().nullable(),
-    durability: z.number().nullable(),
     transfer: z.number().nullable(),
     calibrationGapDelta: z.number().nullable(),
     answerRate: z.number().nullable(),
@@ -615,8 +613,4 @@ export const ResultsResponseSchema = z.object({
   /** Positive when the learner was more confident than correct. */
   calibrationGap: z.number().nullable(),
   concepts: z.array(ConceptResultSchema),
-  /** Whether a Day-45 check is still ahead. The page promises it only when it
-   *  is actually coming, because a promise the product then fails to keep is
-   *  worse than not making it. */
-  day45Pending: z.boolean(),
 });

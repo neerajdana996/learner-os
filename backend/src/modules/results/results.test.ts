@@ -80,19 +80,16 @@ describe('GET /topics/:id/results', () => {
     expect(res.status).toBe(200);
     expect(res.body.taught).toBeNull();
     expect(res.body.heldOut).toBeNull();
-    expect(res.body.day45Pending).toBe(false);
   });
 
-  it('promises the Day-45 check only while it is still ahead', async () => {
+  it('promises no second test, because plan.md dropped the Day-45 one', async () => {
+    // Nothing in the codebase creates a day45 row, so a `day45Pending` flag was
+    // true for every learner forever — a promise that could never be kept.
     await seedDay30({});
-    const pending = await request(app).get(`/topics/${topicId}/results`).set('Cookie', user.cookie);
-    expect(pending.body.day45Pending).toBe(true);
 
-    await db.insert(tests).values({ userId: user.id, topicId, kind: 'day45', itemIds: [], scores: {} });
-    const done = await request(app).get(`/topics/${topicId}/results`).set('Cookie', user.cookie);
+    const res = await request(app).get(`/topics/${topicId}/results`).set('Cookie', user.cookie);
 
-    // A promise the product then fails to keep is worse than not making it.
-    expect(done.body.day45Pending).toBe(false);
+    expect(res.body).not.toHaveProperty('day45Pending');
   });
 
   it('treats an ungraded Day-30 as no result at all', async () => {
@@ -101,7 +98,6 @@ describe('GET /topics/:id/results', () => {
     const res = await request(app).get(`/topics/${topicId}/results`).set('Cookie', user.cookie);
 
     expect(res.body.taught).toBeNull();
-    expect(res.body.day45Pending).toBe(false);
   });
 
   it('will not show another learner their results', async () => {

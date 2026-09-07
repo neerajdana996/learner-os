@@ -96,17 +96,21 @@ and it is the reason the extension stays next in line rather than last.
 **Exit criteria:**
 - Founder completes a 5-day dry run on themselves and logs annoyances as tasks.
 - Every metric in `plan.md §7` has a query and a dashboard cell.
-- Day-45 test blocks the extension between Day-31 and Day-45 (`topics.status = 'holdout'`).
+- The extension goes silent for the twenty-three days between the last session and the Day-30 test (`topics.status = 'holdout'`).
 - Content QA checklist run on the two pilot topics.
 
 ---
 
-## Pilot — Days 1–45
+## Pilot — Days 1–30
+> Rewritten 2026-09-07 to follow plan.md's 2026-09-06 decision: **seven days of teaching, then
+> silence, then one cold test on day 30.** The day-45 test is dropped — with twenty-three days of
+> silence the day-30 test is already cold, so a second one measured nothing the first did not.
 - Day −3 to 0: recruit 10, two topics × 5 people, onboard all within a 3-day window.
-- Day 14: 15-min call each (questions in `plan.md` pilot section / MVP spec §6).
+- Days 1–7: daily sessions (~10 min) plus extension cards inside the learner's own windows.
+- Days 8–29: silence. No cards, no reminders, no email. This gap *is* the measurement.
+- Day 14: 15-min call each (questions in `plan.md` pilot section / MVP spec §6). A call is not a review — it must not touch the material.
 - Day 30: surprise test (email + web banner, no review that day).
-- Day 31–45: extension silent. Day 45: second test.
-- Day 46: write-up. Decision: durability ≥ 0.8 → scale; < 0.5 → fix scheduling/teaching before anything else.
+- Day 31: write-up. Decision: retention gain over the held-out arm is the number; a taught delta on its own is not evidence.
 
 ---
 

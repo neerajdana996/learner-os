@@ -39,12 +39,6 @@ export async function resultsFor(userId: string, topicId: string): Promise<Resul
     .orderBy(asc(tests.createdAt))
     .limit(1);
 
-  const [day45] = await db
-    .select({ id: tests.id })
-    .from(tests)
-    .where(and(eq(tests.userId, userId), eq(tests.topicId, topicId), eq(tests.kind, 'day45')))
-    .limit(1);
-
   const parsed = day30 ? TestScoresSchema.safeParse(day30.scores) : null;
   const scores = parsed?.success ? parsed.data : null;
 
@@ -69,7 +63,5 @@ export async function resultsFor(userId: string, topicId: string): Promise<Resul
       // did not ask" and "you got it wrong" must not look the same.
       score: scores?.perConcept?.[c.id] ?? null,
     })),
-    // Promised only when it is genuinely still ahead.
-    day45Pending: scores !== null && !day45,
   };
 }

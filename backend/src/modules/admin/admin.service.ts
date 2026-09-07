@@ -4,7 +4,6 @@ import { concepts, reviewEvents, topics, users } from '../../db/schema.js';
 import type { AdminReport, AdminRow } from '@learnos/shared';
 import {
   calibrationGapDelta,
-  durability,
   extensionStats,
   retentionGain,
   schedulerCalibration,
@@ -38,9 +37,8 @@ export async function buildReport(): Promise<AdminReport> {
 
   const rows: AdminRow[] = [];
   for (const pair of pairs) {
-    const [gain, dur, tr, cal, ext, modes, bins] = await Promise.all([
+    const [gain, tr, cal, ext, modes, bins] = await Promise.all([
       retentionGain(pair.userId, pair.topicId),
-      durability(pair.userId, pair.topicId),
       transfer(pair.userId, pair.topicId),
       calibrationGapDelta(pair.userId, pair.topicId),
       extensionStats(pair.userId),
@@ -53,7 +51,6 @@ export async function buildReport(): Promise<AdminReport> {
       retentionGain: gain.gain,
       taughtDelta: gain.taught,
       heldOutDelta: gain.heldOut,
-      durability: dur,
       transfer: tr,
       calibrationGapDelta: cal,
       extension: ext,
@@ -69,9 +66,9 @@ export async function buildReport(): Promise<AdminReport> {
  * Means over the rows that actually have a number.
  *
  * **Nulls are excluded, not counted as zero**, for the same reason `metrics.ts`
- * returns them: a participant who has not sat Day-45 has no durability, and
- * folding a zero in would report a collapse that never happened. Every mean
- * therefore ships with its own `n`.
+ * returns them: a participant who has not finished the Day-30 test has no
+ * retention gain, and folding a zero in would report a collapse that never
+ * happened. Every mean therefore ships with its own `n`.
  */
 function cohortOf(rows: AdminRow[]): AdminReport['cohort'] {
   const mean = (values: (number | null)[]) => {
@@ -82,15 +79,13 @@ function cohortOf(rows: AdminRow[]): AdminReport['cohort'] {
   };
 
   const gain = mean(rows.map((r) => r.retentionGain));
-  const dur = mean(rows.map((r) => r.durability));
   const tr = mean(rows.map((r) => r.transfer));
   const cal = mean(rows.map((r) => r.calibrationGapDelta));
   const ans = mean(rows.map((r) => r.extension.answerRate));
 
   return {
-    n: { retentionGain: gain.n, durability: dur.n, transfer: tr.n, calibrationGapDelta: cal.n, answerRate: ans.n },
+    n: { retentionGain: gain.n, transfer: tr.n, calibrationGapDelta: cal.n, answerRate: ans.n },
     retentionGain: gain.value,
-    durability: dur.value,
     transfer: tr.value,
     calibrationGapDelta: cal.value,
     answerRate: ans.value,

@@ -61,7 +61,7 @@ export default function LoginPage() {
             <div className="u-stack u-stack--tight">
               <h1>Sign in</h1>
               <p className="u-muted">
-                Thirty days, one topic, and a test at the end you won’t see coming.
+                Seven days, one topic, and a test three weeks later you won’t see coming.
               </p>
             </div>
 

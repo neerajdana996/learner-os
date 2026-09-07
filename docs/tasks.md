@@ -2554,3 +2554,19 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The wrong-answer grey box keeps "tomorrow" as its depicted instance, with the caption noting the day is read from the schedule (`nextSighting`) rather than asserted.
   - Rendered and checked once in the browser: five artboards, no clock icon left, two confidence blocks, HTML balanced.
 - **notes-open:** (2026-09-06) Still open, and already documented in the code: the card header reads "Due now" rather than the concept name, because `PublicItem` withholds titles for held-out concepts (T-010). It needs the due response to carry a title that is safe to show.
+
+### T-119 · I built a Day-45 test that plan.md had already dropped
+- **status:** done
+- **sprint:** 5
+- **severity:** high — a promise shown to every pilot participant that no code path could keep
+- **depends_on:** T-040, T-042
+- **files:** `backend/src/lib/metrics.ts`, `backend/src/modules/results/*`, `backend/src/modules/admin/admin.service.ts`, `backend/src/db/schema.ts`, `packages/shared/src/schemas.ts`, `frontend/src/features/results/*`, `frontend/src/features/admin/*`, `frontend/src/features/auth/pages/LoginPage.tsx`, `docs/sprint.md`
+- **description:** Found while sweeping for stale "thirty days" copy the founder flagged. **plan.md §2 records a founder decision of 2026-09-06 dropping the Day-45 test** — with twenty-three days of silence the Day-30 test is already cold — and **§7 says outright "there is no separate Day-45 ratio to compute".** I built T-040's `durability` (day45 ÷ day30) and T-042's `day45Pending` anyway, on 2026-09-07, by working from the older `tasks.md` descriptions.
+  - **The worst of it was user-facing and unconditional.** Nothing in the codebase creates a `day45` row, so `day45Pending` was `scores !== null && !day45` → **true for every learner, forever**. The results page told all ten participants "We'll check once more in a couple of weeks" — a promise the product cannot keep. I had written the comment *"a promise the product then fails to keep is worse than not making it"* directly above the line that made it.
+  - `durability` could only ever return null, so the dashboard carried a permanently empty column and a cohort mean with n=0 — implying a measurement that was never coming.
+- **acceptance:** No code path references a Day-45 test; the results page describes the measurement that happened; docs agree with plan.md.
+- **tests:** Results response has no `day45Pending`; the page states the twenty-three-day gap and promises nothing further; metrics exports no `durability`.
+- **notes:** (2026-09-07) **Root cause: I never read `docs/plan.md` this session.** `CLAUDE.md`'s first instruction is "Read `docs/plan.md` — sections 5 and 6 at minimum", and both facts I needed were in §2 and §7. `packages/shared/src/schemas.ts` even carried the comment "Cold test (Day-30; plan.md drops Day-45)" — the codebase told me and I did not look.
+  - **The lesson is about which document wins.** `tasks.md` entries are written before the work and are frequently overtaken; `plan.md` carries dated founder decisions. When they disagree, plan.md is newer unless a task says otherwise. I treated a task description as a specification when it was a stale intention.
+  - `day45` stays in `testKindEnum`: removing an enum value needs a migration and buys nothing. The guarantee is that no code path creates one, and the comment says so.
+  - Also fixed in the same sweep: `LoginPage` still said "Thirty days, one topic" — the ask is seven. The **landing page was already correct** ("Seven days... then one unannounced test on day thirty"), so the stale copy was one line, not a theme. `sprint.md`'s "Day 31–45: extension silent. Day 45: second test" and its "durability ≥ 0.8 → scale" decision rule were rewritten to the seven-day shape, as was `schema.ts`'s lifecycle comment.

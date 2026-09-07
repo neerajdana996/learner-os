@@ -58,7 +58,6 @@ function Row({ row }: { row: AdminRow }) {
       <td><Num value={row.retentionGain} sign /></td>
       <td><Num value={row.taughtDelta} sign /></td>
       <td><Num value={row.heldOutDelta} sign /></td>
-      <td><Num value={row.durability} /></td>
       <td><Num value={row.transfer} /></td>
       {/* Negative is the improvement here — the confidence gap shrank. */}
       <td><Num value={row.calibrationGapDelta} sign /></td>
@@ -113,7 +112,6 @@ export default function AdminPage() {
 
       <section className="admin__cohort">
         <Stat label="Retention gain" value={cohort.retentionGain} n={cohort.n.retentionGain} sign />
-        <Stat label="Durability" value={cohort.durability} n={cohort.n.durability} />
         <Stat label="Transfer" value={cohort.transfer} n={cohort.n.transfer} />
         <Stat
           label="Calibration Δ"
@@ -132,7 +130,6 @@ export default function AdminPage() {
               <th>Gain</th>
               <th>Taught Δ</th>
               <th>Held-out Δ</th>
-              <th>Durability</th>
               <th>Transfer</th>
               <th>Calib. Δ</th>
               <th>Answer rate</th>
@@ -143,7 +140,7 @@ export default function AdminPage() {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={10} className="admin__empty">
+                <td colSpan={9} className="admin__empty">
                   No participants yet.
                 </td>
               </tr>

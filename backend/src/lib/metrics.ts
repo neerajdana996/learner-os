@@ -2,10 +2,16 @@
  * What the pilot actually measured (T-040).
  *
  * Every function here returns `null` rather than `0` when the input does not
- * exist. That distinction is the whole point: a learner who never sat the Day-45
- * test has *no* durability number, and averaging a fabricated zero into a cohort
- * mean would manufacture a decline that nobody experienced. Missing shows up in
- * the counts; a wrong number does not.
+ * exist. That distinction is the whole point: a learner who never finished the
+ * Day-30 test has *no* retention number, and averaging a fabricated zero into a
+ * cohort mean would manufacture a decline that nobody experienced. Missing shows
+ * up in the counts; a wrong number does not.
+ *
+ * **There is no durability metric.** It was day-45 ÷ day-30, and plan.md's
+ * 2026-09-06 decision dropped the day-45 test — with twenty-three days of
+ * silence the day-30 test is already cold, so the second one measured nothing
+ * the first did not. No code path creates a `day45` row, so the function could
+ * only ever have returned null.
  *
  * Read-only. Nothing here writes, and nothing here decides anything the product
  * does — these are the numbers a human looks at afterwards.
@@ -34,7 +40,7 @@ const scoredReview = (userId: string) =>
     sql`${reviewEvents.gapDaysSinceLast} >= 1`,
   );
 
-async function scoresFor(userId: string, topicId: string, kind: 'day0' | 'day30' | 'day45') {
+async function scoresFor(userId: string, topicId: string, kind: 'day0' | 'day30') {
   const [row] = await db
     .select({ scores: tests.scores })
     .from(tests)
@@ -91,26 +97,6 @@ export async function retentionGain(userId: string, topicId: string): Promise<Re
 function delta(before: number | null | undefined, after: number | null | undefined): number | null {
   if (before === null || before === undefined || after === null || after === undefined) return null;
   return round(after - before);
-}
-
-/**
- * How much of the Day-30 result was still there at Day-45.
- *
- * A ratio, not a difference, because the question is "what fraction survived"
- * and a 10-point drop from 90 is not the same event as a 10-point drop from 20.
- * Null when either test is missing, and null when Day-30 was zero — there is no
- * meaningful proportion of nothing.
- */
-export async function durability(userId: string, topicId: string): Promise<number | null> {
-  const [day30, day45] = await Promise.all([
-    scoresFor(userId, topicId, 'day30'),
-    scoresFor(userId, topicId, 'day45'),
-  ]);
-  const before = day30?.taught;
-  const after = day45?.taught;
-  if (before === null || before === undefined || after === null || after === undefined) return null;
-  if (before === 0) return null;
-  return round(after / before);
 }
 
 /** Performance on transfer items — questions the learner has never seen, on

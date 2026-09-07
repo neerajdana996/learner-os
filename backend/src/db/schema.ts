@@ -20,8 +20,10 @@ import {
 // Sequential integers would also let one user enumerate another's item ids.
 
 // Full topic lifecycle per sprint.md T-007/T-039: generating (job running) →
-// active (Sprint 1-2 use) → testing (Day-30 test in progress) → holdout
-// (Day 31-45, extension silenced) → done (Day-45 complete), or failed.
+// active (the seven teaching days) → holdout (days 8-29, extension silenced —
+// this gap is the measurement) → testing (Day-30 test in progress) → done, or
+// failed. Rewritten 2026-09-07: the old comment described a Day-45 second test
+// that plan.md dropped on 2026-09-06.
 export const topicStatusEnum = pgEnum('topic_status', [
   'generating',
   'active',
@@ -45,6 +47,10 @@ export const reviewSurfaceEnum = pgEnum('review_surface', ['web', 'extension', '
 // Matches shared/schemas.ts ConfidenceSchema. Nullable on the column: a snoozed
 // or dismissed card is recorded without the user ever rating their confidence.
 export const confidenceEnum = pgEnum('confidence', ['guess', 'think', 'sure']);
+// `day45` is retained in the enum but **nothing writes it**: plan.md's
+// 2026-09-06 decision dropped that test, since day 30 already sits twenty-three
+// days after the last review. Removing an enum value needs a migration and buys
+// nothing; the guarantee lives in there being no code path that creates one.
 export const testKindEnum = pgEnum('test_kind', ['day0', 'day30', 'day45']);
 // One sessions table serves both surfaces: the web cookie and the extension's
 // bearer token (T-013). `kind` is what T-034's "connected" state keys on.

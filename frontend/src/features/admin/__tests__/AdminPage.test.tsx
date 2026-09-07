@@ -17,7 +17,6 @@ const row = (over: Partial<AdminReport['rows'][number]> = {}): AdminReport['rows
   retentionGain: 0.4,
   taughtDelta: 0.5,
   heldOutDelta: 0.1,
-  durability: 0.75,
   transfer: 0.6,
   calibrationGapDelta: -0.2,
   extension: {
@@ -37,8 +36,8 @@ beforeEach(() => {
   report = {
     rows: [row()],
     cohort: {
-      n: { retentionGain: 1, durability: 1, transfer: 1, calibrationGapDelta: 1, answerRate: 1 },
-      retentionGain: 0.4, durability: 0.75, transfer: 0.6, calibrationGapDelta: -0.2, answerRate: 0.6,
+      n: { retentionGain: 1, transfer: 1, calibrationGapDelta: 1, answerRate: 1 },
+      retentionGain: 0.4, transfer: 0.6, calibrationGapDelta: -0.2, answerRate: 0.6,
     },
   };
   vi.stubGlobal('fetch', vi.fn(async () =>
@@ -85,7 +84,7 @@ describe('AdminPage', () => {
   it('shows a dash for a number that was never measured, not a zero', async () => {
     // A blank cell and a 0.00 cell are opposite findings: "no Day-45 test yet"
     // versus "they remembered nothing".
-    report = { ...report, rows: [row({ durability: null })] };
+    report = { ...report, rows: [row({ transfer: null })] };
     mount();
 
     expect(await screen.findByTitle('Not measured')).toBeInTheDocument();
@@ -97,7 +96,7 @@ describe('AdminPage', () => {
     mount();
 
     const ns = await screen.findAllByText('n=1');
-    expect(ns.length).toBeGreaterThanOrEqual(5);
+    expect(ns.length).toBeGreaterThanOrEqual(4);
   });
 
   it('draws predicted and actual as a pair, with the bin size', async () => {
