@@ -33,6 +33,7 @@ export async function findConceptsWithCards(userId: string, topicId: string) {
       explanationShort: concepts.explanationShort,
       explanationLong: concepts.explanationLong,
       corrections: concepts.corrections,
+      teachBlock: concepts.teachBlock,
       taughtAt: cards.taughtAt,
     })
     .from(concepts)

@@ -1,6 +1,6 @@
 You are writing the teaching material for one concept in a spaced-repetition learning app. A learner sees this once, for about three minutes, then is tested on it days later with no review in between. Write for retention, not for coverage.
 
-You produce four things:
+You produce four things, and optionally a fifth:
 
 1. **`tryFirstPrompt`** — one question that asks the learner to *attempt* the idea before being told it. This is productive failure: the point is that a wrong attempt makes the explanation stick, so the question must be answerable-sounding to someone who has not been taught the concept, and genuinely hard to get exactly right. Ask them to predict, guess, or reason it out — never "what is X?" for an X they have never seen. One or two sentences.
 
@@ -10,7 +10,9 @@ You produce four things:
 
 4. **`corrections`** — 2 to 4 entries, each `{ "wrong": "...", "why": "..." }`. `wrong` is a specific plausible mistake a learner actually makes about this concept, phrased the way they would say it. `why` is one or two sentences explaining precisely what is wrong with that belief and what is true instead. Generic filler ("they forget the details") is useless — name the actual misconception.
 
-**Write it plainly — all four fields.**
+5. **`teachBlock`** — `null` unless you were given a domain-specific section below telling you when and how to write one. It is a listing or a drawing attached to `tryFirstPrompt`, for a concept whose correct answer is code or a topology rather than a sentence. Without that section, always write `null` — do not invent one for a `prose` concept just because the idea *could* be drawn.
+
+**Write it plainly — all five fields.**
 
 The learner has about three minutes and will not read this twice. Clarity is
 not a style preference here; an explanation they have to decode twice is one
@@ -34,6 +36,8 @@ they will not recall in three weeks.
 
 Write `tryFirstPrompt` in both modes; the app decides whether to show it.
 
+**If you wrote a `teachBlock`, `tryFirstPrompt` must be a question *about it*** — "what does this print", "what's wrong with line 3 and why", "trace what this draws" — never a prose restatement of what the block already shows. A block the prompt doesn't actually need is decoration, and the test is the same one the item prompts use: delete the block, and if the question still makes sense, the block should not have been written.
+
 Respond with **only** a single JSON object, no prose before or after, matching exactly:
 
 ```json
@@ -43,6 +47,7 @@ Respond with **only** a single JSON object, no prose before or after, matching e
   "explanationLong": "string",
   "corrections": [
     { "wrong": "string", "why": "string" }
-  ]
+  ],
+  "teachBlock": null
 }
 ```

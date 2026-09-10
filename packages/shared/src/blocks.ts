@@ -531,6 +531,46 @@ export function toPublicBlocks(blocks: Block[]): PublicBlock[] {
  *
  * Null means "plain prompt", which is every item generated before T-080.
  */
+// ---------- Teaching blocks (T-145) ----------
+//
+// One optional visual on a concept's `tryFirstPrompt`, distinct from the item
+// block system above: no `slot`, no answer semantics, no grading. It exists
+// because the try-first question for a code or systems concept used to be
+// forced into prose describing code or a topology — "you have a variable
+// inside a component that..." — when the concept's own correct answer is a
+// listing or a picture, and the item side already solved exactly this
+// problem (T-083, T-108). A concept's teaching content gets **at most one**;
+// unlike items, there is nothing to ration here.
+//
+// Same two-schema doctrine as the rest of this file: the model emits
+// `TeachBlockGenerationSchema` (`.strict()`, no `svg` — a model asked to draw
+// writes bad SVG, asked to describe a topology it writes that reliably); the
+// worker resolves `diagram`/`sequence` to SVG via `systemsSvg.ts` (the exact
+// same renderer items already use) before storing `TeachBlockSchema`. `code`
+// needs no resolution — there is nothing generated *from* it.
+//
+// Deliberately reuses `diagramCommon`/`sequenceCommon` rather than
+// redeclaring their fields: a systems concept's teaching diagram follows the
+// identical node/edge/lane/message shape its items do, and a rule that
+// changes for one (e.g. `DIAGRAM_MAX_NODES`) should not need to be found and
+// changed twice.
+const teachCodeFields = { lang: LangSchema, src: z.string().trim().min(1).max(MAX_SRC) };
+
+export const TeachBlockGenerationSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('code'), ...teachCodeFields }).strict(),
+  z.object({ kind: z.literal('diagram'), ...diagramCommon }).strict(),
+  z.object({ kind: z.literal('sequence'), ...sequenceCommon }).strict(),
+]);
+
+export const TeachBlockSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('code'), ...teachCodeFields }),
+  z.object({ kind: z.literal('diagram'), ...diagramCommon, svg: z.string().min(1) }),
+  z.object({ kind: z.literal('sequence'), ...sequenceCommon, svg: z.string().min(1) }),
+]);
+
+export type TeachBlockGeneration = z.infer<typeof TeachBlockGenerationSchema>;
+export type TeachBlock = z.infer<typeof TeachBlockSchema>;
+
 export function answerKindOf(blocks: Block[] | undefined): AnswerBlockKind | null {
   const answer = blocks?.find((b) => b.slot === 'answer');
   return answer ? (answer.kind as AnswerBlockKind) : null;

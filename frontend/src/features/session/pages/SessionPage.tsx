@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, CheckCircle, ChevronDown, ConfidenceTap, Prose, QuestionCard } from '@learnos/ui';
+import { Button, CheckCircle, ChevronDown, ConfidenceTap, Prose, QuestionCard, TeachBlockView } from '@learnos/ui';
 import type { Confidence, PublicItem, SessionResponse } from '@learnos/shared';
 import { useSubmitReviewMutation } from '../../reviews/reviewsApi';
 import { useCompleteSessionMutation, useSessionQuery } from '../sessionApi';
@@ -63,7 +63,7 @@ function matchCorrection(concept: NewConcept, attempt: string) {
 }
 
 export default function SessionPage() {
-  const { data, isLoading } = useSessionQuery();
+  const { data, isLoading, isError, error } = useSessionQuery();
   const [submitReview] = useSubmitReviewMutation();
   const [complete, { isLoading: completing }] = useCompleteSessionMutation();
 
@@ -96,7 +96,36 @@ export default function SessionPage() {
     setVerdict(null);
   }, [step?.key, teachMode]);
 
-  if (isLoading || !data) return <p className="u-muted">Loading…</p>;
+  if (isLoading) return <p className="u-muted">Loading…</p>;
+
+  /**
+   * `GET /session` 404s with `{ error: 'no_active_topic' }` for any topic
+   * that isn't `status: 'active'` (`findActiveTopic`, session.repository.ts)
+   * — holdout, testing, done, failed, all of it. Before this the page just
+   * fell through to `isLoading || !data`, which is `false || true` once the
+   * request has actually failed, so it stayed on "Loading…" forever rather
+   * than telling anyone what happened (T-143). The dashboard is where a
+   * learner is meant to learn *why* — this only has to stop the dead end for
+   * whoever reaches `/session` directly (a bookmark, an old extension link).
+   */
+  if (isError || !data) {
+    const reason = error && 'data' in error ? (error.data as { error?: string } | undefined)?.error : undefined;
+    return (
+      <div className="u-stack u-measure">
+        <h1>Nothing to do here right now</h1>
+        <p className="u-muted">
+          {reason === 'no_active_topic'
+            ? "This topic isn't taking sessions at the moment."
+            : 'Something went wrong loading today’s session.'}
+        </p>
+        <div>
+          <Link className="btn btn--secondary" to="/home">
+            Back to today
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (data.completedToday && !done) {
     return (
@@ -219,6 +248,11 @@ export default function SessionPage() {
                   )}
                 </p>
                 <p className="teach__prompt">{step.concept.tryFirstPrompt}</p>
+                {/* The listing or drawing the question above is actually about
+                    (T-145). Shown in both states — attempting and revealed —
+                    since the attempt itself needs to reference it, not just
+                    the answer. */}
+                {step.concept.teachBlock ? <TeachBlockView block={step.concept.teachBlock} /> : null}
                 {revealed ? (
                   <p className="teach__attempt">
                     {attempt || <span className="u-muted">You skipped this one.</span>}

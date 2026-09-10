@@ -1,11 +1,16 @@
 {
-  "tryFirstPrompt": "You have a plain JavaScript variable inside a React component, and a button that increments it and logs the new value. The log shows the number going up, but the screen never changes. Why do you think the screen is stuck?",
+  "tryFirstPrompt": "This component's counter always shows 0 on the button, no matter how many times you click. Why?",
+  "teachBlock": {
+    "kind": "code",
+    "lang": "javascript",
+    "src": "function Counter() {\n  let count = 0;\n\n  function handleClick() {\n    count = count + 1;\n    console.log(count);\n  }\n\n  return <button onClick={handleClick}>{count}</button>;\n}"
+  },
   "explanationShort": "useState gives a component a value that survives re-renders plus a setter that tells React the value changed. A plain variable does neither: it is recreated on every render, and changing it never tells React to draw again.",
-  "explanationLong": "Calling useState(0) returns [value, setValue]. React stores the value outside the function, keyed by where the hook was called, so it persists across renders; a plain `let count = 0` is re-initialised every time the function body runs. The second half matters just as much: calling setValue marks the component dirty and schedules a re-render, which is the step a plain assignment skips entirely. That is why the log in the question goes up while the screen does not — the number really is changing, but nothing has asked React to redraw. setValue also does not mutate the current value: within the same render `value` keeps the value it had when that render started, which is why you pass a function like setCount(c => c + 1) when the next value depends on the previous one.",
+  "explanationLong": "Calling useState(0) returns [value, setValue]. React stores the value outside the function, keyed by where the hook was called, so it persists across renders; a plain `let count = 0` is re-initialised every time the function body runs. The second half matters just as much: calling setValue marks the component dirty and schedules a re-render, which is the step a plain assignment skips entirely. That is why the log in the code above would go up while the screen never does — the number really is changing, but nothing has asked React to redraw. setValue also does not mutate the current value: within the same render `value` keeps the value it had when that render started, which is why you pass a function like setCount(c => c + 1) when the next value depends on the previous one.",
   "corrections": [
     {
       "wrong": "The screen doesn't update because the variable isn't changing.",
-      "why": "It is changing — the log proves it. What's missing is the signal to React that it should re-render; a plain assignment updates the value silently."
+      "why": "It is changing — a console.log right after the assignment would prove it. What's missing is the signal to React that it should re-render; a plain assignment updates the value silently."
     },
     {
       "wrong": "After calling setCount, count holds the new value on the next line.",

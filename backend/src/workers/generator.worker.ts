@@ -138,6 +138,9 @@ export async function processGenerationJob(
             summary: concept.summary ?? '',
             teachMode: concept.teachMode,
             language: topic.language ?? undefined,
+            // Selects the teaching fragment (T-145) — same rule as the items
+            // call just above: only an exact 'code' or 'systems' gets one.
+            domain: concept.domain,
           }),
         );
       }
@@ -176,6 +179,10 @@ export async function processGenerationJob(
               explanationShort: teaching?.explanationShort ?? null,
               explanationLong: teaching?.explanationLong ?? null,
               corrections: teaching?.corrections ?? [],
+              // Null for a held-out concept (no `teaching` at all) and for
+              // every concept whose fragment declined to write one — the
+              // common case even for code/systems concepts (T-145).
+              teachBlock: teaching?.teachBlock ?? null,
             };
           }),
         )

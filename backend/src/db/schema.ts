@@ -122,6 +122,14 @@ export const concepts = pgTable(
     explanationShort: text('explanation_short'),
     explanationLong: text('explanation_long'),
     corrections: jsonb('corrections').default([]).notNull(),
+    // A code sample or a diagram to attach to `tryFirstPrompt`, for a concept
+    // whose correct answer is a listing or a topology rather than a sentence
+    // (T-145 — the teaching-side mirror of T-083/T-108's item blocks). Null
+    // for every concept generated before this shipped, and for any concept
+    // whose domain fragment declined to write one — `TeachBlockSchema`
+    // (@learnos/shared) is the shape; nothing here validates it further, the
+    // same trust boundary `corrections` above already crosses.
+    teachBlock: jsonb('teach_block'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({

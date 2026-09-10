@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, matchPath, useLocation } from 'react-router-dom';
 import { AccountMenu } from './AccountMenu';
 import { useMapQuery } from '../features/map/mapApi';
 import { useSessionQuery } from '../features/session/sessionApi';
@@ -29,7 +29,23 @@ export function AppBar() {
   const inSession = pathname.startsWith('/session');
 
   const { data: topics } = useTopicsQuery(undefined, { skip: lean });
-  const topic = topics?.topics[0];
+  // `/map/:topicId` and `/results/:topicId` name a specific topic, and that
+  // topic is not always `topics[0]` — `GET /topics` orders newest-first, so a
+  // learner with more than one topic viewing an older one via a direct link
+  // used to see the wrong name here while the page below it correctly showed
+  // the right topic's own data (T-142). `AppBar` sits in `AppShell`, a parent
+  // of the routed `<Outlet/>`, so it cannot see the leaf route's params via
+  // `useParams()` — `matchPath` against the two patterns that carry an id is
+  // the standard way a layout component reads a descendant route's param.
+  // Every other route (`/home`, `/session`, `/map` with no id) has no topic
+  // of its own to name, so `topics[0]` is the only sensible answer there.
+  const topicIdFromRoute =
+    matchPath('/map/:topicId', pathname)?.params.topicId ??
+    matchPath('/results/:topicId', pathname)?.params.topicId ??
+    null;
+  const topic = topicIdFromRoute
+    ? topics?.topics.find((t) => t.id === topicIdFromRoute)
+    : topics?.topics[0];
   const { data: map } = useMapQuery(topic?.id ?? '', { skip: lean || !topic });
   const { data: session } = useSessionQuery(undefined, { skip: lean });
 

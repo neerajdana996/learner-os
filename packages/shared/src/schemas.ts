@@ -6,7 +6,7 @@
 // WXT for the extension, and neither has Node. Each client keeps a smoke test
 // (`src/shared.test.ts`) that fails if something Node-only ever leaks in.
 import { z } from 'zod';
-import { BlockSchema, BlockGenerationSchema, PublicBlockSchema, optionalOrNull } from './blocks.js';
+import { BlockSchema, BlockGenerationSchema, PublicBlockSchema, TeachBlockSchema, optionalOrNull } from './blocks.js';
 
 function daysBetween(from: Date, to: Date): number {
   return (to.getTime() - from.getTime()) / 86_400_000;
@@ -274,6 +274,12 @@ const NewConceptSchema = z.object({
   title: z.string(),
   teachMode: TeachModeSchema,
   tryFirstPrompt: z.string().nullable(),
+  /** A listing or a drawing attached to `tryFirstPrompt` (T-145) — null for a
+   *  `prose`/`math` concept, and null whenever the fragment declined even for
+   *  a `code`/`systems` one. No answer key to strip here, unlike an item's
+   *  blocks: this is pure context the learner reads before attempting
+   *  anything, so the stored and public shapes are the same schema. */
+  teachBlock: TeachBlockSchema.nullable(),
   explanationShort: z.string(),
   explanationLong: z.string(),
   corrections: z.array(CorrectionSchema),

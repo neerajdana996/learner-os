@@ -323,6 +323,7 @@ async function buildTopic(userId: string, titleBase: string, cfg: TopicConfig, n
           teachMode,
           domain: concept.domain,
           tryFirstPrompt: isHeldOut ? null : teaching.tryFirstPrompt,
+          teachBlock: isHeldOut ? null : teaching.teachBlock,
           explanationShort: isHeldOut ? null : teaching.explanationShort,
           explanationLong: isHeldOut ? null : teaching.explanationLong,
           corrections: isHeldOut ? [] : teaching.corrections,

@@ -113,7 +113,14 @@ describe('landing route', () => {
   it('treats a topic that is still generating as not usable — onboarding owns the wait screen', async () => {
     server({ me: 'ok', topics: [topic('generating')] });
     renderAt('/');
-    expect(await screen.findByText(/step 1 of/i)).toBeInTheDocument();
+    // Not "step 1 of" any more (T-144): a generating topic already exists on
+    // the server, and onboarding now recognises it on arrival — from a fresh
+    // `localStorage` here, same as a learner opening a second browser — and
+    // shows the wait screen directly rather than asking all five questions
+    // again. The routing *decision* this test is named for is unchanged:
+    // `/` still sends a generating topic to `/onboarding`, not `/home`.
+    expect(await screen.findByText('Building your map')).toBeInTheDocument();
+    expect(screen.queryByText(/step 1 of/i)).not.toBeInTheDocument();
   });
 });
 

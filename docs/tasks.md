@@ -2781,7 +2781,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **notes:** (2026-09-10) Confirmed via screenshot, not just a failing assertion — the form renders completely normally for a signed-in session; there's no error state, just the wrong screen. `e2e/web/signin.spec.ts`'s "a signed-in visitor to /signin is forwarded away from the form" test asserts today's actual (unguarded) behavior with a comment pointing here, so the suite stays honest until this is fixed rather than asserting a redirect that doesn't exist.
 
 ### T-142 · The header names the wrong topic once more than one exists
-- **status:** todo
+- **status:** done
 - **sprint:** 6
 - **depends_on:** —
 - **files:** `frontend/src/app/AppBar.tsx`
@@ -2789,9 +2789,10 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Invisible today because the pilot runs one topic per learner, but not *hidden* — `/map/:topicId` and `/results/:topicId` already accept a topic id that isn't `topics[0]`, so the wrong header is reachable right now by anyone who follows a link to their own second topic, not only after T-058 (multi-topic) ships.
 - **acceptance:** The header names the topic whose page is actually open — from the route's `:topicId` param where one exists, falling back to `topics[0]` only on routes that don't carry one (`/home`, `/session`).
 - **tests:** `/map/:topicId` for a topic that is not `topics[0]` shows that topic's own title in the header; `/results/:topicId` likewise; `/home` and `/session` (no topicId in the route) keep showing `topics[0]`.
+- **notes:** (2026-09-10) Fixed with `matchPath('/map/:topicId', pathname)` / `matchPath('/results/:topicId', pathname)` against the two route patterns that carry an id — `AppBar` sits in `AppShell`, a parent of the routed `<Outlet/>`, so it cannot see a descendant route's params via `useParams()`; `matchPath` is the standard way a layout component reads one anyway. Verified live: seeded a second topic for a user, confirmed the map's header now names the topic actually being viewed while `topics[0]` still governs `/home`/`/session`.
 
 ### T-143 · The dashboard has two hidden states: `holdout` and `failed`
-- **status:** todo
+- **status:** done
 - **sprint:** 6
 - **depends_on:** —
 - **files:** `frontend/src/features/dashboard/pages/DashboardPage.tsx`, `frontend/src/features/session/pages/SessionPage.tsx`
@@ -2801,16 +2802,67 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Both compound into a second bug**: clicking "Start today's session" on either calls `GET /session`, which throws `no_active_topic` for any non-`'active'` topic and returns 404 (`session.controller.ts`) — and `SessionPage.tsx` has **no error handling for that response at all** (grepped the file; nothing matches `error`, `isError`, or the reason string), so the learner lands on whatever the undefined-data state renders rather than an explanation.
 - **acceptance:** A `holdout` topic's dashboard says the quiet period is expected and gives no session-start button; a `failed` topic's dashboard says generation failed and offers a next step (retry, or contact); a learner who somehow still reaches `/session` for either sees a real message, not a blank or stuck screen.
 - **tests:** dashboard renders distinctly for `holdout`, `failed`, `testing`, `done`, `active`; `/session` on a `holdout` or `failed` topic shows an explanatory state, not nothing.
+- **notes:** (2026-09-10) `DashboardPage.tsx` now checks `topic.status === 'holdout'` directly rather than relying solely on `session?.courseComplete` — that flag can only ever be `true` for a topic still `'active'` in the database but past its own `endsAt`, because `GET /session` looks the active topic up by `status = 'active'` and 404s for anything else, `courseComplete` included, so the message never actually fired once a topic had really transitioned to `holdout`. A `failed` branch was added alongside it. `SessionPage.tsx` also gained real error handling for `GET /session`'s 404 (`isError`/`error`, reading the `no_active_topic` reason) — before this it fell through to `isLoading || !data` and stayed on "Loading…" forever once the request had genuinely failed. Verified live by flipping the seeded dev topic to `holdout` via SQL and signing in through the real dev-login button: "That's the seven days done" now renders correctly where "Start today's session" used to.
 
 ### T-144 · A generating topic is invisible to onboarding from a second browser
-- **status:** todo
+- **status:** done
 - **sprint:** 6
 - **depends_on:** —
 - **files:** `frontend/src/features/onboarding/pages/OnboardingPage.tsx`
 - **description:** Found by the E2E-015 audit (`docs/ux-audit.md` #4). `OnboardingPage.tsx`'s wait-screen logic keys entirely off `draft.topicId`, read from a `localStorage`-persisted Redux slice (`onboardingSlice.ts`) — never from the server's own knowledge that a topic already exists and is generating. Works correctly in the ordinary case (same browser tab, or a reload — the draft survives in `localStorage`). Fails specifically when a learner submits step 5 on one device or browser profile and later opens the app from a different one, or has cleared site data: the server correctly routes them to `/onboarding` (`LandingRoute.tsx`'s own logic is fine), but onboarding has no way to know a topic is already running, so it asks all five questions again from step 1 rather than showing "we're building your map".
 - **acceptance:** Landing on `/onboarding` with an existing `generating` (or `failed`) topic shows the wait screen (or the failure state, once T-143 defines one) immediately, regardless of what `localStorage` holds.
 - **tests:** a fresh browser profile with no onboarding draft, but a real `generating` topic on the server, shows the wait screen on `/onboarding` rather than step 1.
-- **notes:** (2026-09-10) Lower priority than T-142/T-143 — needs a less common circumstance to trigger, and the fix is small: check `GET /topics` for an existing non-failed, non-active topic before defaulting to a fresh draft.
+- **notes:** (2026-09-10) `OnboardingPage.tsx` now calls `useTopicsQuery()` (skipped once `draft.topicId` is already set) and adopts the newest `generating`/`failed` topic into the draft via `dispatch(draftChanged({topicId}))` if the local draft is empty. Reaching `/onboarding` at all guarantees every topic this user has is `generating` or `failed` — `LandingRoute.tsx` already routes anything usable to `/home` — so the newest one found is always the right one to adopt. Two new tests added (`OnboardingPage.test.tsx`) and `routing.test.tsx`'s existing "treats a topic that is still generating as not usable" test updated to assert the corrected behavior ("Building your map") instead of the bug it used to encode ("step 1 of") — the routing *decision* it's named for (generating → `/onboarding`) is unchanged, only what onboarding does once there.
+
+
+### T-147 · The worker's own tests expect the held-out count T-123 changed
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `backend/src/workers/__tests__/generator.worker.test.ts`
+- **description:** Found while running the full suite for an unrelated change (T-145) — confirmed via `git stash` that this fails identically on a clean tree, so it predates today and is not a regression from anything in this session. Four tests in this file build a 20-concept fixture and assert `held-out = 2`, `taught = 18`, `generateTeaching` called 18 times. `heldOut.ts`'s `HELD_OUT_MIN = 3` (T-123, already `done`: "a control arm of one concept is a coin flip") means the correct count for 20 concepts at the 10% ratio is `max(3, floor(20 * 0.1)) = 3`, not 2 — so these tests were never updated when T-123 raised the floor, and every run since has been failing deterministically (confirmed by re-running twice, not a T-111-style flake).
+- **acceptance:** The four assertions in `generator.worker.test.ts` match `pickHeldOut`'s actual, current behavior — either update the expected counts to 3/17, or change the fixture's concept count to one where 2 was always going to be the right answer (e.g. `fakeMap(30)`, where `floor(30*0.1)=3` still doesn't help — needs `n` large enough that the ratio alone exceeds the floor, e.g. `fakeMap(40)` → `floor(40*0.1)=4`). Whichever is chosen, the four related counts (`held`, `taught`, `generateTeaching` calls, and the two `order > 3` assertions) all move together.
+- **tests:** the four listed assertions pass against `pickHeldOut`'s real behavior; no other test in the file regresses.
+- **notes:** (2026-09-10) Not fixed here — out of scope for T-145 and touches an already-`done` task's test coverage, which deserves its own deliberate pass rather than a fix folded into an unrelated change.
+
+
+### T-148 · A due-item test never learned about `conceptTitle`
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `backend/src/modules/due/due.test.ts`
+- **description:** Found alongside T-147, same method (confirmed via `git stash` that it fails identically on a clean tree — not caused by anything in this session). `GET /due`'s "never leaks answer, accept, answerIndex or rubric" test asserts the exact key set on each returned item, and that list predates T-130's `conceptTitle` field (populated only by `/due`, since every due item is taught and never held out — see T-130's notes). The assertion never learned about the new field, so it now fails on every run with the real, correct response shape.
+- **acceptance:** The expected key lists in this test include `conceptTitle` wherever `/due` actually sends it.
+- **tests:** the updated assertion passes against `/due`'s real response.
+- **notes:** (2026-09-10) Not fixed here — out of scope for T-145, same reasoning as T-147.
+
+
+### T-145 · Teaching content gets the same blocks items already have
+- **status:** done
+- **sprint:** 6
+- **depends_on:** T-080, T-083, T-108
+- **files:** `packages/shared/src/blocks.ts`, `packages/shared/src/schemas.ts`, `packages/ui/src/blocks/TeachBlockView.tsx`, `backend/src/db/schema.ts`, `backend/src/generator/teaching.ts`, `backend/src/llm/prompts/teaching/system.md`, `backend/src/llm/prompts/teaching/domains/code.md`, `backend/src/llm/prompts/teaching/domains/systems.md`, `backend/src/workers/generator.worker.ts`, `backend/src/modules/session/session.repository.ts`, `backend/src/modules/session/session.service.ts`, `frontend/src/features/session/pages/SessionPage.tsx`, `backend/fixtures/teaching.usestate.json`, `backend/src/scripts/seed.ts`, `backend/src/scripts/seedMatrix.ts`
+- **description:** Raised directly by the founder, from a real screenshot of the seeded "Memoization" concept: a try-first question about a React re-render bug was pure prose describing code, because `tryFirstPrompt` (a plain `text` column) had no way to carry a listing. Traced to the root cause: items already solved exactly this (T-083's `clozeCode`/`hotspotLine`/etc., T-108's `diagram`/`sequence`), but the teaching-content generator has never had a `domains/` fragment folder at all — one prompt, no domain awareness, for any domain.
+  - **Scoped to `code` and `systems` only**, deliberately, mirroring the standing decision behind T-109 (math is post-pilot; none of the three pilot topics needs it). A sibling task for `teaching/domains/math.md` can ride alongside T-109 whenever that's picked up.
+  - A concept gets **at most one** `teachBlock`, attached to `tryFirstPrompt` — never `explanationShort`/`explanationLong`. No `slot`, no answer semantics, no grading: it is pure context read once before an attempt, distinct from an item's blocks.
+- **acceptance:** A `code`-domain concept's try-first question may show a real listing; a `systems`-domain concept may show a real diagram or sequence; the block is optional even within those domains (the fragment gates on "does this concept even want one", same rule the items fragments use) and absent for `prose`/`math`.
+- **tests:** `TeachBlockGenerationSchema`/`TeachBlockSchema` round-trip each of the three kinds; `validateTeaching` resolves `diagram`/`sequence` to SVG via the same `systemsSvg.ts` renderers items use, and re-validates the resolved shape before returning it; `generateTeaching` selects the fragment via `domainFragment(input.domain)` (the same function `items.ts` exports, one source of truth for which domains get a fragment); the worker persists `teachBlock` and it survives `null` for a held-out concept or a fragment that declined; `SessionPage.tsx` renders `TeachBlockView` between the prompt and the attempt box, in both the unrevealed and revealed states.
+- **notes:** (2026-09-10) **A schema task, folded into this one** (`concepts.teach_block`, jsonb, nullable) — pushed to both the dev and test databases. `TeachBlockView.tsx` is a new, deliberately separate component from `CodeBlock`/`DrawingBlock`: those render an *item's* block (line notes, dim ranges, a `slot`), and a teaching block has none of that.
+  - **Found and fixed a real, pre-existing rendering bug while building this.** `CodeBlock.tsx`'s multi-line listing wraps each line in `<div className="contents">` to make its two spans direct children of a 2-column CSS grid — but no `.contents { display: contents }` rule exists anywhere in the stylesheet, so each wrapper div becomes its own grid cell instead of disappearing, and a listing past a couple of lines renders as a garbled, interleaved mess. First seen live, on this exact feature, in the Browser preview. Fixed in `TeachBlockView` by using a React Fragment instead of a class that was never defined — not touched in `CodeBlock.tsx` itself, since that is a different, already-shipped component's bug, not this task's to fix silently. Logged as a discovered task below (T-146).
+  - **Verified live end to end**, not just by type-checking: re-seeded the dev database with a `teachBlock`-carrying fixture (`backend/fixtures/teaching.usestate.json` rewritten to match the exact concept from the flagged screenshot), confirmed the code listing renders correctly numbered and un-garbled, survives "Show me" into the revealed state, and records a real attempt.
+  - **`seed.ts` and `seedMatrix.ts` both needed a one-line fix** — the worker's `INSERT` carries `teachBlock` through, but both dev-seed scripts build their own `concepts` insert independently and neither did, so `pnpm seed` kept demonstrating the bug this task exists to fix until both were updated.
+  - Full test suite run clean after this change (`pnpm test`, all four projects) except two **pre-existing, unrelated** failures confirmed via `git stash` to exist on the clean tree before this session started — filed as T-147 and T-148 rather than fixed here.
+
+### T-146 · `CodeBlock.tsx`'s multi-line listing renders as a garbled mess
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `packages/ui/src/blocks/CodeBlock.tsx`, `packages/ui/styles/_blocks.scss`
+- **description:** Found while building T-145. `CodeBlock.tsx` wraps each source line in `<div key={n} className="contents">` so its gutter span and code span become direct children of `.code__grid`'s 2-column CSS grid — but no `.contents { display: contents }` rule exists anywhere in `packages/ui/styles/`, so each wrapper `<div>` is itself an ordinary block box and becomes its own grid cell, alternating columns per line instead of each line spanning both. A listing past a couple of lines renders as overlapping, interleaved text — confirmed live in the Browser preview against a real 10-line listing.
+  - Whether this has ever been noticed depends on how short the code listings shipped so far have been — a 2–3 line listing can look accidentally fine, which may be exactly why this survived.
+- **acceptance:** A multi-line `CodeBlock` renders one gutter number per line, correctly aligned, for a listing of any length up to the 12-line hard limit (`items/domains/code.md`).
+- **tests:** a render test asserting the gutter numbers 1..n appear in order and each `code__line` contains the correct source line — the exact case that would have caught this on day one.
+- **notes:** (2026-09-10) `TeachBlockView.tsx` (T-145) hit this first and fixed it locally with a React Fragment instead of the undefined class — the same fix applies here, but is left to its own task since `CodeBlock.tsx` is a different, already-shipped component whose blast radius (every rich-format item using a multi-line `code` block) deserves checking on its own.
 
 
 ---

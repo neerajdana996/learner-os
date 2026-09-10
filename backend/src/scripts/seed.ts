@@ -160,6 +160,11 @@ export async function seed(): Promise<SeedResult> {
           // Held-out concepts are never taught, so they carry no teaching
           // content — the same rule the real worker follows (T-053).
           tryFirstPrompt: isHeldOut ? null : teaching.tryFirstPrompt,
+          // T-145. Present on this fixture (a `code` concept) so the seeded
+          // dataset actually demonstrates it, rather than every dev session
+          // rendering the plain-text fallback the real worker only produces
+          // for a `prose`/`math` concept or a fragment that declined.
+          teachBlock: isHeldOut ? null : teaching.teachBlock,
           explanationShort: isHeldOut ? null : teaching.explanationShort,
           explanationLong: isHeldOut ? null : teaching.explanationLong,
           corrections: isHeldOut ? [] : teaching.corrections,

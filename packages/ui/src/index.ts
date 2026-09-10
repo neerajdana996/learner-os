@@ -18,6 +18,7 @@ export { QuestionCard, type QuestionCardProps } from './QuestionCard.js';
 export { CheckCircle, ChevronDown, GitHubMark, GoogleMark, TrendDown, TrendUp } from './Icon.js';
 
 export { BlockList } from './blocks/BlockList.js';
+export { TeachBlockView } from './blocks/TeachBlockView.js';
 export { DrawingBlock } from './blocks/DrawingBlock.js';
 export { ClozeCode, joinCloze, splitCloze, CLOZE_SEPARATOR } from './blocks/ClozeCode.js';
 export { HotspotLine } from './blocks/HotspotLine.js';

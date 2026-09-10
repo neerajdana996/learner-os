@@ -53,7 +53,17 @@ export default function DashboardPage() {
     </Link>
   </div>;
 
-  if (session?.courseComplete) {
+  /**
+   * `session?.courseComplete` (below) can only ever be `true` for a topic
+   * that is still `'active'` in the database but past its own `endsAt` —
+   * `GET /session` looks the active topic up by `status = 'active'`
+   * (`findActiveTopic`) and 404s with `no_active_topic` for anything else,
+   * `courseComplete` included, so the message below never actually renders
+   * once a topic has been transitioned to `'holdout'` (T-143). Checked
+   * directly on `topic.status` instead, so it fires regardless of which of
+   * the two ways "the teaching window is over" is currently represented.
+   */
+  if (topic.status === 'holdout' || session?.courseComplete) {
     return (
       <div className="u-stack u-measure">
         <h1>That&rsquo;s the seven days done.</h1>
@@ -68,6 +78,31 @@ export default function DashboardPage() {
         <div>
           <Link className="btn btn--secondary" to="/map">
             See your map
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  /**
+   * A generation that never finished (T-143). Before this, a `failed` topic
+   * fell through to the ordinary view below — same "Start today's session"
+   * button as a healthy course, leading to a `GET /session` 404
+   * (`no_active_topic`) that `SessionPage.tsx` has no handling for either.
+   * Nothing here to build a map or a session from, so this is the last check
+   * before the page starts assuming a working course exists.
+   */
+  if (topic.status === 'failed') {
+    return (
+      <div className="u-stack u-measure">
+        <h1>This one didn&rsquo;t finish building</h1>
+        <p className="u-muted">
+          {topic.error ?? 'Something went wrong while generating the course.'}
+        </p>
+        <p className="u-muted">Nothing was taught and nothing was charged for a course that isn&rsquo;t there.</p>
+        <div>
+          <Link className="btn btn--primary" to="/onboarding">
+            Start a new topic
           </Link>
         </div>
       </div>

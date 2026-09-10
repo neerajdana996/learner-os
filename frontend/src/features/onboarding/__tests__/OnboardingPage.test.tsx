@@ -137,3 +137,48 @@ describe('onboarding — language', () => {
     expect(screen.getByRole('radio', { name: /Doesn’t matter/ })).toBeChecked();
   });
 });
+
+describe('onboarding — recovering a topic from the server (T-144)', () => {
+  it('shows the wait screen for a generating topic even with an empty local draft', async () => {
+    // No `draftChanged` dispatch first — this is the exact gap T-144 closes:
+    // a fresh `localStorage` (a second browser, or cleared site data) with a
+    // real topic already generating on the server. Before the fix this fell
+    // straight through to step 1's "Who's learning?" form.
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.endsWith('/topics')) {
+        return json({ topics: [{ id: 'topic-recovered', status: 'generating', progress: null }] });
+      }
+      if (url.includes('/topics/topic-recovered')) {
+        return json({ id: 'topic-recovered', status: 'generating', progress: null });
+      }
+      if (url.includes('/users/me')) return json({ id: 'user-1' });
+      return json({});
+    });
+
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(await screen.findByText('Building your map')).toBeInTheDocument();
+    expect(screen.queryByText(/who.?s learning/i)).not.toBeInTheDocument();
+  });
+
+  it('still shows step 1 when the server has no recoverable topic', async () => {
+    server(); // the default mock: GET /topics falls through to `{}`.
+
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(await screen.findByRole('textbox', { name: /what should we call you/i })).toBeInTheDocument();
+  });
+});

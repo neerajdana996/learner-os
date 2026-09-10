@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Button, Choice, Field } from '@learnos/ui';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -10,6 +10,7 @@ import {
   generationProgressLabel,
   useCreateTopicMutation,
   useTopicQuery,
+  useTopicsQuery,
 } from '../../topics/topicsApi';
 import { draftChanged, onboardingReset, selectDraft, stepChanged } from '../onboardingSlice';
 import { Step, Stepper } from '../Step';
@@ -62,6 +63,30 @@ export default function OnboardingPage() {
 
   const [updateMe] = useUpdateMeMutation();
   const [createTopic, { isLoading: creating }] = useCreateTopicMutation();
+
+  /**
+   * A generating or failed topic already on the server, adopted into the
+   * draft even though this browser never submitted it (T-144).
+   *
+   * `draft.topicId` used to be the *only* source of truth for whether to show
+   * the wait screen, and it lives in `localStorage` (`onboardingSlice.ts`).
+   * That works within one browser — the draft survives a reload — but a
+   * learner who submits step 5 on one device and opens the app from another
+   * (or has cleared site data) has a `localStorage` with nothing in it, even
+   * though `LandingRoute` correctly sent them here because a real topic
+   * exists and isn't usable yet. Reaching `/onboarding` at all guarantees
+   * every topic this user has is `generating` or `failed` — a usable one
+   * would have routed to `/home` instead (`LandingRoute.tsx`'s own check) —
+   * so the newest one found here is always the right one to adopt.
+   */
+  const { data: existingTopics } = useTopicsQuery(undefined, { skip: !!draft.topicId });
+  const recoverable = useMemo(
+    () => existingTopics?.topics?.find((t) => t.status === 'generating' || t.status === 'failed') ?? null,
+    [existingTopics],
+  );
+  useEffect(() => {
+    if (!draft.topicId && recoverable) dispatch(draftChanged({ topicId: recoverable.id }));
+  }, [draft.topicId, recoverable, dispatch]);
 
   // `settled` latches so the interval drops to 0 the moment generation ends,
   // rather than polling for the rest of the session. Deriving the interval from

@@ -4,7 +4,7 @@ import { planSession, remainingDays } from '../../lib/planner.js';
 import { toPublicItem } from '../../lib/publicItem.js';
 import { localDayFor } from '../../lib/today.js';
 import { newCard, toDbCard } from '../../scheduler/index.js';
-import { CorrectionSchema, type SessionResponse } from '@learnos/shared';
+import { CorrectionSchema, TeachBlockSchema, type SessionResponse } from '@learnos/shared';
 import { getDueItems } from '../due/due.service.js';
 import { findUserById } from '../users/users.repository.js';
 import {
@@ -129,6 +129,10 @@ export async function getSession(userId: string, now: Date = new Date()): Promis
       title: concept.title,
       teachMode: concept.teachMode ?? 'try_first',
       tryFirstPrompt: concept.tryFirstPrompt,
+      // T-145. Parsed rather than cast, the same discipline `corrections`
+      // below already follows: a jsonb column comes back as `unknown`, and a
+      // row written before this shipped is `null`.
+      teachBlock: concept.teachBlock ? TeachBlockSchema.parse(concept.teachBlock) : null,
       explanationShort: concept.explanationShort,
       explanationLong: concept.explanationLong,
       corrections: CorrectionSchema.array().parse(concept.corrections ?? []),
