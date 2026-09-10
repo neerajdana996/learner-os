@@ -86,6 +86,42 @@ test('"Later" (snooze) sends no response, only snoozed: true, and the card stays
   expect(afterCount).toBe(beforeCount);
 });
 
+test('a fieldset (the confidence tap) never shows the browser\'s raw default border', async ({
+  context,
+  extensionId,
+  request,
+}) => {
+  // A real regression, found by looking at a screenshot rather than trusting
+  // text/role assertions: `extension/src/entrypoints/base.scss` imports the
+  // shared design system but never imported the web app's own base reset, so
+  // every `<fieldset>` (ConfidenceTap here; also every `Choice`-based group)
+  // rendered with Chrome's unstyled `2px groove` border in the popup, even
+  // though every text/role assertion in this file still passed. Fixed by
+  // moving the fieldset/legend reset into `@learnos/ui/styles/reset.scss`
+  // (packages/ui) so both the web app and the extension get it, matching how
+  // the `box-sizing` reset was already handled for the same reason (T-126).
+  await signIn(request);
+  const token = await mintExtensionToken(request);
+  await makeCardsDue(request, 1);
+
+  const options = await context.newPage();
+  await connect(options, token, extensionId);
+  await options.close();
+
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
+  await answerCard(popup);
+  await popup.getByRole('button', { name: /send|check|answer/i }).first().click();
+  await expect(popup.getByText(/how sure were you/i)).toBeVisible({ timeout: 15_000 });
+
+  const fieldsetBorder = await popup.evaluate(() => {
+    const el = document.querySelector('fieldset');
+    return el ? getComputedStyle(el).borderStyle : null;
+  });
+  expect(fieldsetBorder).toBe('none');
+});
+
 test('the mood tap appears once per local day, only after an answered card', async ({
   context,
   extensionId,

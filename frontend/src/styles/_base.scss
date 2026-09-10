@@ -1,7 +1,7 @@
 @use "@learnos/ui/styles/variables" as *;
 @use "@learnos/ui/styles/mixins" as *;
 
-// The box-sizing and text-size-adjust resets moved to
+// The box-sizing, text-size-adjust, and fieldset/legend resets moved to
 // `@learnos/ui/styles/reset` (T-126) — they are assumptions the design
 // system's own partials depend on, so every consumer needs them, not just this
 // app. `main.scss` gets them through the barrel.
@@ -54,17 +54,6 @@ a {
 button {
   font: inherit;
   color: inherit;
-}
-
-fieldset {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-legend {
-  padding: 0;
 }
 
 /// Inline code inside generated prose. The model writes examples as code

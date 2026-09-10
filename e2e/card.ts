@@ -25,6 +25,15 @@ export interface CardFingerprint {
   promptFont: string;
   promptColor: string;
   boxSizing: string;
+  /** The card's own background — `.teach__card`/`.teach__card--retrieval` on
+   *  the web session, the popup's own root on the extension. A T-126-style
+   *  "wrong box model" bug can leave fonts alone but still paint the design
+   *  system's tokens onto the wrong surface, which font/box-sizing alone
+   *  would miss. */
+  backgroundColor: string;
+  /** The answer surface's own border colour — `.field__input`,
+   *  `.field__textarea`, or the first `.choice` for a recognition item. */
+  answerBorderColor: string;
 }
 
 /** Reads what the card computed to, rather than what the stylesheet says. */
@@ -45,6 +54,23 @@ export async function fingerprint(page: Page, surface: string): Promise<CardFing
     return 'unknown' as const;
   });
 
+  const backgroundColor = await prompt.evaluate((el) => {
+    // Walk up from the prompt to the first ancestor with a real (non-alpha-0)
+    // background — the design system paints the card, not every wrapper.
+    let node: Element | null = el;
+    while (node) {
+      const bg = getComputedStyle(node).backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+      node = node.parentElement;
+    }
+    return getComputedStyle(document.body).backgroundColor;
+  });
+
+  const answerBorderColor = await page.evaluate(() => {
+    const el = document.querySelector('.field__input, .field__textarea, .choice');
+    return el ? getComputedStyle(el).borderColor : '';
+  });
+
   return {
     surface,
     prompt: (await prompt.textContent())?.trim() ?? '',
@@ -52,6 +78,8 @@ export async function fingerprint(page: Page, surface: string): Promise<CardFing
     promptFont: styles.font,
     promptColor: styles.color,
     boxSizing: styles.boxSizing,
+    backgroundColor,
+    answerBorderColor,
   };
 }
 

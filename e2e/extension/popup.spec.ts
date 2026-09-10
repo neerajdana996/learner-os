@@ -67,6 +67,19 @@ test('connects with a pasted token, then answers a real card', async ({
     // page, so they *should* look different at the layout level. What must not
     // differ is which design system drew them. T-126 was exactly this — the
     // extension rendering the shared components in the wrong box model.
+    //
+    // Colour is deliberately NOT compared here, even though `fingerprint()`
+    // now captures it (T-153): the web session's spaced-review card renders
+    // with `.teach__card--retrieval`'s own *inverted* treatment (dark
+    // background, light text — "a different kind of moment", by design),
+    // which the extension's popup card was never built to have at all. A raw
+    // equality check on `promptColor`/`backgroundColor` compared an inverted
+    // capture against a non-inverted one and failed on a real, intentional
+    // design difference, not a bug — confirmed by reading both fingerprints
+    // side by side (`rgb(250,248,245)` on `rgb(43,39,35)` vs the reverse).
+    // T-153's actual regression (a fieldset border) is caught directly in
+    // `e2e/extension/cardActions.spec.ts` instead, where there is exactly one
+    // surface and no cross-surface variant mismatch to confuse the signal.
     expect(ext.promptFont).toBe(web.promptFont);
     expect(ext.boxSizing).toBe(web.boxSizing);
     test.info().annotations.push({

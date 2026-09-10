@@ -23,3 +23,22 @@
 html {
   -webkit-text-size-adjust: 100%;
 }
+
+/// The same class of bug as the `box-sizing` reset above, for a different
+/// property: this lived only in the web app's own `_base.scss`, so every
+/// `<fieldset>` this package renders — `Choice`'s role/topic groups,
+/// `ConfidenceTap`, the recognition item's "Choose an answer" group — got the
+/// browser's raw default `2px groove` border in the extension while looking
+/// fine on the web app, because the web app's reset was the only thing
+/// zeroing it out. Moved here so every consumer of a fieldset-based component
+/// gets the reset it depends on, not just this one.
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+}
