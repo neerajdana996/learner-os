@@ -32,6 +32,11 @@ export default function globalSetup() {
   console.log('[e2e] seeding a fresh topic-less user…');
   execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:fresh'], { cwd: root, stdio: 'inherit' });
 
+  // Two users with a diagnostic-ready topic (E2E-003) — no real generation,
+  // same reasoning as the fresh-user seed above.
+  console.log('[e2e] seeding diagnostic-ready topics…');
+  execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:diagnostic'], { cwd: root, stdio: 'inherit' });
+
   console.log('[e2e] building the extension…');
   execFileSync('pnpm', ['--filter', 'learner-os-extension', 'build'], { cwd: root, stdio: 'inherit' });
 }

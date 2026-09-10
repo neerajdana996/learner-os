@@ -15,3 +15,4 @@ test-results/
 playwright-report/
 e2e/matrix-data.json
 e2e/fresh-user.json
+e2e/diagnostic-users.json
