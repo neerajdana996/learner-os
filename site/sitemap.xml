@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- One page, so one entry. Kept because robots.txt names it and a 404 on a
+     declared sitemap is a small, avoidable smell on a site whose job is to be
+     read by people who are evaluating us. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://coldrecall.info/</loc>
+    <lastmod>2026-09-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

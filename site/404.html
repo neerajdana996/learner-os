@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Not here — Cold Recall</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* GitHub Pages serves this for any unknown path, so it has to stand on its
+     own without the one-pager's sections around it. */
+  .lost {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    text-align: center;
+  }
+  .lost__inner { max-width: 46ch; display: flex; flex-direction: column; align-items: center; gap: var(--s4); }
+</style>
+</head>
+<body>
+<main class="lost">
+  <div class="wrap lost__inner">
+    <span class="brand__mark" aria-hidden="true"></span>
+    <p class="eyebrow">404</p>
+    <h1 class="headline" style="font-size: clamp(32px, 5vw, 52px)">Nothing here.</h1>
+    <p class="lede">
+      Which is at least honest. There is one page on this site, and it is
+      <a href="/">that way</a>.
+    </p>
+    <a class="btn btn--primary" href="/">Back to the start</a>
+  </div>
+</main>
+</body>
+</html>

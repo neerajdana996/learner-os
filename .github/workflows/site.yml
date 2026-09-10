@@ -1,0 +1,50 @@
+name: Site
+
+# Publishes site/ to GitHub Pages. Static files, straight from the folder —
+# there is no build step on purpose (see site/index.html), so this workflow
+# uploads and deploys and does nothing else.
+on:
+  push:
+    branches: [main]
+    # Only when the site actually changed. The backend suite runs on every
+    # push; a doc typo should not redeploy a website, and a site tweak should
+    # not wait on Postgres to come up.
+    paths:
+      - "site/**"
+      - ".github/workflows/site.yml"
+  # So a broken deploy can be re-run, and the first one can happen without a
+  # commit to trigger it.
+  workflow_dispatch:
+
+# Pages needs these two; the token is otherwise read-only.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancel one halfway — an interrupted Pages
+# deployment can leave the live site on a partial upload.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          # The folder itself is the site root, so index.html lands at /.
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

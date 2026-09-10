@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "learner-os-frontend", "dev"],
       "port": 5173
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8080", "--directory", "site"],
+      "port": 8080
     }
   ]
 }

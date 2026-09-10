@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<title>Cold Recall — learn it once, still know it a month later</title>
+<meta name="description" content="Cold Recall turns a technical topic into a map of what you actually don't know, teaches only that, then keeps it from slipping — twenty seconds at a time. Early access opening soon." />
+
+<link rel="canonical" href="https://coldrecall.info/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Cold Recall" />
+<meta property="og:title" content="Cold Recall — learn it once, still know it a month later" />
+<meta property="og:description" content="A retention tool for technical learning: the part that runs after the tutorial. Spaced retrieval practice, and a number instead of a feeling." />
+<meta property="og:url" content="https://coldrecall.info/" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#faf8f5" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#1c1917" media="(prefers-color-scheme: dark)" />
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+
+<!--
+  A static one-pager, served by GitHub Pages from this folder (see README.md).
+  No build step, no framework, and no JavaScript the page needs in order to say
+  what it says — every dependency is one more thing that can be down when
+  somebody reads it.
+
+  ⚠ THE COPY IS NOT AUTHORED HERE. docs/copy.md is the source of truth for
+  every public word, and it is shared with the app's own landing page. Change
+  the doc, then change both surfaces. It also carries the list of wording that
+  must never reach a public page. (HTML comments ship to the reader, so keep
+  internal reasoning in the doc and not in here.)
+
+  Brand: the site is Cold Recall; the codebase, the app and the extension are
+  learnos. The domain names the mechanism, which is a better thing to put in
+  front of a stranger than an internal name.
+
+  ⚠ ONE THING TO CHANGE BEFORE THIS GOES LIVE: every mailto: below points at
+  hello@example.com. Replace it with the real address (there are 4).
+-->
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap nav__inner">
+    <a class="brand" href="#top" aria-label="Cold Recall, home">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <span class="brand__word">Cold Recall</span>
+    </a>
+    <nav class="nav__links" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#why">Why it works</a>
+      <a href="#what">What you get</a>
+      <a class="btn btn--primary btn--sm" href="#access">Get early access</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ───────────────────────────────────────────────────────────── hero -->
+  <section class="section hero" id="top">
+    <div class="wrap hero__grid">
+      <div class="stack">
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> Early access &middot; opening soon</p>
+
+        <h1 class="headline">Learn it once.<br /><em>Still know it</em> a month later.</h1>
+
+        <p class="lede">
+          You understood it in the video. By Friday it was gone. Cold Recall maps your topic, works
+          out what you actually don&rsquo;t know, teaches only that &mdash; then keeps asking, twenty
+          seconds at a time, until it&rsquo;s yours.
+        </p>
+
+        <div class="row">
+          <a class="btn btn--primary" href="#access">Get early access</a>
+          <a class="btn btn--secondary" href="#how">See how it works</a>
+        </div>
+
+        <p class="evidence">
+          Built on the four interventions with the largest measured effect on long-term retention,
+          in that order &mdash; <strong>retrieval practice</strong>, <strong>spacing</strong>,
+          <strong>immediate feedback</strong>, <strong>mastery gating</strong>. Not on streaks.
+        </p>
+      </div>
+
+      <!-- A real question in the real card, rather than a screenshot of one.
+           The gap line is the product in one sentence. -->
+      <aside class="card" aria-label="An example question card">
+        <div class="card__head">
+          <span class="card__concept">Sliding window &middot; invariants</span>
+          <span class="card__gap">9 days since you last saw this</span>
+        </div>
+        <p class="card__q">
+          Your window has grown past <code>k</code> distinct characters. What has to happen before
+          the window can be counted as valid again?
+        </p>
+        <div class="card__choices">
+          <span class="choice">Reset both pointers to the current index</span>
+          <span class="choice choice--right">Advance <code>left</code> until a character&rsquo;s count hits zero</span>
+          <span class="choice">Sort the window and take the first <code>k</code></span>
+        </div>
+        <p class="card__foot">Twenty seconds. Then it goes away.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────── problem -->
+  <section class="section section--tint">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">The problem</p>
+        <h2>Almost everything you learn this month will be gone by the next.</h2>
+      </div>
+      <div class="facts">
+        <div class="fact">
+          <p class="fact__fig">Understood&nbsp;&rarr;&nbsp;gone</p>
+          <p>
+            Comprehension while you read is not memory. It feels like learning, which is exactly
+            why nobody notices the difference until they need the thing.
+          </p>
+        </div>
+        <div class="fact">
+          <p class="fact__fig">Re-reading</p>
+          <p>
+            The most common study method is also among the weakest. Recognising a page you have
+            seen before is not the same skill as producing the answer without it.
+          </p>
+        </div>
+        <div class="fact">
+          <p class="fact__fig">Completion</p>
+          <p>
+            Courses measure what you clicked through. A progress bar at 100% and a head that is
+            empty in three weeks are entirely compatible, and both are common.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────────────────── how it works -->
+  <section class="section" id="how">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">How it works</p>
+        <h2>Four things, and none of them is a video.</h2>
+        <p class="lede">
+          A course hands you everything and hopes. This does the opposite: it works out what
+          you&rsquo;re missing, teaches only that, and spends the rest of its effort making sure it
+          stays.
+        </p>
+      </div>
+
+      <ol class="steps">
+        <li>
+          <div>
+            <h3>It finds out what you already know</h3>
+            <p>
+              About fifteen adaptive questions before any teaching &mdash; harder after a correct
+              answer, back to the prerequisite after a wrong one. Prior knowledge is the biggest
+              single predictor of what sticks, so your map starts part-coloured and what you already
+              have is skipped.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>You try before you&rsquo;re told</h3>
+            <p>
+              Every new concept opens with an attempt you will probably get wrong. Failing first and
+              then seeing the explanation beats reading the explanation cold &mdash; and it is the
+              part most tools skip, because it feels bad.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Then it comes and finds you</h3>
+            <p>
+              A Chrome extension asks one question, wherever you already are, at the moment
+              you&rsquo;re about to forget it. Twenty seconds, only in hours you choose, and it stops
+              for the day if you wave three away.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>You can see what is slipping</h3>
+            <p>
+              Your map is coloured by predicted recall, not by what you&rsquo;ve clicked through.
+              Amber means it&rsquo;s going this week, and the next session goes straight there.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────── why it works -->
+  <section class="section section--tint" id="why">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Why it works</p>
+        <h2>Five decisions that make it less pleasant to use.</h2>
+        <p class="lede">
+          Every one of them costs us something in the first five minutes. They are also the reason
+          you still know this in a month, so none of them is coming out.
+        </p>
+      </div>
+
+      <div class="grid">
+        <article class="tile tile--wide">
+          <p class="tile__fig">&ge;&nbsp;1&nbsp;day</p>
+          <h3>A score you cannot farm</h3>
+          <p>
+            Your knowledge score moves only when you recall something correctly at least a day after
+            you last saw it, and it decays on its own as forgetting is predicted. Showing up earns
+            nothing, because showing up is not what is being measured.
+          </p>
+        </article>
+
+        <article class="tile tile--wide">
+          <p class="tile__fig">Try&nbsp;first</p>
+          <h3>You fail before you are taught</h3>
+          <p>
+            Every new concept opens with an attempt you will probably get wrong. Struggling before
+            being shown the answer produces better understanding than being shown it first &mdash;
+            even though it feels considerably worse at the time.
+          </p>
+        </article>
+
+        <article class="tile">
+          <p class="eyebrow">Never asked</p>
+          <h3>No &ldquo;how do you learn best?&rdquo;</h3>
+          <p>
+            Matching teaching to &ldquo;visual&rdquo; or &ldquo;auditory&rdquo; learners has failed
+            every controlled test it has been given. You will never be asked. What you actually
+            remember is the only signal used.
+          </p>
+        </article>
+
+        <article class="tile">
+          <p class="eyebrow">Cognitive load</p>
+          <h3>Three new ideas a day, maximum</h3>
+          <p>
+            However far behind you are, a session never puts more than three new concepts in front
+            of you. The cap is enforced rather than suggested, because a session you bail out of
+            teaches nothing.
+          </p>
+        </article>
+
+        <article class="tile tile--invert">
+          <p class="eyebrow">Not in the box</p>
+          <h3>No streaks. No badges. No coupons.</h3>
+          <p>
+            Extrinsic rewards reliably undermine the motivation they are meant to create. There is
+            nothing here to collect. Miss a day and nothing breaks &mdash; the only thing keeping
+            you here is whether it&rsquo;s working.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────────────────── what you get -->
+  <section class="section" id="what">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">What you get</p>
+        <h2>What&rsquo;s actually in it.</h2>
+        <p class="lede">Not a roadmap. Everything below is built.</p>
+      </div>
+
+      <ul class="features">
+        <li>
+          <h3>A concept map, generated from your topic</h3>
+          <p>
+            Twenty to forty concepts with real prerequisite edges, each one classified by the shape
+            of a correct answer rather than by subject &mdash; which is what decides the kind of
+            question you get.
+          </p>
+        </li>
+        <li>
+          <h3>An adaptive diagnostic</h3>
+          <p>
+            Roughly fifteen questions, each chosen from your last answer, with a confidence tap. It
+            stops when your map is resolved rather than at a fixed count.
+          </p>
+        </li>
+        <li>
+          <h3>A scheduler that predicts forgetting</h3>
+          <p>
+            Per concept, per person. Every answer is recorded with what the model believed
+            <em>before</em> the question was shown, so its calibration is checked rather than
+            assumed.
+          </p>
+        </li>
+        <li>
+          <h3>Questions that fit the material</h3>
+          <p>
+            Fill in the blank, click the line that is wrong, put the lines in order, write the code,
+            or answer in your own words &mdash; graded on meaning, not on string equality.
+          </p>
+        </li>
+        <li>
+          <h3>A Chrome extension that takes no for an answer</h3>
+          <p>
+            One question at a time, inside windows you set, under a daily cap, never while
+            you&rsquo;re away from the keyboard, silent for the day after three refusals. Answers
+            given offline are queued and sent when you&rsquo;re back.
+          </p>
+        </li>
+        <li>
+          <h3>Not a chatbot</h3>
+          <p>
+            There is no box to chat into. The model&rsquo;s work happens before you arrive &mdash;
+            building the map, writing the questions, marking your answer. What you get is the
+            question.
+          </p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────────────────────────────────────── proof -->
+  <section class="section section--invert" id="proof">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">The name</p>
+        <h2>Then it asks you cold.</h2>
+        <p class="lede">
+          Weeks after the teaching stops &mdash; no revision, no warm-up, no cue &mdash; Cold Recall
+          asks again. That is the only test that proves anything, and it is the one this is named
+          after.
+        </p>
+      </div>
+
+      <figure class="timeline">
+        <svg viewBox="0 0 900 150" role="img" class="timeline__svg">
+          <title>Concentrated teaching first, then spaced retrieval thinning out over weeks, then a cold test with no warm-up.</title>
+          <line class="tl-axis" x1="40" y1="100" x2="870" y2="100" />
+          <!-- Teaching: dense and close together. -->
+          <rect class="tl-tick" x="55"  y="66" width="12" height="34" rx="2" />
+          <rect class="tl-tick" x="82"  y="59" width="12" height="41" rx="2" />
+          <rect class="tl-tick" x="109" y="52" width="12" height="48" rx="2" />
+          <rect class="tl-tick" x="136" y="45" width="12" height="55" rx="2" />
+          <rect class="tl-tick" x="163" y="62" width="12" height="38" rx="2" />
+          <rect class="tl-tick" x="190" y="55" width="12" height="45" rx="2" />
+          <rect class="tl-tick" x="217" y="48" width="12" height="52" rx="2" />
+          <!-- Retrieval: the same bars, thinning as the intervals stretch. -->
+          <rect class="tl-tick tl-tick--quiet" x="266" y="76" width="10" height="24" rx="2" />
+          <rect class="tl-tick tl-tick--quiet" x="330" y="76" width="10" height="24" rx="2" />
+          <rect class="tl-tick tl-tick--quiet" x="424" y="76" width="10" height="24" rx="2" />
+          <rect class="tl-tick tl-tick--quiet" x="556" y="76" width="10" height="24" rx="2" />
+          <!-- Then nothing at all, which is what makes the last one cold. -->
+          <path class="tl-quiet" d="M600,100 L826,100" />
+          <line class="tl-testline" x1="838" y1="42" x2="838" y2="100" />
+          <circle class="tl-testdot" cx="838" cy="42" r="5" />
+          <text class="tl-day" x="55"  y="122">LEARN IT</text>
+          <text class="tl-day" x="266" y="122">KEEP IT</text>
+          <text class="tl-day" x="782" y="122">COLD</text>
+          <text class="tl-key" x="55"  y="143">Two or three new ideas a day</text>
+          <text class="tl-key" x="266" y="143">One question at a time, further apart each time</text>
+          <text class="tl-key" x="700" y="143">No cue, no warm-up</text>
+        </svg>
+      </figure>
+
+      <div class="grid grid--thirds">
+        <article class="tile tile--plain">
+          <h3>A number, not a feeling</h3>
+          <p>
+            You find out what you still know, concept by concept, against what you knew the day you
+            learned it. &ldquo;I think that stuck&rdquo; is not a result.
+          </p>
+        </article>
+        <article class="tile tile--plain">
+          <h3>Nothing to warm up on</h3>
+          <p>
+            Recall with a cue is recognition wearing a hat. The gap between practice and testing is
+            the measurement, so the gap is left alone.
+          </p>
+        </article>
+        <article class="tile tile--plain">
+          <h3>Wrong is useful</h3>
+          <p>
+            Whatever slipped goes back into the schedule at the front of the queue. The test is not
+            a grade; it is the most informative thing the scheduler ever gets.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────────────────────────────────────────── access -->
+  <section class="section access" id="access">
+    <div class="wrap access__inner">
+      <p class="eyebrow">Early access</p>
+      <h2>Tell us what you want to learn.</h2>
+      <p class="lede">
+        Cold Recall is opening on a small set of technical topics, every question in them reviewed by
+        hand. Tell us which one you&rsquo;d start with and we&rsquo;ll come back to you when
+        it&rsquo;s ready &mdash; starting with the topics the most people ask for.
+      </p>
+      <div class="row row--center">
+        <a class="btn btn--primary btn--lg" href="mailto:hello@example.com?subject=Cold%20Recall%20early%20access&amp;body=The%20topic%20I%27d%20start%20with%3A%0A%0AWhy%3A%0A">
+          Ask for access
+        </a>
+        <a class="btn btn--secondary btn--lg" href="mailto:hello@example.com?subject=Cold%20Recall%20%E2%80%94%20question">Ask a question</a>
+      </div>
+      <p class="muted">No cost, no card. One email when your topic opens, and nothing else.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <div class="foot__brand">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <div>
+        <p class="foot__word">Cold Recall</p>
+        <p class="muted">Spaced retrieval practice, with the outcome measured rather than assumed.</p>
+      </div>
+    </div>
+    <nav class="foot__links" aria-label="Footer">
+      <a href="#how">How it works</a>
+      <a href="#why">Why it works</a>
+      <a href="#what">What you get</a>
+      <a href="mailto:hello@example.com">Contact</a>
+    </nav>
+  </div>
+  <div class="wrap foot__legal">
+    <p class="muted">&copy; 2026 Cold Recall. No analytics, no trackers, no third-party scripts on this page.</p>
+  </div>
+</footer>
+
+</body>
+</html>

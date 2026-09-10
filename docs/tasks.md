@@ -2708,6 +2708,45 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - It records `card_shown` with `opened: 'manually'`, because the answer rate needs the same denominator whichever surface offered the card (T-035) — and the meta distinguishes the two so they can be compared later.
   - **A contract test asserted the old behaviour** — "the popup itself fetches nothing" — and had to be corrected. It now pins something stronger and still true: the popup has exactly one source of items, and it is `/due`.
 
+### T-131 · A public website, and one source of truth for its words
+- **status:** done
+- **sprint:** 5
+- **depends_on:** T-101
+- **files:** `site/*`, `docs/copy.md`, `.github/workflows/site.yml`, `.claude/launch.json`
+- **description:** Founder, 2026-09-10: a working public website is needed for the **AWS Activate** credit application, and a place to send someone who has heard the pitch. Static, its own folder, no build step. Domain `coldrecall.info`, GitHub Pages, SSL.
+- **acceptance:** Renders with no build step and no runtime JS; deploys from `main`; the domain resolves over HTTPS; nothing internal to the first cohort appears on a public page.
+- **tests:** none automated (static HTML). Verified in a browser: every section laid out, contrast checked by computed style, console clean.
+- **notes:** (2026-09-10) **`docs/copy.md` is the deliverable that matters more than the page.** Founder, on reviewing the first draft: *"we don't want to show this to our user that we are doing a test run of 10 users."* He was right, and the mistake was mine — the draft reused the landing page's copy verbatim, and that copy was written to **recruit ten participants**, not to sell anything.
+  - **The distinction that fixed it:** marketing copy is read by a stranger deciding whether they want this; consent copy is read by someone about to commit to being measured. Collapsing the two casts the reader as a subject in an experiment. The uncomfortable specifics are **not softened — they move** to sign-up and onboarding, where they keep their T-101 assertions. That is T-132.
+  - **The cold test stayed, reframed as the product's best feature** rather than as an experiment run on the reader: you find out what stuck, with a number instead of a feeling. It is also what the domain names. Cutting it would have thrown away the strongest section to fix a framing problem.
+  - `docs/copy.md` carries the positioning, every block of copy, a voice guide, a **never-write list**, and a claims table pairing each public claim with what backs it. Both surfaces render it and neither is the master.
+  - **Brand split, deliberately:** the site is *Cold Recall*, the codebase and app stay *learnos*. `site/` is the only place the public name appears.
+  - **Found and fixed the exact bug T-101 shipped**, before it shipped again: `.tile p` and `.section--invert p` have equal specificity, so the later one wins and light-theme `--ink-2` lands on a near-black band — unreadable, and invisible to every test. Fixed by inheritance (`--band-ink`) rather than a specificity contest, so a component nested at any depth picks up the band's ink without either file knowing about the other. Confirmed by computed style, not by eye.
+  - The palette and scale are **transcribed** from `packages/ui`, not imported: a static folder that needs `pnpm build` to render is one that eventually deploys stale. The token block at the top of `styles.css` is the copy to keep in step.
+  - Deployed by `.github/workflows/site.yml` on any push touching `site/` — path-filtered, so a doc typo does not redeploy the site and a site tweak does not wait on Postgres.
+  - **Still open:** the four `mailto:hello@example.com` links need the real address. Flagged in `site/README.md` and in a comment at the top of the page.
+
+### T-132 · The honest ask has no home now
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-131
+- **files:** `frontend/src/features/landing/*`, `frontend/src/features/auth/*`, `frontend/src/features/onboarding/*`, tests alongside
+- **description:** T-131 moved the public copy to `docs/copy.md` and took the recruitment framing off the public page — correctly. But **the app's landing page still carries it**, and the disclosures it carried are load-bearing: the unannounced test, the concepts deliberately never taught, the exact days asked for, and that the result gets written up. T-101 gave each of those an assertion on purpose, because a participant who feels tricked on day 30 drops out and a dropout costs a tenth of the result.
+  - Two jobs, in order. **(a)** Bring `frontend/src/features/landing` in line with `docs/copy.md` — the same words, so the two surfaces cannot drift. **(b)** Re-home every disclosure into the sign-up and onboarding flow, where a person actually commits, and **move T-101's tests with them** rather than deleting them.
+  - The consent copy is not the marketing copy with a warning bolted on. It is a short, plain screen that says what the next thirty days involve, shown before the diagnostic and after the account exists.
+- **acceptance:** `docs/copy.md` and the landing page say the same thing. Every disclosure T-101 tested still has a test, now against the flow that shows it. No public surface contains anything on `copy.md`'s never-write list.
+- **tests:** landing renders the copy.md blocks; the consent screen names the unannounced test, the untaught concepts, the number of days, and the write-up; a learner cannot reach the diagnostic without passing it; the never-write list has a grep test over the landing page.
+
+### T-133 · The page promises a re-test the build does not run
+- **status:** todo
+- **sprint:** 5
+- **depends_on:** T-131
+- **files:** `docs/copy.md`, `backend/src/workers/*`, `backend/src/modules/tests/*`
+- **description:** `docs/copy.md` flags one claim that runs ahead of the build, and it is on the public page: *"weeks after the teaching stops, Cold Recall asks again."* That describes the product. What exists is a topic moving to `holdout` and going deliberately silent for twenty-three days (T-104, T-105) so the first cohort can be measured once — same mechanism, different schedule, and **not** an automatic re-test every learner gets.
+  - Either the scheduler grows a real post-holdout cold test that any learner receives, or the sentence comes off the page. It should not be the sentence: the claim is the product, and it is the name.
+- **acceptance:** A learner who finishes a topic and goes quiet is served a cold test without anyone triggering it by hand, and `copy.md`'s flagged-claim note is deleted because it is no longer flagged.
+- **tests:** a topic past its holdout window schedules a test for its learner; a topic still inside it does not; a learner already tested is not re-tested.
+
 ### T-130 · The card looked like a form, not a product
 - **status:** done
 - **sprint:** 5
