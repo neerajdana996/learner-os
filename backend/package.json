@@ -23,7 +23,8 @@
     "seed:formats": "tsx src/scripts/seedFormats.ts",
     "seed:matrix": "tsx src/scripts/seedMatrix.ts",
     "seed:fresh": "tsx src/scripts/seedFreshUser.ts",
-    "seed:diagnostic": "tsx src/scripts/seedDiagnosticUsers.ts"
+    "seed:diagnostic": "tsx src/scripts/seedDiagnosticUsers.ts",
+    "seed:session": "tsx src/scripts/seedSessionUsers.ts"
   },
   "dependencies": {
     "@learnos/shared": "workspace:*",

@@ -37,6 +37,12 @@ export default function globalSetup() {
   console.log('[e2e] seeding diagnostic-ready topics…');
   execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:diagnostic'], { cwd: root, stdio: 'inherit' });
 
+  // Two more users for the session-completion states (E2E-004) — completing
+  // a session against dev@learnos.local would mark *today* complete for every
+  // other spec that assumes an always-in-progress session.
+  console.log('[e2e] seeding session-completion topics…');
+  execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:session'], { cwd: root, stdio: 'inherit' });
+
   console.log('[e2e] building the extension…');
   execFileSync('pnpm', ['--filter', 'learner-os-extension', 'build'], { cwd: root, stdio: 'inherit' });
 }
