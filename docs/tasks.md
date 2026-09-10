@@ -2746,6 +2746,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The consent copy is not the marketing copy with a warning bolted on. It is a short, plain screen that says what the next thirty days involve, shown before the diagnostic and after the account exists.
 - **acceptance:** `docs/copy.md` and the landing page say the same thing. Every disclosure T-101 tested still has a test, now against the flow that shows it. No public surface contains anything on `copy.md`'s never-write list.
 - **tests:** landing renders the copy.md blocks; the consent screen names the unannounced test, the untaught concepts, the number of days, and the write-up; a learner cannot reach the diagnostic without passing it; the never-write list has a grep test over the landing page.
+- **notes:** (2026-09-10) One more line needs to change as part of (a), not just the pilot-framing removal above: T-149 shipped free-text topics in onboarding, and this page still says "your own topics aren't open yet. The pilot runs on three I've read every question in by hand" — no longer true. Left for this task rather than patched separately, so it doesn't fight with whatever `docs/copy.md`-alignment pass lands here.
 
 ### T-133 · The page promises a re-test the build does not run
 - **status:** todo
@@ -2863,6 +2864,20 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** A multi-line `CodeBlock` renders one gutter number per line, correctly aligned, for a listing of any length up to the 12-line hard limit (`items/domains/code.md`).
 - **tests:** a render test asserting the gutter numbers 1..n appear in order and each `code__line` contains the correct source line — the exact case that would have caught this on day one.
 - **notes:** (2026-09-10) `TeachBlockView.tsx` (T-145) hit this first and fixed it locally with a React Fragment instead of the undefined class — the same fix applies here, but is left to its own task since `CodeBlock.tsx` is a different, already-shipped component whose blast radius (every rich-format item using a multi-line `code` block) deserves checking on its own.
+
+
+### T-149 · Free-text topics, shipped ahead of T-098's critic
+- **status:** done
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `frontend/src/features/onboarding/pages/OnboardingPage.tsx`, `frontend/src/features/onboarding/__tests__/OnboardingPage.test.tsx`
+- **description:** **A deliberate override of the standing decision recorded in `sprint.md`**, not an oversight: T-058 (generated per-learner topics) was explicitly gated on T-098's automated QA critic, because — sprint.md's own words — "hand-review does not scale to bespoke topics, and unreviewed questions make the retention number meaningless." Raised directly by the founder (2026-09-10) with the explicit choice to ship free text *now*, ahead of that gate, knowing the risk. Recorded here so a future reader isn't confused about why T-058's deferral was crossed.
+  - **No backend change was needed.** `TopicCreateSchema.title` (`packages/shared`) already accepted any 2–120 character string — the entire constraint was the onboarding UI only ever offering the three pinned `PILOT_TOPICS` as radio choices. This is almost entirely a frontend change.
+  - Added a fourth choice, "Something else", alongside the three pilot cards. Selecting it (or simply typing, since an empty topic already reads as "not a pilot topic") reveals a plain text field bound to `draft.topic` directly — no separate draft field, so the rest of the flow (why/language/budget/windows/build) needed no changes at all.
+  - **The exact risk the founder's own earlier notes already named is still live and untouched.** T-096's notes: "today any 2–120 character string enqueues ~73 model calls and five to ten minutes before anyone discovers it was 'asdf' or 'everything about physics'." Nothing added here checks viability — that is what T-096 (the topic probe) is for, and it remains `todo`. The UI's own copy says this plainly: "Not reviewed before it reaches you... use your own judgment."
+- **acceptance:** A learner can type any topic meeting the server's own length floor and reach "Build my map" with it; the three pilot topics are unaffected and still get their own recommended-by-role treatment.
+- **tests:** free text submits verbatim in the request body; Continue stays disabled below the 2-character floor and enables at it; selecting a pilot topic after typing free text clears the field and re-checks correctly.
+- **notes:** (2026-09-10) **A known, deliberately-not-fixed inconsistency:** the app's own landing page (`frontend/src/features/landing/pages/LandingPage.tsx`, T-101's recruitment copy — a different surface from the `coldrecall.info` static site, which already went through `docs/copy.md`'s rewrite) still says "your own topics aren't open yet. The pilot runs on three I've read every question in by hand." That is no longer true. Left alone rather than patched in passing: **T-132** already exists to reconcile this exact page's copy with `docs/copy.md`, and a one-off edit here would fight with whatever T-132 eventually does. Whoever picks up T-132 should know this line needs to change as part of it, not just the pilot-framing removal T-132 already scopes.
 
 
 ---

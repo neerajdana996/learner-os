@@ -43,6 +43,10 @@ const TOTAL_STEPS = 5;
  * the concept-map prompt asks for 14–18 rather than 20–40.
  */
 const DAYS = 7;
+/** `TopicCreateSchema.title`'s own floor (@learnos/shared) — matched here so
+ *  free text is refused client-side for the same reason the server would
+ *  400 it, not a beat later. */
+const MIN_TOPIC_LENGTH = 2;
 
 /**
  * Onboarding as five beats rather than one form: who you are, what you want to
@@ -181,6 +185,10 @@ export default function OnboardingPage() {
 
   const windowsValid = ActiveWindowsSchema.safeParse(draft.activeWindows).success;
   const recommended = recommendTopic(draft.role);
+  // Matches `TopicCreateSchema.title`'s own floor (packages/shared) — the
+  // client refuses the same strings the server would 400 on, rather than
+  // letting "a" through only to fail a beat later on Continue.
+  const isPilotTopic = PILOT_TOPICS.some((t) => t.title === draft.topic);
 
   return (
     <>
@@ -225,11 +233,11 @@ export default function OnboardingPage() {
         <Step
           kicker="Second"
           title="What do you keep forgetting?"
-          lede="Three topics in this pilot. Every question in all of them has been read by hand before it reaches you."
+          lede="Pick one of the three we've read every question in by hand, or type your own — that one skips the review, so it's on you to judge what comes back."
           because="Your reason comes back to you on the mornings you don’t feel like starting. Nobody else sees it."
           onNext={() => go(2)}
           onBack={() => go(0)}
-          nextDisabled={!draft.topic}
+          nextDisabled={!draft.topic || draft.topic.trim().length < MIN_TOPIC_LENGTH}
         >
           <fieldset>
             <legend className="u-sr-only">Choose a topic</legend>
@@ -254,8 +262,46 @@ export default function OnboardingPage() {
                   </Choice>
                 );
               })}
+
+              {/**
+               * Free text (T-149) — a deliberate override of the standing
+               * decision in sprint.md that this waits for T-098's automated
+               * critic: "hand-review does not scale to bespoke topics, and
+               * unreviewed questions make the retention number meaningless."
+               * That reasoning still holds; the founder chose to ship this
+               * ahead of it anyway (2026-09-10). Nothing here checks the
+               * string for viability beyond length — the exact failure the
+               * founder's own notes already named ("any 2-120 character
+               * string enqueues ~73 model calls and 5-10 minutes before
+               * anyone discovers it was 'asdf'", T-096) is still live. There
+               * is no length maximum shown here beyond the server's own 120
+               * (`TopicCreateSchema`) — the field just accepts what's typed.
+               */}
+              <Choice
+                name="topic"
+                checked={!isPilotTopic}
+                onSelect={() => {
+                  if (isPilotTopic) set({ topic: '' });
+                }}
+              >
+                <span className="choice__title">Something else</span>
+                <span className="choice__body">
+                  Not reviewed before it reaches you — this is what T-096 will eventually check for
+                  viability. For now, use your own judgment.
+                </span>
+              </Choice>
             </div>
           </fieldset>
+
+          {!isPilotTopic ? (
+            <Field
+              label="What do you want to remember?"
+              placeholder="e.g. Kubernetes networking, or the CAP theorem"
+              value={draft.topic}
+              onChange={(e) => set({ topic: e.target.value })}
+              autoFocus
+            />
+          ) : null}
 
           <Field
             label="Why this, why now?"

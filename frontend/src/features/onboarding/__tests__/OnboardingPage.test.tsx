@@ -138,6 +138,80 @@ describe('onboarding — language', () => {
   });
 });
 
+describe('onboarding — free text (T-149)', () => {
+  it('lets a learner type a topic outside the pilot three and submits it verbatim', async () => {
+    const user = userEvent.setup();
+    const store = makeStore();
+    // Landed with an empty topic, unlike `renderAtTopicStep()` above — this
+    // test is specifically about the field nobody has touched yet.
+    store.dispatch(draftChanged({ step: 1, name: 'Neeraj', role: 'product', topic: '' }));
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    await user.type(
+      screen.getByRole('textbox', { name: /what do you want to remember/i }),
+      'Kubernetes networking',
+    );
+    // None of the three pilot cards should be checked once free text is typed.
+    for (const title of ['Sliding window', 'Dynamic programming', 'Consistency in distributed systems']) {
+      expect(screen.getByRole('radio', { name: new RegExp(title) })).not.toBeChecked();
+    }
+
+    await submit(user);
+
+    await vi.waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0]).toMatchObject({ title: 'Kubernetes networking' });
+  });
+
+  it('keeps Continue disabled until the typed topic clears the server’s own minimum length', async () => {
+    const store = makeStore();
+    store.dispatch(draftChanged({ step: 1, name: 'Neeraj', role: 'product', topic: '' }));
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    const field = screen.getByRole('textbox', { name: /what do you want to remember/i });
+    const button = screen.getByRole('button', { name: 'Continue' });
+
+    await userEvent.setup().type(field, 'a');
+    expect(button).toBeDisabled();
+
+    await userEvent.setup().type(field, 'b');
+    expect(button).toBeEnabled();
+  });
+
+  it('picking a pilot topic after typing free text clears the free-text field', async () => {
+    const user = userEvent.setup();
+    const store = makeStore();
+    store.dispatch(draftChanged({ step: 1, name: 'Neeraj', role: 'product', topic: '' }));
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    await user.type(
+      screen.getByRole('textbox', { name: /what do you want to remember/i }),
+      'Something bespoke',
+    );
+    await user.click(screen.getByRole('radio', { name: /Sliding window/ }));
+
+    expect(screen.getByRole('radio', { name: /Sliding window/ })).toBeChecked();
+    expect(screen.queryByRole('textbox', { name: /what do you want to remember/i })).not.toBeInTheDocument();
+  });
+});
+
 describe('onboarding — recovering a topic from the server (T-144)', () => {
   it('shows the wait screen for a generating topic even with an empty local draft', async () => {
     // No `draftChanged` dispatch first — this is the exact gap T-144 closes:
