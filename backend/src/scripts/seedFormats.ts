@@ -150,6 +150,39 @@ const SEEDS: Seed[] = [
   },
 ];
 
+/**
+ * Writes the five format items onto one already-resolved concept.
+ *
+ * Exported so `seedMatrix.ts` (E2E-015) can aim this at a concept it just
+ * built for a different user, rather than this script owning a hardcoded
+ * assumption that the dev learner's topic is the only place format items ever
+ * belong.
+ */
+export async function seedFormatsFor(conceptId: string): Promise<number> {
+  // Replace this function's own previous rows on this concept.
+  const existing = await db.select().from(items).where(eq(items.conceptId, conceptId));
+  const mine = existing.filter((row) => {
+    const payload = row.payload as { prompt?: string };
+    return typeof payload.prompt === 'string' && payload.prompt.startsWith(MARKER);
+  });
+  for (const row of mine) await db.delete(items).where(eq(items.id, row.id));
+
+  let written = 0;
+  for (const seed of SEEDS) {
+    // The gate: what the worker is allowed to store is what gets stored here.
+    const payload: ItemPayload = ItemPayloadSchema.parse(seed.payload);
+    await db.insert(items).values({
+      conceptId,
+      type: seed.type,
+      payload,
+      answerKind: answerKindOf(payload.blocks ?? []),
+      isTransfer: false,
+    });
+    written += 1;
+  }
+  return written;
+}
+
 async function main(): Promise<void> {
   const [user] = await db.select().from(users).where(eq(users.email, DEV_EMAIL)).limit(1);
   if (!user) throw new Error(`no ${DEV_EMAIL} — run \`pnpm seed\` first`);
@@ -167,35 +200,21 @@ async function main(): Promise<void> {
   const target = taught.find((c) => !c.heldOut);
   if (!target) throw new Error('every concept in this topic is held out');
 
-  // Replace this script's own previous rows.
-  const existing = await db.select().from(items).where(eq(items.conceptId, target.id));
-  const mine = existing.filter((row) => {
-    const payload = row.payload as { prompt?: string };
-    return typeof payload.prompt === 'string' && payload.prompt.startsWith(MARKER);
-  });
-  for (const row of mine) await db.delete(items).where(eq(items.id, row.id));
-
-  let written = 0;
-  for (const seed of SEEDS) {
-    // The gate: what the worker is allowed to store is what gets stored here.
-    const payload: ItemPayload = ItemPayloadSchema.parse(seed.payload);
-    await db.insert(items).values({
-      conceptId: target.id,
-      type: seed.type,
-      payload,
-      answerKind: answerKindOf(payload.blocks ?? []),
-      isTransfer: false,
-    });
-    written += 1;
-  }
+  const written = await seedFormatsFor(target.id);
 
   console.log(`\nseeded ${written} format items on "${target.title}" (${target.id})`);
-  console.log(`  replaced ${mine.length} from a previous run`);
   console.log(`  kinds: ${SEEDS.map((s) => (s.payload as { blocks: { kind: string }[] }).blocks[0]?.kind).join(', ')}\n`);
   process.exit(0);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// Only when run as a script. `seedMatrix.ts` (E2E-015) imports
+// `seedFormatsFor` directly, and that import must not itself run this file's
+// own main() as a side effect — the same guard `seed.ts` uses.
+import { fileURLToPath as toPath } from 'node:url';
+const invokedDirectly = process.argv[1] && toPath(import.meta.url) === process.argv[1];
+if (invokedDirectly) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

@@ -240,6 +240,32 @@ states, admin) at the end. Implement in that order unless a group is blocked.
   - **The extension's offline queue, driven through the real UI** — this is the one thing `flow.test.ts` (T-037) explicitly cannot prove (it mocks `chrome.storage.local` and a fake `send` function): actually disconnect the extension's network (`context.setOffline(true)`), answer a card, confirm it's queued (no confusing error shown to the user — per `Card.tsx`'s "kept" messaging), reconnect, and confirm the alarm-driven drain actually reaches the real backend. High value, and currently the single biggest gap between "the unit tests are green" and "the offline story actually works."
   - **A 401 mid-session** (cookie expired while a tab was open) — the next mutating action redirects to `/signin` rather than looping or crashing.
 
+## E2E-015 · A configuration matrix, and a UI/UX walkthrough audit
+- **status:** done
+- **depends_on:** E2E-001, E2E-004, E2E-005
+- **files:** `backend/src/scripts/seedMatrix.ts`, `e2e/audit/walkthrough.spec.ts`, `docs/ux-audit.md` (findings)
+- **description:** Raised directly by the founder (2026-09-10): rather than one seeded learner in one state, build several users spanning the states the product actually has, walk each through login → their topic → whatever screens apply, capture what's shown, and write down whether it's clear and helpful — not pass/fail, a qualitative read.
+- **a real constraint found while planning this:** `DashboardPage.tsx` and `AppBar.tsx` both read `topics.topics[0]` with no way to switch — a user's second and third topic exist in the database but are **not reachable through any in-app navigation**, only by knowing `/map/:topicId` or `/results/:topicId` directly. This isn't a bug (plan.md already scopes the pilot to "not per-learner topics", T-058 tracks opening it up); it does mean a matrix built as "N topics per user, explored via the UI" mostly can't be exercised as designed. **Scoped instead to one full configuration per user** — closer to how the pilot itself runs one topic per learner — with a couple of users given a deliberately-unreachable second topic specifically to demonstrate and document the limitation, rather than to route through it.
+- **the matrix (8 users, ~13 topics total):** one topic fixture's content (`backend/fixtures/*`, the same one `pnpm seed` uses) reused across every topic — this audit is about **states and configurations**, not about generated content quality, which T-024/T-045's QA checklist already owns. Each user gets a distinct `topics.status` / progress combination:
+  1. **generating** — fresh onboarding, still on the wait screen.
+  2. **active, diagnostic not started** — signed up, about to take the diagnostic.
+  3. **active, diagnostic done, nothing taught yet** — about to start day 1.
+  4. **active, mid-course** — some taught, some due, some untaught (today's default `pnpm seed` shape).
+  5. **active, fully taught, nothing due** — caught up, the "nothing due today" empty state.
+  6. **holdout** — day 8–29, the quiet period; the app should say nothing is coming.
+  7. **testing** — the day-30 test is available to start.
+  8. **done** — test completed, `ResultsPage` has real percentages.
+  - Plus: one **failed** generation (the `error` column populated) folded into the matrix as a 9th state if a spare user slot allows it — worth seeing on purpose, since nothing in the current suite exercises it.
+  - Two of the above (#4 and #5) additionally get a second, UI-unreachable topic: one heavy with format-block items (cloze/hotspot/order/numeric/codeEditor) to audit the richer question surfaces outside the plain fixture, one in `done` status to confirm `/results/:topicId` renders correctly for a topic that never appears in that user's own nav.
+- **what the audit spec does:** signs in as each matrix user, follows whatever route their state actually permits (dashboard → session, or → diagnostic, or → the day-30 test, or nothing at all for `holdout`), captures a full-page screenshot and the page's visible text at each stop, and does **not** assert pass/fail beyond "the page rendered without a client-side error" — the judgment happens afterward, by reading the screenshots.
+- **the deliverable is `docs/ux-audit.md`**, not a green test run: a short written pass per state — what's on screen, whether it says the right thing, and anything confusing enough to be worth its own task. Any real finding gets filed as a `T-xxx` in `tasks.md`, the same convention as T-141.
+- **tests:** none in the pass/fail sense; the spec's job is capture, not assertion. (A cheap `page.on('pageerror')` check across every stop is worth keeping, since an uncaught exception is unambiguously a bug regardless of how subjective the rest of the audit is.)
+- **notes:** (2026-09-10) 9 users, 11 topics, zero uncaught client errors across every state. Found and fixed three real bugs in the seed script itself before the audit was trustworthy — worth recording, since each would have silently produced a wrong or misleading finding otherwise:
+  - `wipeMatrix()` initially deleted only `topics`/`concepts`/`items`/`cards`/`reviewEvents` before deleting a `users` row, and Postgres refused with a foreign-key violation on `sessions` — five more tables reference `users.id` (`sessions`, `authTokens`, `oauthAccounts`, `dailyPulse`, `clientEvents`) and none of them hang off a topic, so the topic-scoped cleanup loop never reached them.
+  - `endsAt` was set to `now + 7 days` for **every** topic regardless of status, so `testIsDue()` (`testLifecycle.ts`) always saw a future `endsAt` and refused every `POST /topics/:id/tests` with `409 test_not_due` — the `testing`/`holdout`/`done` configs needed `startsAt` genuinely in the past, not just a status column set to the right enum value.
+  - `GET /topics` orders **newest-first** (`orderBy(desc(topics.createdAt))`), so the "primary, dashboard-visible" topic has to be created *after* the "extra, URL-only" one — the reverse of the obvious order — or the two swap roles silently. Caught by the audit itself: `matrix-04`'s dashboard showed the wrong topic's data until this was fixed.
+  - Four real product findings survived into `docs/tasks.md` (T-142, T-143, T-144) plus T-141 from E2E-001; the full write-up with screenshots is `docs/ux-audit.md`.
+
 ---
 
 ## Suggested implementation order

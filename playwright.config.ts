@@ -49,6 +49,12 @@ export default defineConfig({
     // context, because an unpacked MV3 extension cannot be loaded into a
     // plain browser context. See e2e/extension/fixtures.ts.
     { name: 'extension', testDir: './e2e/extension' },
+    // E2E-015: the UX audit walkthrough. Separate project because it reads
+    // e2e/.artifacts/matrix.json (written by `pnpm --filter learner-os-backend
+    // exec tsx src/scripts/seedMatrix.ts`, run by hand — not part of
+    // global-setup, since this is a diagnostic pass, not a correctness gate)
+    // and is not meant to run as part of the default `pnpm e2e`.
+    { name: 'audit', testDir: './e2e/audit', use: { ...devices['Desktop Chrome'] } },
   ],
 
   // Started only if they are not already up, so a dev server you are already

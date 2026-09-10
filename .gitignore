@@ -13,3 +13,4 @@ e2e/report/
 e2e/.artifacts/
 test-results/
 playwright-report/
+e2e/matrix-data.json

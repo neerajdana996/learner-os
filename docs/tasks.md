@@ -2780,6 +2780,39 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:** signed-in `/signin` redirects away from the form; signed-out `/signin` is unaffected; the OAuth start/callback links on the form still work for a genuinely signed-out visitor (regression check — the fix must not accidentally guard the callback route too).
 - **notes:** (2026-09-10) Confirmed via screenshot, not just a failing assertion — the form renders completely normally for a signed-in session; there's no error state, just the wrong screen. `e2e/web/signin.spec.ts`'s "a signed-in visitor to /signin is forwarded away from the form" test asserts today's actual (unguarded) behavior with a comment pointing here, so the suite stays honest until this is fixed rather than asserting a redirect that doesn't exist.
 
+### T-142 · The header names the wrong topic once more than one exists
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `frontend/src/app/AppBar.tsx`
+- **description:** Found by the E2E-015 audit (`docs/ux-audit.md` #3). `AppBar.tsx` reads `topics.topics[0]` unconditionally for its title breadcrumb, regardless of which topic's page is actually open. Confirmed on a real multi-topic user: `/map/<topic-A>` and `/map/<topic-B>` both show topic A's name in the header, while the page **body** correctly shows topic B's own concepts and scores for the second URL. The fetch is right; only the title bar is wrong.
+  - Invisible today because the pilot runs one topic per learner, but not *hidden* — `/map/:topicId` and `/results/:topicId` already accept a topic id that isn't `topics[0]`, so the wrong header is reachable right now by anyone who follows a link to their own second topic, not only after T-058 (multi-topic) ships.
+- **acceptance:** The header names the topic whose page is actually open — from the route's `:topicId` param where one exists, falling back to `topics[0]` only on routes that don't carry one (`/home`, `/session`).
+- **tests:** `/map/:topicId` for a topic that is not `topics[0]` shows that topic's own title in the header; `/results/:topicId` likewise; `/home` and `/session` (no topicId in the route) keep showing `topics[0]`.
+
+### T-143 · The dashboard has two hidden states: `holdout` and `failed`
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `frontend/src/features/dashboard/pages/DashboardPage.tsx`, `frontend/src/features/session/pages/SessionPage.tsx`
+- **description:** Found by the E2E-015 audit (`docs/ux-audit.md` #1, #2). `DashboardPage.tsx` special-cases exactly two of six `topics.status` values — `'testing'` and `'done'`. `'holdout'` and `'failed'` both fall through to the plain "Start today's session" / "Connect extension" view, identical to a healthy `'active'` topic:
+  - **`failed`**: nothing on the dashboard says generation never finished. The button is there, clickable, and leads nowhere useful.
+  - **`holdout`**: nothing says this is the twenty-three days of deliberate silence — the opposite of what the extension's own install doc tells a participant to expect (`docs/extension.md`: "after your seventh day the extension goes quiet, on purpose... nothing is broken"). The web dashboard doesn't carry that message at all.
+  - **Both compound into a second bug**: clicking "Start today's session" on either calls `GET /session`, which throws `no_active_topic` for any non-`'active'` topic and returns 404 (`session.controller.ts`) — and `SessionPage.tsx` has **no error handling for that response at all** (grepped the file; nothing matches `error`, `isError`, or the reason string), so the learner lands on whatever the undefined-data state renders rather than an explanation.
+- **acceptance:** A `holdout` topic's dashboard says the quiet period is expected and gives no session-start button; a `failed` topic's dashboard says generation failed and offers a next step (retry, or contact); a learner who somehow still reaches `/session` for either sees a real message, not a blank or stuck screen.
+- **tests:** dashboard renders distinctly for `holdout`, `failed`, `testing`, `done`, `active`; `/session` on a `holdout` or `failed` topic shows an explanatory state, not nothing.
+
+### T-144 · A generating topic is invisible to onboarding from a second browser
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `frontend/src/features/onboarding/pages/OnboardingPage.tsx`
+- **description:** Found by the E2E-015 audit (`docs/ux-audit.md` #4). `OnboardingPage.tsx`'s wait-screen logic keys entirely off `draft.topicId`, read from a `localStorage`-persisted Redux slice (`onboardingSlice.ts`) — never from the server's own knowledge that a topic already exists and is generating. Works correctly in the ordinary case (same browser tab, or a reload — the draft survives in `localStorage`). Fails specifically when a learner submits step 5 on one device or browser profile and later opens the app from a different one, or has cleared site data: the server correctly routes them to `/onboarding` (`LandingRoute.tsx`'s own logic is fine), but onboarding has no way to know a topic is already running, so it asks all five questions again from step 1 rather than showing "we're building your map".
+- **acceptance:** Landing on `/onboarding` with an existing `generating` (or `failed`) topic shows the wait screen (or the failure state, once T-143 defines one) immediately, regardless of what `localStorage` holds.
+- **tests:** a fresh browser profile with no onboarding draft, but a real `generating` topic on the server, shows the wait screen on `/onboarding` rather than step 1.
+- **notes:** (2026-09-10) Lower priority than T-142/T-143 — needs a less common circumstance to trigger, and the fix is small: check `GET /topics` for an existing non-failed, non-active topic before defaulting to a fresh draft.
+
+
 ---
 
 ## Sprint 6 — End-to-end integration tests (added 2026-09-10)
