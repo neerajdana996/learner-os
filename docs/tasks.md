@@ -984,12 +984,19 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **`meta` must never carry an answer** — noted on the table. It is for an item id, an error string, a surface.
 
 ### T-036 · Extension build + load doc
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-034
-- **files:** `docs/extension.md`
+- **files:** `docs/extension.md`, `extension/README.md`
 - **description:** How to `pnpm build` and load unpacked in Chrome; how pilot users install (zip + steps with screenshots placeholders).
 - **tests:** none (doc).
+- **notes:** (2026-09-10) Two audiences in one file, split at a heading: **Building it** for us, **Installing it** written to be pasted into an email and sent. The participant half assumes desktop Chrome, no developer tools, and no interest in the first half — it never says "workspace", "manifest" or "service worker".
+  - **Eight screenshots are placeholders, listed in a table with the exact shot each one wants**, to be captured on a clean profile *at the moment the zip is built*. Not captured here on purpose: a screenshot of a different build is worse than none, because it teaches people to look for a button that has moved.
+  - The three things that cost time in this build are called out where a builder will hit them, not in a footnote: the dev server is **:3002** (T-127), `WXT_API_URL` is **baked in at build time** and generates the manifest host permission (T-122), and `pnpm lint` never compiles SCSS (T-090).
+  - **"Nothing due right now" is documented as the normal state, twice** — in the dev section and in the troubleshooting table. It is the most likely false bug report on both sides: a correctly working extension with an empty queue. `POST /dev/due-now` (T-128) and the deliberate popup fetch (T-129) are the two answers.
+  - The participant copy states the quiet period as a feature — *"after your seventh day the extension goes quiet, on purpose"* (T-104/T-105). An unexplained silence during the twenty-three days the measurement depends on would read as a broken extension, and the fix people reach for is uninstalling.
+  - Also says plainly what the extension can and cannot see, and invites the reader to verify it on the extension's own Details page. One host permission, no page access, token in `local` and never `sync`.
+  - **Fixed two stale lines in `extension/README.md`** while linking to the new doc: it still claimed an "umbrella repo `learner-os`" and that `src/shared/` was a synced copy of the backend's. Both untrue since T-102 and T-090, and directly contradicted by the file it now links to.
 
 ### T-037 · Sprint 3 integration test
 - **status:** todo

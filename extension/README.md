@@ -2,8 +2,13 @@
 
 WXT + React Chrome extension (Manifest V3). Build only — not served by compose.
 
-Part of **learnos** — see the umbrella repo `learner-os` for `docs/` and `docker-compose.yml`.
-`src/shared/` is a **synced copy** of `backend/src/shared` — never edit it here.
+One app in the **learnos** pnpm workspace (T-102): `docs/`, `docker-compose.yml`
+and the lockfile live at the repo root. Shared schemas come from
+`@learnos/shared` and shared presentation from `@learnos/ui` — packages, not
+copies, so there is nothing here to keep in step.
+
+**Installing and handing it to a pilot participant is [`docs/extension.md`](../docs/extension.md)**
+(T-036). This file is the short version for someone already in the repo.
 
 ```bash
 cp .env.example .env
