@@ -255,4 +255,43 @@ describe('onboarding — recovering a topic from the server (T-144)', () => {
 
     expect(await screen.findByRole('textbox', { name: /what should we call you/i })).toBeInTheDocument();
   });
+
+  it('"Try again" does not loop back to the same failed topic', async () => {
+    // Found live, in production: the server still has a `failed` topic sitting
+    // in `GET /topics` (nothing deletes it), and this effect used to re-adopt
+    // it the instant "Try again" cleared `draft.topicId` — trapping the
+    // learner on the exact screen they just dismissed. This is the regression
+    // test for that loop.
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.endsWith('/topics')) {
+        return json({
+          topics: [{ id: 'topic-failed', status: 'failed', error: 'the model said no', progress: null }],
+        });
+      }
+      if (url.includes('/topics/topic-failed')) {
+        return json({ id: 'topic-failed', status: 'failed', error: 'the model said no', progress: null });
+      }
+      if (url.includes('/users/me')) return json({ id: 'user-1' });
+      return json({});
+    });
+
+    const user = userEvent.setup();
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    // Recovered first, same as the "generating" case above.
+    expect(await screen.findByText('That didn’t build')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+
+    // Must land on the ordinary form, not bounce straight back.
+    expect(await screen.findByRole('textbox', { name: /what should we call you/i })).toBeInTheDocument();
+    expect(screen.queryByText('That didn’t build')).not.toBeInTheDocument();
+  });
 });

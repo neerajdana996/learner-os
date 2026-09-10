@@ -10,9 +10,13 @@ const STORAGE_KEY = 'learnos.onboarding';
  * first drafts were saved, so merging left people on step 2 with no role — past
  * a question they were never asked. Bumped to 3 for `language` (T-091), which
  * is the same shape of bug: merging would default a stored draft to "doesn't
- * matter" and never show anyone the question.
+ * matter" and never show anyone the question. Bumped to 4 for
+ * `dismissedTopicId` (T-144 fix) — a stored draft from before it existed has
+ * no way to distinguish "never seen a failed topic" from "just dismissed
+ * one", and defaulting it to `null` on merge would be the former when it
+ * might be the latter.
  */
-const DRAFT_VERSION = 3;
+const DRAFT_VERSION = 4;
 
 export interface OnboardingDraft {
   version: number;
@@ -36,6 +40,20 @@ export interface OnboardingDraft {
   budgetMin: number;
   /** Set once the topic exists and generation is running. */
   topicId: string | null;
+  /**
+   * The last topic id the learner explicitly walked away from via "Try
+   * again" on the failed-build screen (T-144 fix).
+   *
+   * Without this, clearing `topicId` alone was not enough to actually leave
+   * a failed topic behind: `OnboardingPage`'s own server-recovery effect
+   * (added for the *other* half of T-144 — a generating/failed topic should
+   * survive a second browser) would see the same still-`failed` row in
+   * `GET /topics` on the very next render and re-adopt it, landing the
+   * learner right back on the screen they just dismissed. This is checked
+   * *before* recovery runs, so a topic once dismissed stays dismissed for
+   * this draft, however many times the effect re-fires.
+   */
+  dismissedTopicId: string | null;
 }
 
 /**
@@ -63,6 +81,7 @@ const emptyDraft: OnboardingDraft = {
   language: '',
   budgetMin: 10,
   topicId: null,
+  dismissedTopicId: null,
 };
 
 function readDraft(): OnboardingDraft {

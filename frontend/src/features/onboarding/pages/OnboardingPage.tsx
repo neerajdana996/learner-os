@@ -85,8 +85,20 @@ export default function OnboardingPage() {
    */
   const { data: existingTopics } = useTopicsQuery(undefined, { skip: !!draft.topicId });
   const recoverable = useMemo(
-    () => existingTopics?.topics?.find((t) => t.status === 'generating' || t.status === 'failed') ?? null,
-    [existingTopics],
+    () =>
+      existingTopics?.topics?.find(
+        (t) =>
+          (t.status === 'generating' || t.status === 'failed') && t.id !== draft.dismissedTopicId,
+      ) ?? null,
+    // A topic just dismissed via "Try again" must not come straight back —
+    // without excluding `dismissedTopicId` here, this effect re-adopts the
+    // same still-`failed` row on the very next render (it hasn't gone
+    // anywhere server-side; nothing deletes a failed topic), landing the
+    // learner right back on the screen they just left. Found live: the
+    // button cleared `topicId`, this effect saw the same failed topic in
+    // `GET /topics`, and set it right back — a two-fix interaction neither
+    // fix alone would have caught.
+    [existingTopics, draft.dismissedTopicId],
   );
   useEffect(() => {
     if (!draft.topicId && recoverable) dispatch(draftChanged({ topicId: recoverable.id }));
@@ -166,7 +178,12 @@ export default function OnboardingPage() {
         {failed ? (
           <Button
             onClick={() => {
-              set({ topicId: null });
+              // `dismissedTopicId` first, in the same patch: the recovery
+              // effect above reads it on the very next render, and a failed
+              // topic that's still sitting in the database (nothing deletes
+              // it) would otherwise be re-adopted the instant `topicId`
+              // clears — the exact loop this field exists to break.
+              set({ topicId: null, dismissedTopicId: draft.topicId });
               setSettled(false);
               setWaitedLong(false);
             }}
