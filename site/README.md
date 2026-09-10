@@ -71,9 +71,16 @@ resolves it lands at `https://neerajdana996.github.io/learner-os/`.
 
 ### 3. Point your domain at it
 
-**`site/CNAME` already says `coldrecall.info`**, so Pages will serve the apex
-domain as soon as DNS points at it. The records below are what makes that
-resolve; add the `www` CNAME too, so a visitor who types `www.` still arrives.
+**There is deliberately no `CNAME` file in this folder yet.** It was added, and
+removed again on 2026-09-10: attaching a custom domain makes Pages serve *only*
+that domain, so the working `github.io` URL starts 301-ing to a hostname that
+does not resolve — and the site is offline until DNS catches up. With an AWS
+Activate application waiting on a live URL, the order has to be **DNS first,
+domain second**.
+
+So: add the records below, confirm they resolve, and only then attach the
+domain (step 3b). The records are what makes it resolve; add the `www` CNAME
+too, so a visitor who types `www.` still arrives.
 
 At your DNS host, for an **apex** domain:
 
@@ -95,14 +102,21 @@ the repo.
 starts 404ing months from now, re-check them against GitHub's docs before
 anything else — they have changed once before.)
 
-Then GitHub → **Settings** → **Pages** → **Custom domain**, enter
-`coldrecall.info`, **Save**. The field and `site/CNAME` say the same thing on
-purpose: the settings screen alone is lost if the repo is re-created, and the
-file alone is enough for Pages to serve the domain.
+### 3b. Attach the domain — only once DNS resolves
 
-Expect a few minutes of 404 between saving and DNS propagating. That is
-normal — GitHub is already serving the custom domain by then, so the
-`github.io` URL stops working at the same moment.
+Check first, because this is the step that can take the site offline:
+
+```bash
+dig +short coldrecall.info    # expect the four 185.199.x.153 addresses
+```
+
+Then GitHub → **Settings** → **Pages** → **Custom domain**, enter
+`coldrecall.info`, **Save**. Commit `echo "coldrecall.info" > site/CNAME` at the
+same time: the settings screen alone is lost if the repo is ever re-created,
+and the file alone is enough for Pages to serve the domain.
+
+From that moment the `github.io` URL 301s to the custom domain, so if the DNS
+is not actually live, **both** URLs are dead. That is why this step is last.
 
 ### 4. SSL
 
