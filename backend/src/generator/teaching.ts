@@ -131,14 +131,14 @@ const teachBlockJsonSchema = {
       type: 'object',
       additionalProperties: false,
       required: ['kind', 'lang', 'src'],
-      properties: { kind: { const: 'code' }, lang, src: str },
+      properties: { kind: { type: 'string', enum: ['code'] }, lang, src: str },
     },
     {
       type: 'object',
       additionalProperties: false,
       required: ['kind', 'nodes', 'edges', 'alt'],
       properties: {
-        kind: { const: 'diagram' },
+        kind: { type: 'string', enum: ['diagram'] },
         nodes: {
           type: 'array',
           items: {
@@ -165,7 +165,7 @@ const teachBlockJsonSchema = {
       additionalProperties: false,
       required: ['kind', 'lanes', 'messages', 'alt'],
       properties: {
-        kind: { const: 'sequence' },
+        kind: { type: 'string', enum: ['sequence'] },
         lanes: { type: 'array', items: str },
         messages: {
           type: 'array',
