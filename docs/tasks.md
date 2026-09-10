@@ -18,6 +18,8 @@
 
 `T-073` → `T-038` → `T-039` → `T-040` → `T-041` → the rest of the extension (`T-028`…) → `T-045`, `T-044`.
 
+**Sprint 3 closed 2026-09-10** with T-036 (the build and install doc) and T-037 (the simulated-day integration test). Everything in the build order above is now done except the last pair: **`T-045` pilot content QA on the three pinned topics, then `T-044` the founder's dry run.** Those two are what stand between here and Day −3.
+
 The teaching machine is built and the measuring instrument is not: nothing can generate a Day-30 test, score one, or compute a retention gain, so a pilot run today would produce ten learners and no answer.
 
 ### Sprint 5 — question formats (added 2026-09-05, designed, partly built)
@@ -999,12 +1001,20 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **Fixed two stale lines in `extension/README.md`** while linking to the new doc: it still claimed an "umbrella repo `learner-os`" and that `src/shared/` was a synced copy of the backend's. Both untrue since T-102 and T-090, and directly contradicted by the file it now links to.
 
 ### T-037 · Sprint 3 integration test
-- **status:** todo
+- **status:** done
 - **sprint:** 3
 - **depends_on:** T-031, T-032, T-033
-- **files:** `extension/tests/flow.test.ts`
+- **files:** `extension/src/__tests__/flow.test.ts`
 - **description:** Simulated day: two windows, 4 cards shown, one answered wrong, one snoozed, two dismissed then one more → backoff; queue drains after simulated offline.
 - **tests:** the flow; final storage state asserted.
+- **notes:** (2026-09-10) Four tests, 22ms, against real `chrome.storage.local` (`fakeBrowser`) and a clock that only moves forwards. **Not at `extension/tests/flow.test.ts`** as the task said: `vitest.config.ts` includes only `src/**/*.test.{ts,tsx}`, and loop.md §3 puts tests next to the code, so a file at that path would have been silently collected by nothing. `src/__tests__/flow.test.ts` instead.
+  - **The two assertions that justify the file** — both would pass every unit test in the suite:
+    - **A snooze must not break a run of dismissals, but must still delay the next card.** It moves `lastShownAt` forward and leaves `consecutiveDismissals` alone, so the day reaches its third refusal with a snooze in the middle of the run. The test checks the delay at 09:50 — 25 minutes after the card, which a plain `MIN_GAP_MS` would have let through — so it fails if snooze becomes a no-op.
+    - **A backoff set in the morning is still in force in the *second* window that evening.** With one window that case does not exist; `me` therefore has two. Without it, "not today" quietly means "not for twenty minutes".
+  - The harness helpers mirror `Card.tsx`'s handlers and `background.ts`'s `tick()` call for call, because neither is exported (the popup's are closures over component state, and `tick` is bound to `apiFetch`). That is the one weakness of this test and it is written at the top of the file: **if either file changes what it writes, this is where it should start failing** — so the mirror is the thing to check first when it does.
+  - `SNOOZE_MS` is duplicated from `Card.tsx` on purpose rather than exported: the test should fail if the popup changes what "later" means.
+  - Also covers what the day looks like from the outside: `outside_window` before 09:00, `idle` beating every other reason and spending no cap, `cap_reached` for a learner answering everything correctly, the backoff landing on the learner's own midnight rather than +24h, and the next morning rolling the counters over while **keeping** the expired backoff's effect gone.
+  - The offline half is the real queue: an answer given at 09:00 with the network down is kept, a drain at 09:05 reports `stoppedBy: 'offline'` and keeps it, and the drain at 20:35 sends it with `answeredAt` stamped at **09:00** — the time it was given, not the time it synced. That field is what keeps `gapDaysSinceLast` honest, and it is the pilot's primary output.
 
 ---
 
