@@ -98,6 +98,31 @@ describe('POST /topics', () => {
     expect(await getGenerationQueue().getJobs()).toHaveLength(1);
   });
 
+  it('several concurrent requests still leave exactly one topic', async () => {
+    // The sequential test above awaits each response before firing the next,
+    // so it only ever exercised the check-then-insert on its own — never two
+    // requests both reaching the SELECT before either had committed an
+    // INSERT. `Promise.all` here is closer to a real double-click, though a
+    // local Postgres round trip is fast enough that even this rarely forces
+    // that interleaving in-process; the reliable repro was the browser E2E
+    // test (`e2e/web/onboarding.spec.ts`, "double-clicking 'Build my map'"),
+    // which has enough real latency to lose the race every time. This test
+    // is kept alongside it as a cheap assertion that the invariant holds
+    // under concurrent load, not as the thing that caught the bug.
+    const user = await seedUser();
+    const body = { title: 'Dynamic programming', ...validSpan };
+
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () => request(app).post('/topics').set('Cookie', user.cookie).send(body)),
+    );
+
+    for (const res of responses) expect(res.status).toBe(202);
+    const topicIds = new Set(responses.map((r) => r.body.topicId));
+    expect(topicIds.size).toBe(1);
+    expect(await db.select().from(topics)).toHaveLength(1);
+    expect(await getGenerationQueue().getJobs()).toHaveLength(1);
+  });
+
   it('builds a new topic once the previous one is no longer generating', async () => {
     const user = await seedUser();
     const first = await request(app)

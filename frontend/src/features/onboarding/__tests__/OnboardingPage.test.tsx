@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { makeStore } from '../../../store';
 import { draftChanged } from '../onboardingSlice';
@@ -293,5 +293,37 @@ describe('onboarding — recovering a topic from the server (T-144)', () => {
     // Must land on the ordinary form, not bounce straight back.
     expect(await screen.findByRole('textbox', { name: /what should we call you/i })).toBeInTheDocument();
     expect(screen.queryByText('That didn’t build')).not.toBeInTheDocument();
+  });
+
+  it('a learner who already has a usable topic is sent to /home, not the form (E2E-002 finding)', async () => {
+    // Same bug family as T-141 (`/signin`) and the recovery effect above
+    // (T-144): direct navigation to `/onboarding` — a bookmark, a stale tab,
+    // or `localStorage` cleared after finishing — skipped `LandingRoute`'s
+    // own "usable topic" guard entirely, and nothing on this page checked
+    // either. `active` here stands in for any status that isn't
+    // `generating`/`failed` — the same set `LandingRoute.tsx` treats as
+    // usable.
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.endsWith('/topics')) {
+        return json({ topics: [{ id: 'topic-active', status: 'active', progress: null }] });
+      }
+      if (url.includes('/users/me')) return json({ id: 'user-1' });
+      return json({});
+    });
+
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter initialEntries={['/onboarding']}>
+          <Routes>
+            <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/home" element={<p>the real dashboard</p>} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(await screen.findByText('the real dashboard')).toBeInTheDocument();
+    expect(screen.queryByText(/who.?s learning/i)).not.toBeInTheDocument();
   });
 });

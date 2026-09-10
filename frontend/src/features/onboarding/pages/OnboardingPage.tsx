@@ -165,6 +165,25 @@ export default function OnboardingPage() {
     return <Navigate to={`/diagnostic/${draft.topicId}`} replace />;
   }
 
+  /**
+   * A learner who already has a *usable* topic must not see the five-step
+   * form again (E2E-002 finding, 2026-09-10) — the same bug family as T-141
+   * (`/signin` had no guard against an already-signed-in visitor) and T-144
+   * (this same page didn't recognise a `generating`/`failed` topic from a
+   * second browser). `LandingRoute.tsx` already guards `/` with exactly this
+   * "usable" definition — anything that isn't `generating` or `failed` — but
+   * that guard is skipped entirely by navigating to `/onboarding` directly
+   * (a bookmark, a stale tab, or simply refreshing after `localStorage` was
+   * cleared), and nothing on *this* page ever checked. `recoverable` above
+   * only looks for a topic still worth resuming; this checks for one already
+   * finished being built.
+   */
+  const usableElsewhere = !recoverable && !draft.topicId &&
+    existingTopics?.topics?.some((t) => t.status !== 'generating' && t.status !== 'failed');
+  if (usableElsewhere) {
+    return <Navigate to="/home" replace />;
+  }
+
   if (draft.topicId) {
     const failed = status === 'failed';
     return (

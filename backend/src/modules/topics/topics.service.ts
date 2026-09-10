@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { topics } from '../../db/schema.js';
 import { getGenerationQueue } from '../../workers/queue.js';
@@ -19,27 +19,49 @@ import { findTopic, insertTopic, listTopics } from './topics.repository.js';
  * Scoped to `generating` on purpose. Whether someone may hold two *active*
  * topics is a product question (plan.md §8 puts multi-topic scheduling out of
  * scope for the pilot), not this guard's business.
+ *
+ * The check and the insert are wrapped in one transaction, serialized per user
+ * with a Postgres advisory lock (`pg_advisory_xact_lock`, released automatically
+ * at commit). A plain SELECT-then-INSERT left a real gap here: two requests
+ * arriving together — a genuine double-click, not two clicks a second apart —
+ * both ran the SELECT before either INSERT landed, so both saw "no generating
+ * topic" and both created one. Found by an E2E test that actually fires both
+ * requests concurrently (`Promise.all`) rather than one after the other.
  */
 export async function createTopic(userId: string, body: TopicCreate) {
-  const [generating] = await db
-    .select({ id: topics.id, status: topics.status })
-    .from(topics)
-    .where(and(eq(topics.userId, userId), eq(topics.status, 'generating')));
-  if (generating) return generating;
+  const { topic, isNew } = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
 
-  const [topic] = await insertTopic({
-    userId,
-    title: body.title,
-    why: body.why ?? null,
-    // Null covers both "didn't say" and "doesn't matter" — T-092 is what tells
-    // them apart, by recording that it inferred the one it fills in.
-    language: body.language ?? null,
-    startsAt: body.startsAt ?? null,
-    endsAt: body.endsAt ?? null,
-    dailyBudgetMin: body.dailyBudgetMin,
+    const [generating] = await tx
+      .select({ id: topics.id, status: topics.status })
+      .from(topics)
+      .where(and(eq(topics.userId, userId), eq(topics.status, 'generating')));
+    if (generating) return { topic: generating, isNew: false };
+
+    const [inserted] = await insertTopic(
+      {
+        userId,
+        title: body.title,
+        why: body.why ?? null,
+        // Null covers both "didn't say" and "doesn't matter" — T-092 is what
+        // tells them apart, by recording that it inferred the one it fills in.
+        language: body.language ?? null,
+        startsAt: body.startsAt ?? null,
+        endsAt: body.endsAt ?? null,
+        dailyBudgetMin: body.dailyBudgetMin,
+      },
+      tx,
+    );
+    if (!inserted) throw new Error('topic insert returned no row');
+    return { topic: inserted, isNew: true };
   });
-  if (!topic) throw new Error('topic insert returned no row');
-  await getGenerationQueue().add('generate', { topicId: topic.id }, { jobId: topic.id });
+
+  // Enqueued after commit, outside the lock: a Redis round trip has no
+  // business holding a Postgres advisory lock open, and a job for a topic
+  // that didn't really get inserted (isNew: false) must never be queued.
+  if (isNew) {
+    await getGenerationQueue().add('generate', { topicId: topic.id }, { jobId: topic.id });
+  }
   return topic;
 }
 

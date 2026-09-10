@@ -2895,6 +2895,27 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:** a user with two active topics sees the same topic named in `/session`, `/home`, `/map`, and the AppBar header.
 - **notes:** (2026-09-10) Confirmed on the real dev account mid-session (a leftover seed topic plus a freshly-generated one, both `active`) — cleaned up by deleting the leftover rather than by changing this ordering, since the account only had two active topics because of test-data accumulation, not a real product flow.
 
+### T-151 · `/onboarding` had no guard for a learner who already has a usable topic
+- **status:** done
+- **sprint:** 6
+- **depends_on:** T-144
+- **files:** `frontend/src/features/onboarding/pages/OnboardingPage.tsx`, `frontend/src/features/onboarding/__tests__/OnboardingPage.test.tsx`
+- **description:** Found while writing E2E-002's re-entry test. `OnboardingPage` redirected away only when the *local* draft named an active topic (`draft.topicId && status === 'active'`); a learner with an active topic but an empty local draft — a stale tab, a bookmark, localStorage cleared, a second device — saw the full five-step form again with no redirect, siblings to T-144's "a generating topic is invisible to a second browser" and T-150's ordering disagreement.
+- **acceptance:** A signed-in learner with a topic that is neither `generating` nor `failed`, and no local recovery candidate, is sent to `/home` instead of the onboarding form.
+- **tests:** a learner with an existing usable topic and an empty draft is redirected to `/home` (unit test in `OnboardingPage.test.tsx`; E2E in `e2e/web/onboarding.spec.ts`'s "re-entry" group).
+- **notes:** (2026-09-10) Fixed with a `usableElsewhere` check — `!recoverable && !draft.topicId && existingTopics` has a topic that is not `generating`/`failed` — redirecting to `/home`. Verified live (cleared localStorage, hit `/onboarding` as `dev@learnos.local` with an active topic, confirmed the un-fixed page rendered the form, then confirmed the fix redirects) and with a regression test that fails when the guard is removed.
+
+### T-152 · Two near-simultaneous `POST /topics` could still both build a topic
+- **status:** done
+- **sprint:** 6
+- **depends_on:** T-065
+- **files:** `backend/src/modules/topics/topics.service.ts`, `backend/src/modules/topics/topics.repository.ts`, `backend/src/modules/topics/topics.test.ts`
+- **description:** T-065's guard was a plain `SELECT` (any topic `generating`?) followed by an `INSERT` — correct against two clicks a moment apart, but not atomic. Two requests arriving close enough together could both run the `SELECT` before either had committed its `INSERT`, so both saw "no generating topic" and both built one. T-065's own unit tests fire requests sequentially (`await`ing each response before the next), so they never exercised this; a new E2E test that actually double-clicks "Build my map" via a real browser (`Promise.all`) caught it — two `Dynamic programming` topics, same millisecond `createdAt`, different ids.
+  - A local Postgres round trip turned out to be fast enough that even a same-process `Promise.all` rarely reproduces the race — only real browser-to-server latency did, reliably. The unit-level "8 concurrent requests" test added alongside the fix asserts the invariant but should not be read as proof it would have caught the original bug; the E2E test is what actually did.
+- **acceptance:** Two `POST /topics` requests that genuinely overlap in time still leave exactly one topic and one queued job.
+- **tests:** a real browser double-click on "Build my map" creates one topic (`e2e/web/onboarding.spec.ts`); 8 concurrent `POST /topics` calls in one test leave one topic and one job (`topics.test.ts`).
+- **notes:** (2026-09-10) Fixed by wrapping the check-and-insert in one `db.transaction`, serialized per user with `pg_advisory_xact_lock(hashtext(userId))` (released automatically at commit) so a second concurrent caller blocks on the lock until the first's insert (or no-op) has committed, then re-reads a `generating` row that is now actually there. The job is still enqueued after the transaction commits, and only when a topic was actually inserted, so a Redis round trip never holds the lock and a no-op call never double-queues.
+
 
 ---
 

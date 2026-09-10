@@ -2,8 +2,11 @@ import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { concepts, items, topics } from '../../db/schema.js';
 
-export async function insertTopic(values: typeof topics.$inferInsert) {
-  return db.insert(topics).values(values).returning({ id: topics.id, status: topics.status });
+export async function insertTopic(
+  values: typeof topics.$inferInsert,
+  executor: Pick<typeof db, 'insert'> = db,
+) {
+  return executor.insert(topics).values(values).returning({ id: topics.id, status: topics.status });
 }
 
 /**

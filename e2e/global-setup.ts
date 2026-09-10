@@ -25,6 +25,13 @@ export default function globalSetup() {
   console.log('\n[e2e] seeding the dev dataset…');
   execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed'], { cwd: root, stdio: 'inherit' });
 
+  // A second, throwaway user with zero topics (E2E-002) — onboarding's own
+  // spec needs "brand new, no topic yet", and getting there by destructively
+  // resetting dev@learnos.local would break every other spec file in this
+  // project that assumes it already has a taught topic.
+  console.log('[e2e] seeding a fresh topic-less user…');
+  execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:fresh'], { cwd: root, stdio: 'inherit' });
+
   console.log('[e2e] building the extension…');
   execFileSync('pnpm', ['--filter', 'learner-os-extension', 'build'], { cwd: root, stdio: 'inherit' });
 }

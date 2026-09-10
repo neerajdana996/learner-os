@@ -64,9 +64,9 @@ states, admin) at the end. Implement in that order unless a group is blocked.
   - **Dev sign-in is production-locked** — assert the button's `import.meta.env.DEV` gate holds in a prod build check (covered by `pnpm build` output inspection, not Playwright — note only, no spec needed here).
 
 ## E2E-002 · Onboarding (5 steps)
-- **status:** todo
+- **status:** done
 - **depends_on:** E2E-001
-- **files:** `e2e/web/onboarding.spec.ts`
+- **files:** `e2e/web/onboarding.spec.ts`, `backend/src/scripts/seedFreshUser.ts`, `e2e/global-setup.ts`
 - **covers:** `frontend/src/features/onboarding/*`, `POST /topics`, `GET /topics` (generation polling), `PATCH /me`.
 - **flows:**
   - A brand-new signed-in user (no topic) lands on `/onboarding`, not `/home` — the inverse routing case from E2E-001.
@@ -77,6 +77,7 @@ states, admin) at the end. Implement in that order unless a group is blocked.
   - **A topic stuck on `generating`** (T-069 is still `todo` in tasks.md) — this spec should assert *today's* actual behavior (probably: wait screen with no timeout) rather than a fixed future behavior, and the assertion should be loose enough not to break when T-069 ships a real fix.
   - **Double-submit protection** (T-065, done) — clicking "Build" twice does not create two topics; assert via `GET /topics` count after two rapid clicks.
   - Onboarding **cannot be re-entered** once a topic exists — landing on `/onboarding` with a topic already present redirects to `/home` (mirrors the `/` guard, same failure mode as T-071 but for a different route).
+- **notes:** (2026-09-10) 9 tests, all against a genuinely fresh topic-less user (`pnpm seed:fresh`, never `dev@learnos.local`, since this project's suite runs one worker sequentially and other spec files assume the dev account already has a taught topic). Found and fixed two real bugs while writing this spec, not just selector issues: **T-151** (`/onboarding` had no redirect guard for a learner with an existing usable topic and an empty local draft) and **T-152** (T-065's double-submit guard was a non-atomic check-then-insert; a real browser double-click could still create two topics — fixed with a per-user Postgres advisory lock). Also fixed a same-session-reuse bug in `seedFreshUser.ts` itself: the "submitting" tests genuinely build topics for the fresh user, so a second run needs the same topic-tree teardown `seedMatrix.ts` already learned the hard way, or the user delete hits a FK violation.
 
 ## E2E-003 · The adaptive diagnostic
 - **status:** todo

@@ -21,7 +21,8 @@
     "qa:retire": "tsx src/scripts/qa.ts retire",
     "preflight": "tsx src/scripts/preflight.ts",
     "seed:formats": "tsx src/scripts/seedFormats.ts",
-    "seed:matrix": "tsx src/scripts/seedMatrix.ts"
+    "seed:matrix": "tsx src/scripts/seedMatrix.ts",
+    "seed:fresh": "tsx src/scripts/seedFreshUser.ts"
   },
   "dependencies": {
     "@learnos/shared": "workspace:*",
