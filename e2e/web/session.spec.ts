@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { answerCard, fingerprint, tapConfidence, writeFingerprint } from '../card.js';
-import { API, fetchMap, firstTopicId, makeCardsDue, signIn } from '../api.js';
+import { API, makeCardsDue, signIn } from '../api.js';
 import { signInAsDev } from '../ui.js';
 
 /**
@@ -130,36 +130,6 @@ test('a session teaches, asks, grades — and then runs the due reviews', async 
 
   await answerAndCheck(page);
   await page.screenshot({ path: test.info().outputPath('06-review-graded.png'), fullPage: true });
-});
-
-test('the map colours what is known and never names a held-out concept', async ({ page, request }) => {
-  await signIn(request);
-  const topicId = await firstTopicId(request);
-
-  // ---- the contract, at the API (T-017, plan.md §6)
-  const map = await fetchMap(request, topicId);
-  const heldOut = map.concepts.filter((c) => c.state === 'heldout');
-  expect(heldOut.length).toBeGreaterThan(0);
-  // A learner who sees the title studies it, and that destroys the control
-  // group the entire result rests on. So the title is null on the wire, not
-  // merely hidden in the component.
-  for (const concept of heldOut) expect(concept.title).toBeNull();
-
-  // ---- and on the screen
-  await signInAsDev(page);
-  await page.goto('/map');
-  await expect(page.getByText(/Held back ·/)).toBeVisible({ timeout: 30_000 });
-
-  // Every held-out concept renders as a placeholder, and there are exactly as
-  // many of those as the API withheld.
-  await expect(page.getByText('Held back until day 30')).toHaveCount(heldOut.length);
-
-  // No taught concept's title leaked into a held-back tile, and the score is
-  // real rather than the "0 concepts so far" that could never move (T-064).
-  expect(map.score).toBeGreaterThan(0);
-  await expect(page.getByText(/Solid ·/)).toBeVisible();
-
-  await page.screenshot({ path: test.info().outputPath('map.png'), fullPage: true });
 });
 
 test('a session never offers more than 3 new concepts, even with many more ready', async ({ request }) => {

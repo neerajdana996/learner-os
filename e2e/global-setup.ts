@@ -43,6 +43,11 @@ export default function globalSetup() {
   console.log('[e2e] seeding session-completion topics…');
   execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:session'], { cwd: root, stdio: 'inherit' });
 
+  // A topic with all four ConceptStates and an atRisk concept at once
+  // (E2E-005) — pnpm seed's own dev topic never produces a `known` concept.
+  console.log('[e2e] seeding a map fixture…');
+  execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:map'], { cwd: root, stdio: 'inherit' });
+
   console.log('[e2e] building the extension…');
   execFileSync('pnpm', ['--filter', 'learner-os-extension', 'build'], { cwd: root, stdio: 'inherit' });
 }

@@ -112,20 +112,19 @@ states, admin) at the end. Implement in that order unless a group is blocked.
 - **notes:** (2026-09-10) `session.spec.ts`'s two original tests run against the shared `dev@learnos.local` account and deliberately never call `POST /session/complete` — doing so would mark *today* complete and break every later run of this same suite on the same calendar day. The new completion-state tests, and the budget-cap/`example_first` tests, needed their own disposable fixtures instead (`pnpm seed:session`, three throwaway topics: `empty` — zero concepts, zero reviews; `withWork` — one real `try_first` concept; `manyReady` — five independent concepts alternating teach mode, `endsAt` left null so `planSession` falls back to `MAX_NEW_CONCEPTS` for its pace). The real dev topic's prereq chain only ever frees up one concept at a time, which could never have exercised the 3-concept cap or guaranteed an `example_first` concept was actually due — an early version of these two tests, run against the dev topic, `test.skip`'d every single time because of exactly that. No product bugs found this pass; the `codeEditor`-never-in-a-review rule is left entirely to E2E-008, since it isn't claimed here and the underlying filter (`due.repository.ts`'s `reviewEligible()`) is identical on both surfaces — asserting it twice would just be two tests that drift.
 
 ## E2E-005 · The map and knowledge score
-- **status:** in_progress
+- **status:** done
 - **depends_on:** E2E-003
-- **files:** `e2e/web/session.spec.ts` (co-located with the existing map test; may split to `e2e/web/map.spec.ts` if it grows past ~4 tests)
+- **files:** `e2e/web/map.spec.ts` (split out of `session.spec.ts`, per this task's own suggestion, once it grew past 4 tests), `backend/src/scripts/seedMapUser.ts`, `e2e/global-setup.ts`
 - **covers:** `GET /topics/:id/map`.
-- **flows already passing (2026-09-10):**
+- **flows (2026-09-10):**
   - Held-out concepts: `title` is `null` on the wire (not just hidden in CSS), and the map renders the correct count of "Held back until day 30" placeholders.
   - The score is non-zero for a learner with taught concepts (T-064 regression — "0 concepts so far" that can never move).
   - "Solid ·" legend renders for at least one concept.
-- **still todo:**
-  - **Every `ConceptState` renders distinctly** — `known`, `taught`, `untaught`, `heldout` each have their own legend entry and icon; assert all four appear together on the seeded topic (which has all four per the seed's own log: "23 concepts, 3 held out", plus some untaught by day 1).
-  - **`atRisk` styling** — a concept flagged `atRisk: true` (predicted recall dropping) renders with the "Slipping" treatment, not folded into "Solid". Requires a concept whose FSRS state actually predicts risk — check whether the seed produces one naturally or needs `POST /dev/due-now`-style manipulation.
-  - **Prerequisite edges render** — the map's edge list (`from`/`to`) is reflected in the visual graph (at minimum: an edge's `to` concept is visually gated/greyed until its `from` concept reaches `known` or `taught` — confirm the actual visual contract in `MapPage.tsx` before asserting specifics).
-  - **Clicking a concept** (if interactive) shows its detail without leaking a held-out title through a tooltip, modal, or URL parameter — the T-017 privacy rule checked at every interaction surface, not just initial render.
-  - **`/map/:topicId` vs `/map`** — both routes exist (`router.tsx:86,94`); confirm they render the same content for a single-topic learner, and that `/map/:topicId` with someone else's topic ID 404s or 403s rather than leaking another user's map.
+  - **All five state cells at once** (`heldout`, `untaught`, `taught`, `taught`+`atRisk`, `known`) via a dedicated fixture — see notes for why the legend assertion isn't "one row per `ConceptState`".
+  - **Prerequisite edges** — asserted at the API only (every edge names two concepts genuinely in the map) — see notes for why there's no UI-level assertion.
+  - **A concept tile has no click affordance**, and a held-out tile's DOM carries no attribute (`title`, `href`, `data-*`) that leaks the real concept name.
+  - **`/map` and `/map/:topicId` render the same content**, and another user's topic 404s.
+- **notes:** (2026-09-10) Two of this task's own assumptions turned out to be wrong once the actual code was read, so the tests assert the real contract instead: **(1)** the legend has only 4 rows, not one per `ConceptState` — `known` folds into "Solid" alongside plain `taught` (`ConceptLegend` in `packages/ui/src/ConceptDot.tsx`); `known` is only distinguishable per-tile, via that concept's dot `aria-label` ("Already knew it" vs "Solid"), which is what the test checks instead. **(2)** `MapPage.tsx` never reads the API's `edges` field at all — no lines, arrows, or prerequisite gating in the UI today — so "prerequisite edges render" narrowed to an API-shape check; there is nothing on screen to assert against. Also: `pnpm seed`'s dev topic can never produce a `known` concept (`known` needs both `taughtAt` set *and* a diagnostic estimate ≥ 0.8, and `seed.ts` never writes `topics.diagnosticState`), so the state/legend/atRisk tests run against a small dedicated fixture (`pnpm seed:map`) with one concept per interesting cell instead.
 
 ## E2E-006 · Extension — connect flow and popup
 - **status:** in_progress (backoff sub-case done)
