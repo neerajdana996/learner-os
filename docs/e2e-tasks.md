@@ -42,7 +42,7 @@ states, admin) at the end. Implement in that order unless a group is blocked.
 ---
 
 ## E2E-001 · Authentication and session routing
-- **status:** in_progress
+- **status:** done
 - **depends_on:** —
 - **files:** `e2e/web/signin.spec.ts`, `e2e/auth.ts` (new helper)
 - **covers:** `POST /auth/magic`, `GET /auth/verify`, `POST /auth/dev-login`, `GET /auth/oauth/:provider/start`, `POST /auth/logout`, the `/` route guard.

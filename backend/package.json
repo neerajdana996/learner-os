@@ -19,7 +19,8 @@
     "qa": "tsx src/scripts/qa.ts export",
     "qa:apply": "tsx src/scripts/qa.ts apply",
     "qa:retire": "tsx src/scripts/qa.ts retire",
-    "preflight": "tsx src/scripts/preflight.ts"
+    "preflight": "tsx src/scripts/preflight.ts",
+    "seed:formats": "tsx src/scripts/seedFormats.ts"
   },
   "dependencies": {
     "@learnos/shared": "workspace:*",

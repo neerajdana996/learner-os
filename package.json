@@ -15,9 +15,14 @@
     "dev:backend": "turbo run dev --filter learner-os-backend",
     "dev:frontend": "turbo run dev --filter learner-os-frontend",
     "dev:extension": "turbo run dev --filter learner-os-extension",
-    "dev": "turbo run dev --filter learner-os-backend --filter learner-os-frontend"
+    "dev": "turbo run dev --filter learner-os-backend --filter learner-os-frontend",
+    "e2e": "playwright test",
+    "e2e:web": "playwright test --project web",
+    "e2e:extension": "playwright test --project extension",
+    "e2e:report": "playwright show-report e2e/report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "turbo": "^2",
     "typescript": "^5.8.3"
   }

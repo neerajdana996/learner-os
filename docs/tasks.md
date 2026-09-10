@@ -2769,3 +2769,113 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **Spacing said nothing about structure.** Prompt, field and actions were three equally-spaced bands. The prompt now sits close to the field it belongs with, and the actions are separated by a rule rather than a bigger gap — on a card this small the distinction between what you read and what you press has to be drawn, not implied.
   - `placeholder="Your answer"` became "A few words is enough": it says how much rather than what. A blank box labelled "Your answer" invites a paragraph on a card that promises twenty seconds. The accessible name stays plain.
   - **Verified against a rendered card, not reasoned about.** The extension's popup cannot run outside a `chrome-extension://` origin, so the built CSS was rendered against hand-written markup matching `Card`'s real DOM, at the popup's real width, for a recall item and a recognition item side by side. The recognition card was always the stronger of the two — options give it rhythm — and the recall card, a bare input, is where every weakness showed.
+
+### T-141 · A signed-in learner can still see the sign-in form
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `frontend/src/app/router.tsx`, `frontend/src/features/auth/pages/LoginPage.tsx`
+- **description:** Found while writing E2E-001 (`docs/e2e-tasks.md`). `/` forwards a signed-in visitor straight to `/home` (T-071), but `/signin` has no equivalent guard — a signed-in learner who navigates or is linked to `/signin` sees the full sign-in form again (Google/GitHub buttons, email field, dev sign-in), rather than being forwarded past it. Not a crash and not a security issue (OAuth/dev-login on an already-valid session just resolves to the same account), but it is the one route in the app that doesn't follow the pattern every other guard uses, and it reads as "did I get signed out?" to anyone who lands there by mistake — a bookmark, a back-button, a stale tab.
+- **acceptance:** A signed-in visitor to `/signin` is forwarded to wherever `/` would have sent them (`/home` or `/onboarding`), the same way `/` already behaves.
+- **tests:** signed-in `/signin` redirects away from the form; signed-out `/signin` is unaffected; the OAuth start/callback links on the form still work for a genuinely signed-out visitor (regression check — the fix must not accidentally guard the callback route too).
+- **notes:** (2026-09-10) Confirmed via screenshot, not just a failing assertion — the form renders completely normally for a signed-in session; there's no error state, just the wrong screen. `e2e/web/signin.spec.ts`'s "a signed-in visitor to /signin is forwarded away from the form" test asserts today's actual (unguarded) behavior with a comment pointing here, so the suite stays honest until this is fixed rather than asserting a redirect that doesn't exist.
+
+---
+
+## Sprint 6 — End-to-end integration tests (added 2026-09-10)
+
+> **Why this sprint exists.** The three vitest suites (backend 407, frontend 49,
+> extension 35) are green and none of them opens a browser. Everything they
+> prove is a unit or a contract; nothing proves that the screens, the API and
+> the shared design system work when wired together, or that the extension's
+> 380px popup renders the same card the web app does — which is exactly the
+> class of bug T-126 and T-130 were.
+>
+> **Playwright, against the real backend and a real Postgres.** Not mocks: a
+> mocked integration test proves the mock. Every test records a video, a
+> screenshot and a trace, because a founder reviewing a screen should be able
+> to *watch* it rather than read an assertion.
+>
+> **What this sprint deliberately does not cover:** scheduler arithmetic,
+> backoff timing, queue retry rules and generator prompts. All are covered by
+> vitest, and re-testing them through a browser buys a slower suite that fails
+> for uninteresting reasons. `extension/src/__tests__/flow.test.ts` (T-037)
+> already does the simulated day properly.
+
+### T-134 · The E2E harness
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `playwright.config.ts`, `e2e/global-setup.ts`, `e2e/api.ts`, `e2e/card.ts`, `e2e/extension/fixtures.ts`, `e2e/README.md`
+- **description:** Playwright at the repo root (not a sixth workspace package — the specs need no dependencies of their own). Two projects: `web`, and `extension`, which must build its own persistent context because `--load-extension` is a profile-level flag and MV3 cannot load into a plain browser context. `workers: 1` and `fullyParallel: false`: there is one seeded learner with real scheduler state, so parallel tests would race over the same review queue.
+- **acceptance:** `pnpm e2e` seeds a known dataset, starts (or reuses) the backend and frontend, runs both projects, and writes an HTML report carrying a video, screenshots and a trace for every test.
+- **tests:** the harness is proved by the suites below running on it.
+
+### T-135 · E2E — the learner's path through the web app
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** T-134
+- **files:** `e2e/web/*.spec.ts`
+- **description:** The screens a pilot participant actually walks through, in order, against real data.
+- **tests:**
+  - `/` signed out is the landing page and contains no email field; the call to action reaches `/signin` (T-101 regression).
+  - Dev sign-in lands on the dashboard with a session to do (T-070, T-071).
+  - A session teaches: try-first attempt → explanation → retrieval → server grading → Next.
+  - **The session runs its due reviews** — the T-073 regression, and the one every suite passed while it was broken.
+  - The map renders and never names a held-out concept (T-017; the control arm is what the result rests on).
+  - The day-30 cold test opens, accepts answers and submits (T-112).
+  - `/connect` mints an extension token on an explicit click (T-034).
+
+### T-136 · E2E — the extension in a real browser
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** T-134
+- **files:** `e2e/extension/*.spec.ts`
+- **description:** Loads the unpacked build into Chromium and drives the popup and options page. Nothing else in the repo does this: `flow.test.ts` simulates a day against `fakeBrowser`, which cannot tell you the popup renders at all.
+- **tests:**
+  - A fresh profile's popup says "not connected" and offers the button that fixes it — not "nothing due", which would look like an extension that silently never pops.
+  - The options page verifies a pasted token against `GET /me` **before** storing it, and shows the account.
+  - A mis-pasted token is refused with an actionable message and nothing is stored.
+  - The popup renders a due card and the answer reaches the server (T-129: opening the popup deliberately asks `/due` itself).
+  - The daily mood tap appears once (T-032).
+- **notes:** Headed, not headless — Chromium's headless mode cannot run MV3 extensions. On CI that needs `xvfb-run` (T-139).
+
+### T-137 · E2E — card parity and cross-surface truth
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** T-135, T-136
+- **files:** `e2e/card.ts`, `e2e/extension/popup.spec.ts`
+- **description:** `QuestionCard` (`@learnos/ui`) is the single component behind the session, the diagnostic, the day-30 test and the extension popup, so the design cannot drift between them **by construction**. What can still drift is the CSS each surface loads around it — the popup is a 380px window on its own origin with its own stylesheet entry, and T-126 was precisely that bug.
+- **tests:**
+  - The popup's card and the session's card compute to the same font stack and the same box model. **Not a pixel diff**: a 380px popup should lay out differently; what must match is which design system drew it.
+  - An answer given through the extension moves the web app's knowledge score.
+  - The extension never shows an untaught or held-out concept (T-033, T-089).
+
+### T-138 · E2E — every answer format renders and is answerable
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** T-134, T-140
+- **files:** `e2e/web/formats.spec.ts`, `backend/src/scripts/seedFormats.ts`
+- **description:** One test per answer surface: recognition, recall, explain, numeric, `clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`. This is the suite that would have caught T-118 — `numeric` shipped half-built, a field nothing read.
+- **tests:** each format renders its own surface (not the fallback text box), accepts an answer, and grades; `codeEditor` is absent from the extension (T-089) and from the day-30 test (T-093).
+- **notes:** Blocked on T-140 until there is data to render — see below.
+
+### T-139 · E2E in CI
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** T-135, T-136, T-137
+- **files:** `.github/workflows/ci.yml`
+- **description:** Run the suite on a real Postgres and Redis in Actions, under `xvfb-run` for the extension project, uploading the HTML report as an artifact. Deliberately after the suite is stable locally: a flaky E2E job teaches people to ignore CI, which costs more than it catches (the T-111 lesson).
+- **tests:** the job passes twice in a row on an unchanged tree.
+
+### T-140 · No generated item has ever carried a block
+- **status:** todo
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `backend/src/scripts/seedFormats.ts`, `backend/fixtures/*`
+- **description:** Found while planning T-138. The dev database holds **1,357 items across four types** — `application` 404, `recognition` 381, `explain` 314, `recall` 258 — and **zero with a `blocks` array**. So every Sprint 5 answer surface (`clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`, `numeric`) is built, unit-tested, and **has never been rendered from real data by anything**.
+  - **This is not yet evidence the generator is broken.** The seed reads `backend/fixtures`, which predate Sprint 5, so a fixture-seeded database could not contain blocks whatever the generator does. What it does mean is that nobody has confirmed the other direction either, and T-099 (reveal blocks are written and never seen) is the same smell from the other end.
+  - Two things, and the order matters. **(a)** A dev script that inserts one item per block kind for the seeded topic, using the real `ItemPayloadSchema` so it cannot drift from what the worker writes — this unblocks T-138 without a $0.46, nine-minute generation per run. **(b)** Confirm against a **live** generation that the model actually emits blocks for a code topic, and if it does not, that is a generator defect and gets its own task.
+- **acceptance:** `pnpm seed:formats` produces one answerable item per block kind; a live code-topic generation is inspected and the result recorded here either way.
+- **tests:** every inserted item passes `ItemPayloadSchema`; `toPublicItem` strips the answer key from each; `/due` serves them.
+
