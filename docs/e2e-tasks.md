@@ -128,7 +128,7 @@ states, admin) at the end. Implement in that order unless a group is blocked.
   - **`/map/:topicId` vs `/map`** — both routes exist (`router.tsx:86,94`); confirm they render the same content for a single-topic learner, and that `/map/:topicId` with someone else's topic ID 404s or 403s rather than leaking another user's map.
 
 ## E2E-006 · Extension — connect flow and popup
-- **status:** in_progress
+- **status:** in_progress (backoff sub-case done)
 - **depends_on:** E2E-001
 - **files:** `e2e/extension/popup.spec.ts`, `e2e/extension/options.spec.ts` (new, split out)
 - **covers:** `POST /auth/extension-token`, `GET /me` (verify-before-store), `GET /due`, `POST /reviews`, `POST /pulse`.
@@ -231,7 +231,7 @@ states, admin) at the end. Implement in that order unless a group is blocked.
 - **notes:** This does not replace the per-feature assertions in E2E-005/006/009/010 — those catch a regression close to its cause with a fast, specific failure message. This is the safety net underneath all of them.
 
 ## E2E-014 · Cross-cutting: error and network states
-- **status:** todo
+- **status:** in_progress (offline queue sub-case done)
 - **depends_on:** E2E-001, E2E-004, E2E-006
 - **files:** `e2e/web/errors.spec.ts`, `e2e/extension/offline.spec.ts`
 - **description:** What the UI does when the backend says no, times out, or the network drops — as distinct from the "wrong data" edge cases already listed per-feature above.
