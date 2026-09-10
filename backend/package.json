@@ -25,7 +25,8 @@
     "seed:fresh": "tsx src/scripts/seedFreshUser.ts",
     "seed:diagnostic": "tsx src/scripts/seedDiagnosticUsers.ts",
     "seed:session": "tsx src/scripts/seedSessionUsers.ts",
-    "seed:map": "tsx src/scripts/seedMapUser.ts"
+    "seed:map": "tsx src/scripts/seedMapUser.ts",
+    "revoke-token": "tsx src/scripts/revokeExtensionToken.ts"
   },
   "dependencies": {
     "@learnos/shared": "workspace:*",
