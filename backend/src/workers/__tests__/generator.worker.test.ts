@@ -92,9 +92,13 @@ describe('pickHeldOut', () => {
     }
   });
 
-  it('picks max(1, floor(n * ratio)), capped at the eligible pool', () => {
-    expect(pickHeldOut(ordered, 0.1, 3, seededRng(1)).size).toBe(2);
-    // 5 concepts → floor(0.5) = 0 → the max(1, ...) floor applies.
+  it('picks max(HELD_OUT_MIN, round(n * ratio)), capped at the eligible pool and the max share', () => {
+    // 20 concepts: round(20 * 0.1) = 2, but HELD_OUT_MIN (3, T-123) wins.
+    expect(pickHeldOut(ordered, 0.1, 3, seededRng(1)).size).toBe(3);
+    // 5 concepts, minOrder 3: only orders 4-5 are eligible (pool of 2), and
+    // HELD_OUT_MAX_SHARE caps the want at floor(5 * 0.25) = 1 before the pool
+    // size even comes into it — HELD_OUT_MIN would ask for 3, which is more
+    // than either cap allows.
     const five = Array.from({ length: 5 }, (_, i) => ({ slug: `c${i + 1}`, order: i + 1 }));
     expect(pickHeldOut(five, 0.1, 3, seededRng(1)).size).toBe(1);
     // Everything is below minOrder, so nothing is eligible.
@@ -114,9 +118,11 @@ describe('processGenerationJob', () => {
     const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
     expect(rows).toHaveLength(20);
 
-    // exactly max(1, floor(20 * 0.1)) held out, none in the first 3 by order
+    // exactly max(HELD_OUT_MIN, round(20 * 0.1)) held out — HELD_OUT_MIN (3,
+    // T-123) wins over the ratio's round(2) here — none in the first 3 by
+    // order.
     const held = rows.filter((r) => r.heldOut);
-    expect(held).toHaveLength(2);
+    expect(held).toHaveLength(3);
     expect(held.every((r) => r.order > 3)).toBe(true);
 
     // teach_mode set on every concept, and both values show up in 20
@@ -162,7 +168,8 @@ describe('processGenerationJob', () => {
     const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
     const taught = rows.filter((r) => !r.heldOut);
 
-    expect(taught).toHaveLength(18);
+    // 20 concepts − HELD_OUT_MIN (3, T-123) held out.
+    expect(taught).toHaveLength(17);
     for (const row of taught) {
       expect(row.tryFirstPrompt).toBeTruthy();
       expect(row.explanationShort).toBeTruthy();
@@ -192,7 +199,8 @@ describe('processGenerationJob', () => {
     }
     // Never even asked for — a held-out concept must cost nothing to generate
     // and, more importantly, must not exist as teachable text anywhere.
-    expect(generateTeaching).toHaveBeenCalledTimes(18);
+    // 20 concepts − HELD_OUT_MIN (3, T-123) held out.
+    expect(generateTeaching).toHaveBeenCalledTimes(17);
   });
 
   it('conditions the teaching prompt on the concept’s teach mode', async () => {

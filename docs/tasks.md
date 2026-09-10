@@ -2817,25 +2817,25 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 
 
 ### T-147 · The worker's own tests expect the held-out count T-123 changed
-- **status:** todo
+- **status:** done
 - **sprint:** 6
 - **depends_on:** —
 - **files:** `backend/src/workers/__tests__/generator.worker.test.ts`
 - **description:** Found while running the full suite for an unrelated change (T-145) — confirmed via `git stash` that this fails identically on a clean tree, so it predates today and is not a regression from anything in this session. Four tests in this file build a 20-concept fixture and assert `held-out = 2`, `taught = 18`, `generateTeaching` called 18 times. `heldOut.ts`'s `HELD_OUT_MIN = 3` (T-123, already `done`: "a control arm of one concept is a coin flip") means the correct count for 20 concepts at the 10% ratio is `max(3, floor(20 * 0.1)) = 3`, not 2 — so these tests were never updated when T-123 raised the floor, and every run since has been failing deterministically (confirmed by re-running twice, not a T-111-style flake).
 - **acceptance:** The four assertions in `generator.worker.test.ts` match `pickHeldOut`'s actual, current behavior — either update the expected counts to 3/17, or change the fixture's concept count to one where 2 was always going to be the right answer (e.g. `fakeMap(30)`, where `floor(30*0.1)=3` still doesn't help — needs `n` large enough that the ratio alone exceeds the floor, e.g. `fakeMap(40)` → `floor(40*0.1)=4`). Whichever is chosen, the four related counts (`held`, `taught`, `generateTeaching` calls, and the two `order > 3` assertions) all move together.
 - **tests:** the four listed assertions pass against `pickHeldOut`'s real behavior; no other test in the file regresses.
-- **notes:** (2026-09-10) Not fixed here — out of scope for T-145 and touches an already-`done` task's test coverage, which deserves its own deliberate pass rather than a fix folded into an unrelated change.
+- **notes:** (2026-09-10) Fixed — 4 assertions across `generator.worker.test.ts` (the `pickHeldOut` unit test itself, plus three integration assertions reading `held`/`taught`/`generateTeaching`-call counts), all updated from the old `max(1, floor(n*ratio))` era to the real formula (`heldOut.ts`): `max(HELD_OUT_MIN, round(n*ratio))`, capped by `HELD_OUT_MAX_SHARE` and the eligible pool. For the file's 20-concept fixture that's 3 held out / 17 taught, not 2/18. Also corrected a second stale detail while in there: the comments said `floor`, the function actually uses `round` — same numeric answer for this fixture (round(2.0) = floor(2.0) = 2), but the wrong function name was worth fixing since it's exactly the kind of detail that causes the next person to "fix" a passing test into a wrong one. All 14 tests in the file pass; the full backend suite (631 tests) is clean.
 
 
 ### T-148 · A due-item test never learned about `conceptTitle`
-- **status:** todo
+- **status:** done
 - **sprint:** 6
 - **depends_on:** —
 - **files:** `backend/src/modules/due/due.test.ts`
 - **description:** Found alongside T-147, same method (confirmed via `git stash` that it fails identically on a clean tree — not caused by anything in this session). `GET /due`'s "never leaks answer, accept, answerIndex or rubric" test asserts the exact key set on each returned item, and that list predates T-130's `conceptTitle` field (populated only by `/due`, since every due item is taught and never held out — see T-130's notes). The assertion never learned about the new field, so it now fails on every run with the real, correct response shape.
 - **acceptance:** The expected key lists in this test include `conceptTitle` wherever `/due` actually sends it.
 - **tests:** the updated assertion passes against `/due`'s real response.
-- **notes:** (2026-09-10) Not fixed here — out of scope for T-145, same reasoning as T-147.
+- **notes:** (2026-09-10) Fixed — both expected key lists in "never leaks answer, accept, answerIndex or rubric" now include `conceptTitle`, matching what `/due` actually sends (T-130). All 24 tests in `due.test.ts` pass.
 
 
 ### T-145 · Teaching content gets the same blocks items already have

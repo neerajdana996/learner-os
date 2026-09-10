@@ -220,12 +220,17 @@ describe('GET /due', () => {
     const res = await getDue(user.cookie);
     expect(res.body.items).toHaveLength(3);
 
-    // By key inspection, per the acceptance criterion...
+    // By key inspection, per the acceptance criterion... `conceptTitle` is
+    // populated only by `/due` (T-130): every due item is taught and never
+    // held out, so naming the concept here reveals nothing the learner
+    // doesn't already know — unlike `toPublicItem`'s shared projection, which
+    // also serves the diagnostic and the Day-30 test and must keep
+    // withholding it for a held-out concept.
     for (const item of res.body.items) {
       expect(Object.keys(item).sort()).toEqual(
         item.type === 'recognition'
-          ? ['conceptId', 'itemId', 'options', 'prompt', 'type']
-          : ['conceptId', 'itemId', 'prompt', 'type'],
+          ? ['conceptId', 'conceptTitle', 'itemId', 'options', 'prompt', 'type']
+          : ['conceptId', 'conceptTitle', 'itemId', 'prompt', 'type'],
       );
     }
 
