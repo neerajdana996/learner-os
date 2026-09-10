@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import type { PublicBlock } from '@learnos/shared';
 
 type Code = Extract<PublicBlock, { kind: 'code' }>;
@@ -30,12 +31,22 @@ export function CodeBlock({ block }: { block: Code }) {
             const cls = (base: string) => [base, ...mark.map((m) => `${base}--${m}`)].join(' ');
 
             return (
-              <div key={n} className="contents">
+              // A Fragment, not a wrapping <div className="contents"> — this
+              // is a 2-column CSS grid, and its direct children must be the
+              // two spans below, or CSS Grid places the *wrapper* into one
+              // cell instead of one span per column (T-146). No
+              // `.contents { display: contents }` rule exists anywhere in
+              // the stylesheet to make the old wrapper disappear, so a
+              // listing past a couple of lines rendered as an interleaved,
+              // overlapping mess — found live while building T-145's
+              // TeachBlockView, which copied this component's structure and
+              // hit the identical bug before either was fixed.
+              <Fragment key={n}>
                 <span className={cls('code__gutter')} aria-hidden="true">
                   {badge ?? n}
                 </span>
                 <code className={cls('code__line')}>{line === '' ? ' ' : line}</code>
-              </div>
+              </Fragment>
             );
           })}
         </div>

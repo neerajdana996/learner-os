@@ -2855,7 +2855,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Full test suite run clean after this change (`pnpm test`, all four projects) except two **pre-existing, unrelated** failures confirmed via `git stash` to exist on the clean tree before this session started — filed as T-147 and T-148 rather than fixed here.
 
 ### T-146 · `CodeBlock.tsx`'s multi-line listing renders as a garbled mess
-- **status:** todo
+- **status:** done
 - **sprint:** 6
 - **depends_on:** —
 - **files:** `packages/ui/src/blocks/CodeBlock.tsx`, `packages/ui/styles/_blocks.scss`
@@ -2863,7 +2863,10 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Whether this has ever been noticed depends on how short the code listings shipped so far have been — a 2–3 line listing can look accidentally fine, which may be exactly why this survived.
 - **acceptance:** A multi-line `CodeBlock` renders one gutter number per line, correctly aligned, for a listing of any length up to the 12-line hard limit (`items/domains/code.md`).
 - **tests:** a render test asserting the gutter numbers 1..n appear in order and each `code__line` contains the correct source line — the exact case that would have caught this on day one.
-- **notes:** (2026-09-10) `TeachBlockView.tsx` (T-145) hit this first and fixed it locally with a React Fragment instead of the undefined class — the same fix applies here, but is left to its own task since `CodeBlock.tsx` is a different, already-shipped component whose blast radius (every rich-format item using a multi-line `code` block) deserves checking on its own.
+- **notes:** (2026-09-10) `TeachBlockView.tsx` (T-145) hit this first and fixed it locally with a React Fragment instead of the undefined class — the same fix applied here, in `CodeBlock.tsx` itself.
+  - **`packages/ui/src/__tests__/CodeBlock.test.tsx` is new** and asserts the structural properties that actually catch this class of bug — every gutter/line pair is a *direct* child of `.code__grid` with no wrapper element, and the gutter numbers read 1..n in DOM order. The existing `BlockList.test.tsx` coverage used `screen.getByText(...)`, which finds a line's text anywhere in the DOM regardless of layout — it could not have caught this, and did not, for however long the bug existed.
+  - **Verified the new tests actually catch the bug**, not just pass against the fix: reverted to the buggy `<div className="contents">` locally, confirmed both new tests fail against it, then restored the fix and confirmed they pass.
+  - **Verified live against real, live-generated content** (T-145's Dynamic Programming generation, concept "Subproblems"): a genuine 4-line Python listing with a blank line renders with correct sequential gutter numbers 1-4 and no interleaving.
 
 
 ### T-149 · Free-text topics, shipped ahead of T-098's critic
@@ -2878,6 +2881,19 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **acceptance:** A learner can type any topic meeting the server's own length floor and reach "Build my map" with it; the three pilot topics are unaffected and still get their own recommended-by-role treatment.
 - **tests:** free text submits verbatim in the request body; Continue stays disabled below the 2-character floor and enables at it; selecting a pilot topic after typing free text clears the field and re-checks correctly.
 - **notes:** (2026-09-10) **A known, deliberately-not-fixed inconsistency:** the app's own landing page (`frontend/src/features/landing/pages/LandingPage.tsx`, T-101's recruitment copy — a different surface from the `coldrecall.info` static site, which already went through `docs/copy.md`'s rewrite) still says "your own topics aren't open yet. The pilot runs on three I've read every question in by hand." That is no longer true. Left alone rather than patched in passing: **T-132** already exists to reconcile this exact page's copy with `docs/copy.md`, and a one-off edit here would fight with whatever T-132 eventually does. Whoever picks up T-132 should know this line needs to change as part of it, not just the pilot-framing removal T-132 already scopes.
+
+
+### T-150 · Two active topics: `/session` and the dashboard disagree on which one
+- **status:** todo
+- **sprint:** post-pilot
+- **depends_on:** T-058
+- **files:** `backend/src/modules/session/session.repository.ts`, `backend/src/modules/topics/topics.repository.ts`
+- **description:** Found live while verifying T-149 (free-text topics) against a real generation. `findActiveTopic` (`session.repository.ts`) orders `asc(topics.createdAt)` — oldest first; `listTopics` (`topics.repository.ts`, what `topics[0]` throughout the frontend reads) orders `desc(topics.createdAt)` — newest first. With exactly one active topic this never shows; with two, `/session` teaches the *older* one while the dashboard, map header (T-142) and AppBar all talk about the *newer* one — a Frankenstein experience where the screens disagree about which course is even running.
+  - **Deliberately not fixed here.** `createTopic`'s own comment is explicit: "Whether someone may hold two *active* topics is a product question (plan.md §8 puts multi-topic scheduling out of scope for the pilot), not this guard's business." `createTopic` only dedupes a `generating` duplicate — nothing stops a second `active` topic today, and per that comment nothing is supposed to. Picking ASC or DESC now would be guessing at a decision plan.md hasn't made yet.
+  - **Newly reachable, not just a pre-existing edge case.** Before T-149, creating a second topic while one is already active required manually navigating to `/onboarding`'s URL while signed in with an active topic elsewhere — `LandingRoute` never offers that path. T-149's free text doesn't change that gate, but it does mean a learner who *does* reach onboarding a second time (a stale tab, a bookmark) can now name any topic rather than only the three pilot ones, so the resulting confusion is worse than "wrong pilot topic" would have been.
+- **acceptance:** Whenever T-058 (multi-topic) or a deliberate decision on "can a learner hold two active topics" lands, `findActiveTopic` and `listTopics` agree on which topic is "current" — same ordering, one source of truth for both.
+- **tests:** a user with two active topics sees the same topic named in `/session`, `/home`, `/map`, and the AppBar header.
+- **notes:** (2026-09-10) Confirmed on the real dev account mid-session (a leftover seed topic plus a freshly-generated one, both `active`) — cleaned up by deleting the leftover rather than by changing this ordering, since the account only had two active topics because of test-data accumulation, not a real product flow.
 
 
 ---
