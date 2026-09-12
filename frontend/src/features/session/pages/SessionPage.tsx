@@ -4,6 +4,7 @@ import { Button, CheckCircle, ChevronDown, ConfidenceTap, Prose, QuestionCard, T
 import type { Confidence, PublicItem, SessionResponse } from '@learnos/shared';
 import { useSubmitReviewMutation } from '../../reviews/reviewsApi';
 import { useCompleteSessionMutation, useSessionQuery } from '../sessionApi';
+import { renderFlowDiagram } from '../../diagrams/renderFlowDiagram';
 
 type Rating = NonNullable<Confidence>;
 type NewConcept = SessionResponse['newConcepts'][number];
@@ -252,7 +253,9 @@ export default function SessionPage() {
                     (T-145). Shown in both states — attempting and revealed —
                     since the attempt itself needs to reference it, not just
                     the answer. */}
-                {step.concept.teachBlock ? <TeachBlockView block={step.concept.teachBlock} /> : null}
+                {step.concept.teachBlock ? (
+                  <TeachBlockView block={step.concept.teachBlock} renderDiagram={renderFlowDiagram} />
+                ) : null}
                 {revealed ? (
                   <p className="teach__attempt">
                     {attempt || <span className="u-muted">You skipped this one.</span>}
@@ -391,7 +394,7 @@ function Retrieval({ label, item, response, onResponse, confidence, onConfidence
   return (
     <div className="teach__card teach__card--retrieval">
       <p className="teach__label teach__label--invert">{label}</p>
-      <QuestionCard item={item} value={response} onChange={onResponse} />
+      <QuestionCard item={item} value={response} onChange={onResponse} renderDiagram={renderFlowDiagram} />
       {verdict ? (
         <p className={`verdict${verdict.correct ? ' verdict--right' : ''}`}>
           {verdict.correct ? 'Right.' : 'Not this time.'} {verdict.feedback}

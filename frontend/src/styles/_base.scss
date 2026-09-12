@@ -40,7 +40,12 @@ p {
   text-wrap: pretty;
 }
 
-a {
+// `.btn` sets its own colour per variant (T-155): this rule's `:hover` has
+// higher specificity than `.btn--primary`'s, so without the exclusion it wins
+// on hover and repaints the label to `--clay-ink` — the same colour the
+// button's own hover state uses for its background, making the label
+// invisible.
+a:not(.btn) {
   color: var(--clay);
   text-decoration: none;
   transition: color $duration-fast $ease;

@@ -295,6 +295,88 @@ describe('onboarding — recovering a topic from the server (T-144)', () => {
     expect(screen.queryByText('That didn’t build')).not.toBeInTheDocument();
   });
 
+  it('"Try again" escapes even with two dead topics on the account (T-160)', async () => {
+    // Found live: a learner whose first attempt failed, then whose retry also
+    // failed, has *two* `failed` rows in `GET /topics` — nothing deletes
+    // either. Dismissing one used to reveal the other, which (on the next
+    // render) revealed the first again, forever: the learner never once saw
+    // the plain form to submit a genuinely new topic.
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.endsWith('/topics')) {
+        return json({
+          topics: [
+            { id: 'topic-failed-2', status: 'failed', error: 'the model said no, again', progress: null },
+            { id: 'topic-failed-1', status: 'failed', error: 'the model said no', progress: null },
+          ],
+        });
+      }
+      if (url.includes('/topics/topic-failed-1')) {
+        return json({ id: 'topic-failed-1', status: 'failed', error: 'the model said no', progress: null });
+      }
+      if (url.includes('/topics/topic-failed-2')) {
+        return json({ id: 'topic-failed-2', status: 'failed', error: 'the model said no, again', progress: null });
+      }
+      if (url.includes('/users/me')) return json({ id: 'user-1' });
+      return json({});
+    });
+
+    const user = userEvent.setup();
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(await screen.findByText('the model said no, again')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+
+    // The other dead topic is adopted next — not the plain form yet.
+    expect(await screen.findByText('the model said no')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+
+    // Both dismissed now: must reach the plain form, not bounce back to
+    // either dead topic.
+    expect(await screen.findByRole('textbox', { name: /what should we call you/i })).toBeInTheDocument();
+    expect(screen.queryByText('That didn’t build')).not.toBeInTheDocument();
+  });
+
+  it('shows an error, not an endless "Starting up…", for a topicId the server has never heard of (T-159)', async () => {
+    // Found live in production: `draft.topicId` is persisted to `localStorage`
+    // and outlived a database switch, so it pointed at a row that no longer
+    // existed. `GET /topics/:id` 404s, `useTopicQuery`'s `data` stays
+    // `undefined` forever — indistinguishable, before this fix, from a job
+    // that simply hasn't reported progress yet — so the wait screen showed
+    // "Starting up…" with no error and no way out.
+    const store = makeStore();
+    store.dispatch(draftChanged({ topicId: 'topic-gone' }));
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/topics/topic-gone')) return json({ error: 'not_found' }, 404);
+      if (url.includes('/users/me')) return json({ id: 'user-1' });
+      return json({});
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <OnboardingPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(await screen.findByText('That didn’t build')).toBeInTheDocument();
+    expect(screen.getByText(/could not be found/i)).toBeInTheDocument();
+    expect(screen.queryByText(/starting up/i)).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+    expect(await screen.findByRole('textbox', { name: /what should we call you/i })).toBeInTheDocument();
+  });
+
   it('a learner who already has a usable topic is sent to /home, not the form (E2E-002 finding)', async () => {
     // Same bug family as T-141 (`/signin`) and the recovery effect above
     // (T-144): direct navigation to `/onboarding` — a bookmark, a stale tab,

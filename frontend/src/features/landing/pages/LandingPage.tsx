@@ -3,21 +3,31 @@ import { SampleCard } from '../SampleCard';
 import { useReveal } from '../useReveal';
 
 /**
- * What a stranger sees at `/` (T-101).
+ * What a stranger sees at `/` (T-101, reworked 2026-09-11 — T-156).
  *
  * Until now `/` was the sign-in form, so someone following a link from a
  * recruitment email was asked for their address before being told what this is
  * or what it costs them — and the ask is a week of their attention plus a
  * test they will not see coming.
  *
- * The page sells the product and is honest about the pilot, in that order. The
- * uncomfortable parts are on the page on purpose: a participant who feels
- * tricked on day 30 is a participant who drops out, and a dropout costs a tenth
- * of the result. That is the same tone onboarding already takes on every step.
+ * The page sells the product and is honest about what it asks of you, in that
+ * order. The uncomfortable parts stay on the page on purpose: someone who
+ * feels tricked on day 30 is someone who drops out, and a dropout costs the
+ * measurement its whole point. That is the same tone onboarding already takes
+ * on every step.
+ *
+ * What changed in the rework: the fixed-seat "pilot" framing is gone now that
+ * free-text topics ship (T-149) — early access is open, free for two months,
+ * no card. What did not change is the honesty about the mechanism: the day-30
+ * test is still unannounced, concepts are still deliberately held back, and
+ * the result is still not yet known. This page also stops naming the specific
+ * learning-science techniques (retrieval practice, spacing, mastery gating) —
+ * the *outcome* is the pitch; how it is produced is not what a stranger is
+ * here to evaluate.
  */
 
 /** One call to action, in the same words everywhere it appears. */
-const CTA = 'Take one of the ten places';
+const CTA = 'Start free';
 
 function Section({
   id,
@@ -45,9 +55,9 @@ export default function LandingPage() {
           <nav className="landing__nav-links">
             <a href="#how">How it works</a>
             <a href="#why">Why it works</a>
-            <a href="#pilot">The pilot</a>
+            <a href="#proof">The proof</a>
             <Link className="btn btn--primary landing__nav-cta" to="/signin">
-              Take a place
+              {CTA}
             </Link>
           </nav>
         </div>
@@ -58,7 +68,7 @@ export default function LandingPage() {
         <div className="landing__inner landing__hero-grid">
           <div className="u-stack u-stack--loose">
             <div className="u-stack u-stack--tight">
-              <p className="u-eyebrow">Ten places &middot; one topic each</p>
+              <p className="u-eyebrow">Early access &middot; free for 2 months</p>
               <h1 className="landing__headline">
                 Learn it once. <em>Still know it</em> a month later.
               </h1>
@@ -79,15 +89,14 @@ export default function LandingPage() {
             </div>
 
             <p className="landing__disclose">
-              <strong>One thing to be straight about:</strong> your own topics aren&rsquo;t open yet.
-              The pilot runs on three I&rsquo;ve read every question in by hand. Tell me what
-              you&rsquo;d rather have learned anyway — that&rsquo;s what decides which opens next.
+              <strong>One thing to be straight about:</strong> pick one of three topics I&rsquo;ve
+              read every question on by hand, or type your own — that one skips the review, so
+              it&rsquo;s on you to judge what comes back.
             </p>
 
             <p className="landing__evidence">
-              Built on the interventions with the largest measured effect on long-term retention, in
-              that order — <strong>retrieval practice</strong>, <strong>spacing</strong>,{' '}
-              <strong>immediate feedback</strong>, <strong>mastery gating</strong>. Not on streaks.
+              Every session ends with the same question a course never asks: will this still be
+              true for you in a month? That&rsquo;s the only number this tracks.
             </p>
           </div>
 
@@ -213,14 +222,14 @@ export default function LandingPage() {
         </div>
       </Section>
 
-      {/* --------------------------------------------------------- pilot */}
-      <Section id="pilot" className="landing__section--invert">
+      {/* --------------------------------------------------------- proof */}
+      <Section id="proof" className="landing__section--invert">
         <div className="landing__head">
-          <p className="u-eyebrow">Where it is right now</p>
-          <h2>Ten people, and a test three weeks after you stop.</h2>
+          <p className="u-eyebrow">How this gets proven, not promised</p>
+          <h2>A test three weeks after you stop.</h2>
           <p className="landing__lede">
-            I don&rsquo;t know yet whether this works. So the first run is small and measured
-            properly: ten people, one topic each, seven days of teaching — and then a test you
+            I don&rsquo;t know yet whether this works for you specifically. So every early-access
+            course runs the same way: seven days of teaching, then silence — and then a test you
             won&rsquo;t see coming, long after the app has gone quiet.
           </p>
         </div>
@@ -287,9 +296,8 @@ export default function LandingPage() {
           <article className="landing__tile landing__tile--plain">
             <h3>You get the number too</h3>
             <p>
-              Whatever it says. It might show this worked, it might show it didn&rsquo;t. I&rsquo;d
-              rather find that out with ten people than with a thousand, and you would be one of the
-              ten answering it.
+              Whatever it says. It might show this worked for you, it might show it didn&rsquo;t —
+              either way, it's the actual result, not a feeling about how the week went.
             </p>
           </article>
         </div>
@@ -337,16 +345,16 @@ export default function LandingPage() {
         </dl>
 
         <p className="landing__topics">
-          One topic each, from three I have read every question in by hand:{' '}
+          Pick one of three I have read every question on by hand:{' '}
           <strong>sliding window</strong>, <strong>dynamic programming</strong>, and{' '}
-          <strong>consistency in distributed systems</strong>. Tell me what you would rather have
-          learned anyway — that is what decides which topics open next.
+          <strong>consistency in distributed systems</strong> — or type your own. A typed topic
+          skips that review, so it is on you to judge what comes back.
         </p>
       </Section>
 
       {/* --------------------------------------------------------- close */}
       <Section className="landing__close">
-        <p className="u-eyebrow">Ten places</p>
+        <p className="u-eyebrow">Early access</p>
         <h2>Seven days of work. Then you find out if it stuck.</h2>
         <p className="landing__lede">
           With a number rather than a feeling — which is more than I can say for anything else
@@ -356,14 +364,14 @@ export default function LandingPage() {
           <Link className="btn btn--primary" to="/signin">
             {CTA}
           </Link>
-          <p className="u-muted">Three topics &middot; no cost, no card</p>
+          <p className="u-muted">Any topic &middot; free for 2 months &middot; no card</p>
         </div>
       </Section>
 
       <footer className="landing__foot">
         <div className="landing__inner landing__foot-inner">
           <span>learnos</span>
-          <Link to="/signin">Already in the pilot? Sign in</Link>
+          <Link to="/signin">Already signed up? Sign in</Link>
         </div>
       </footer>
     </div>

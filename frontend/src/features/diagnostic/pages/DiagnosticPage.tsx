@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, ConfidenceTap, QuestionCard } from '@learnos/ui';
 import type { Confidence } from '@learnos/shared';
 import { useAnswerDiagnosticMutation, useDiagnosticNextQuery } from '../diagnosticApi';
+import { renderFlowDiagram } from '../../diagrams/renderFlowDiagram';
 
 type Rating = NonNullable<Confidence>;
 
@@ -59,7 +60,7 @@ export default function DiagnosticPage() {
         than skipping it.
       </p>
 
-      <QuestionCard item={data.item} value={response} onChange={setResponse} />
+      <QuestionCard item={data.item} value={response} onChange={setResponse} renderDiagram={renderFlowDiagram} />
 
       <ConfidenceTap value={confidence} onChange={setConfidence} />
 

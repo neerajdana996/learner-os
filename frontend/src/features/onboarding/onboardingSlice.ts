@@ -14,9 +14,14 @@ const STORAGE_KEY = 'learnos.onboarding';
  * `dismissedTopicId` (T-144 fix) — a stored draft from before it existed has
  * no way to distinguish "never seen a failed topic" from "just dismissed
  * one", and defaulting it to `null` on merge would be the former when it
- * might be the latter.
+ * might be the latter. Bumped to 5 for `dismissedTopicIds` (T-160): a single
+ * id could only ever hide one failed topic, so a learner with two — the
+ * original and one retry that also failed — dismissed the newer one only to
+ * have `recoverable` immediately re-adopt the older one, and vice versa,
+ * forever. A learner mid-loop on the old shape gets a clean slate rather than
+ * a half-migrated array.
  */
-const DRAFT_VERSION = 4;
+const DRAFT_VERSION = 5;
 
 export interface OnboardingDraft {
   version: number;
@@ -41,8 +46,8 @@ export interface OnboardingDraft {
   /** Set once the topic exists and generation is running. */
   topicId: string | null;
   /**
-   * The last topic id the learner explicitly walked away from via "Try
-   * again" on the failed-build screen (T-144 fix).
+   * Every topic id the learner has explicitly walked away from via "Try
+   * again" on the failed-build screen (T-144, widened to a list in T-160).
    *
    * Without this, clearing `topicId` alone was not enough to actually leave
    * a failed topic behind: `OnboardingPage`'s own server-recovery effect
@@ -52,8 +57,14 @@ export interface OnboardingDraft {
    * learner right back on the screen they just dismissed. This is checked
    * *before* recovery runs, so a topic once dismissed stays dismissed for
    * this draft, however many times the effect re-fires.
+   *
+   * A single id was not enough (T-160, found live): a learner whose first
+   * *and* retry attempt both failed has two dead topics sitting in the
+   * database — nothing ever deletes a failed one — and dismissing the newer
+   * just re-exposed the older, which re-exposed the newer the next time,
+   * forever. Every dismissal appends here instead of replacing.
    */
-  dismissedTopicId: string | null;
+  dismissedTopicIds: string[];
 }
 
 /**
@@ -81,7 +92,7 @@ const emptyDraft: OnboardingDraft = {
   language: '',
   budgetMin: 10,
   topicId: null,
-  dismissedTopicId: null,
+  dismissedTopicIds: [],
 };
 
 function readDraft(): OnboardingDraft {

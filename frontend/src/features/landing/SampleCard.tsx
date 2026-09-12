@@ -1,56 +1,89 @@
-import { useState } from 'react';
-import { Choice } from '@learnos/ui';
+import { useEffect, useRef, useState } from 'react';
+import { QuestionCard } from '@learnos/ui';
+import { renderFlowDiagram } from '../diagrams/renderFlowDiagram';
+import { SAMPLE_QUESTIONS } from './sampleQuestions';
 
 /**
- * One real question, answerable on the page.
+ * A rotating deck of real questions, answerable on the page (T-156).
  *
- * The strongest thing this page can do is let someone feel the loop rather than
- * read about it, and the loop is twenty seconds long — so it fits. This is a
- * genuine sliding-window item in the shape the extension serves, rendered with
- * the same `Choice` the session player uses, so what a visitor tries here is
- * what they get on day one rather than a drawing of it.
+ * Every card is `QuestionCard` — the exact component the session player uses —
+ * so a visitor sees the actual rendering paths (a multiple-choice question, a
+ * fill-in-the-blank over a real listing, an interactive topology, a sequence
+ * diagram) rather than a drawing of any of them. `sampleQuestions.ts` explains
+ * where each one comes from.
+ *
+ * The first card is always the sliding-window question, so someone arriving
+ * mid-scroll always lands on the simplest shape first. After that, an
+ * untouched card advances on its own every few seconds — a stranger who is
+ * just watching sees the variety without doing anything — and stops the
+ * moment there is an answer to look at, so nobody's attempt gets yanked away
+ * mid-thought.
  *
  * Deliberately not wired to the API: it must work for a stranger with no
  * session, and an unauthenticated `/due` would be a 401.
  */
-const OPTIONS = [
-  'Shrink it from the left until the duplicate is gone',
-  'Reset both pointers and start again from the right',
-  'Grow it from the right and record the new maximum',
-  'Swap the duplicate character out of the string',
-] as const;
-
-const ANSWER = 0;
+const ROTATE_MS = 20000;
 
 export function SampleCard() {
-  const [picked, setPicked] = useState<number | null>(null);
-  const answered = picked !== null;
-  const correct = picked === ANSWER;
+  const [index, setIndex] = useState(0);
+  const [value, setValue] = useState<string | number | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  const question = SAMPLE_QUESTIONS[index]!;
+  const needsCheck = question.item.type !== 'recognition';
+  const answered = needsCheck ? checked : value !== null;
+
+  const next = () => {
+    setIndex((i) => {
+      if (SAMPLE_QUESTIONS.length < 2) return i;
+      let n = i;
+      while (n === i) n = Math.floor(Math.random() * SAMPLE_QUESTIONS.length);
+      return n;
+    });
+    setValue(null);
+    setChecked(false);
+  };
+
+  // Untouched cards cycle on their own; touching one (a pick, typing) cancels
+  // the timer for that card, same reasoning as `useReveal` elsewhere on this
+  // page — a stranger who has started something should never see it move.
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (answered || value !== null) return;
+    timer.current = setTimeout(next, ROTATE_MS);
+    return () => clearTimeout(timer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, value, answered]);
+
+  const correct =
+    question.item.type === 'recognition'
+      ? value === question.answer
+      : typeof value === 'string' && value.trim() === question.answer;
 
   return (
     <div className="sample">
       <div className="sample__bar">
-        <span className="u-eyebrow">Sliding window &middot; a real question</span>
+        <span className="u-eyebrow">{eyebrowFor(question.item)}</span>
       </div>
 
       <div className="sample__body">
-        <p className="sample__prompt">
-          You are finding the longest substring with no repeated characters. The window has just
-          taken in a character it already contains. What has to happen next?
-        </p>
+        <QuestionCard
+          item={question.item}
+          value={value}
+          onChange={setValue}
+          renderDiagram={renderFlowDiagram}
+        />
 
-        <div className="choice-group" role="radiogroup" aria-label="Answer options">
-          {OPTIONS.map((option, index) => (
-            <Choice
-              key={option}
-              name="landing-sample"
-              checked={picked === index}
-              onSelect={() => setPicked(index)}
-            >
-              {option}
-            </Choice>
-          ))}
-        </div>
+        {needsCheck && !checked ? (
+          <button
+            type="button"
+            className="btn btn--secondary sample__check"
+            onClick={() => setChecked(true)}
+            disabled={value === null || value === ''}
+          >
+            Check
+          </button>
+        ) : null}
 
         {/* aria-live so the verdict is announced rather than only seen. */}
         <div className="sample__verdict" aria-live="polite">
@@ -59,15 +92,10 @@ export function SampleCard() {
               <p className={correct ? 'sample__result sample__result--right' : 'sample__result'}>
                 {correct ? 'Right.' : 'Not this time.'}
               </p>
-              <p className="sample__why">
-                The invariant is &ldquo;no repeats inside the window&rdquo;. The moment one appears
-                you shrink from the left until it is gone — growing from the right first would
-                measure a window that is already invalid.
-              </p>
-              <p className="u-muted sample__after">
-                In the pilot you would see this again in a few days, then again after a week or two.
-                That gap is the part that does the work.
-              </p>
+              <p className="sample__why">{question.verdict}</p>
+              <button type="button" className="btn btn--quiet sample__next" onClick={next}>
+                Try another
+              </button>
             </>
           ) : (
             <p className="u-muted sample__hint">
@@ -79,4 +107,12 @@ export function SampleCard() {
       </div>
     </div>
   );
+}
+
+function eyebrowFor(item: (typeof SAMPLE_QUESTIONS)[number]['item']): string {
+  const block = item.blocks?.[0];
+  if (block?.kind === 'diagram') return 'A real topology';
+  if (block?.kind === 'sequence') return 'A real timing bug';
+  if (block?.kind === 'code') return 'A real listing';
+  return 'A real question';
 }

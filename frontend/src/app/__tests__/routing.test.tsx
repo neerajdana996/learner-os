@@ -93,7 +93,7 @@ describe('landing route', () => {
   it('points the call to action at /signin', async () => {
     server({ me: 401 });
     renderAt('/');
-    const cta = await screen.findAllByRole('link', { name: /take one of the ten places/i });
+    const cta = await screen.findAllByRole('link', { name: /start free/i });
     expect(cta.length).toBeGreaterThan(0);
     for (const link of cta) expect(link).toHaveAttribute('href', '/signin');
   });

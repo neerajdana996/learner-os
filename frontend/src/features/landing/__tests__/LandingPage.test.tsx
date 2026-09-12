@@ -23,21 +23,24 @@ describe('landing page', () => {
     renderPage();
     // One call to action, in one set of words. Three different asks read as
     // three different offers.
-    const cta = screen.getAllByRole('link', { name: /take one of the ten places/i });
+    const cta = screen.getAllByRole('link', { name: /start free/i });
     expect(cta.length).toBeGreaterThan(1);
     for (const link of cta) expect(link).toHaveAttribute('href', '/signin');
   });
 
   /**
-   * The honesty requirements from T-101. These are not decoration: a
-   * participant who feels tricked on day 30 is a participant who drops out, and
-   * a dropout costs a tenth of the result. If someone deletes one of these
-   * lines to make the page read better, that is a decision to make on purpose.
+   * The honesty requirements from T-101, carried forward through the T-156
+   * rework that dropped the fixed-seat "pilot" framing (free-text topics ship
+   * now, T-149) and the specific learning-science vocabulary. What must not
+   * quietly go missing along with that: the day-30 test is still unannounced,
+   * concepts are still deliberately held back, and the result is still not
+   * yet known. If someone deletes one of these lines to make the page read
+   * better, that is a decision to make on purpose.
    */
   describe('says the uncomfortable parts out loud', () => {
-    it('admits free-text topics are not open yet', () => {
+    it('admits a typed topic skips the hand-review', () => {
       renderPage();
-      expect(screen.getByText(/your own topics aren’t open yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/that one skips the review/i)).toBeInTheDocument();
     });
 
     it('warns that the test is unannounced', () => {

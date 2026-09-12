@@ -88,17 +88,19 @@ export default function OnboardingPage() {
     () =>
       existingTopics?.topics?.find(
         (t) =>
-          (t.status === 'generating' || t.status === 'failed') && t.id !== draft.dismissedTopicId,
+          (t.status === 'generating' || t.status === 'failed') &&
+          !draft.dismissedTopicIds.includes(t.id),
       ) ?? null,
-    // A topic just dismissed via "Try again" must not come straight back —
-    // without excluding `dismissedTopicId` here, this effect re-adopts the
+    // Every topic just dismissed via "Try again" must not come straight back
+    // — without excluding `dismissedTopicIds` here, this effect re-adopts the
     // same still-`failed` row on the very next render (it hasn't gone
     // anywhere server-side; nothing deletes a failed topic), landing the
-    // learner right back on the screen they just left. Found live: the
-    // button cleared `topicId`, this effect saw the same failed topic in
-    // `GET /topics`, and set it right back — a two-fix interaction neither
-    // fix alone would have caught.
-    [existingTopics, draft.dismissedTopicId],
+    // learner right back on the screen they just left. A single dismissed id
+    // was not enough (T-160, found live): with two dead topics on the
+    // account, dismissing the newer just re-exposed the older, which
+    // re-exposed the newer next time — an infinite loop between them that
+    // never once showed the plain form to actually try a new topic.
+    [existingTopics, draft.dismissedTopicIds],
   );
   useEffect(() => {
     if (!draft.topicId && recoverable) dispatch(draftChanged({ topicId: recoverable.id }));
@@ -112,7 +114,7 @@ export default function OnboardingPage() {
   // half-minute (T-066). One timer flips the rate; RTK Query picks up the new
   // interval on the re-render.
   const [waitedLong, setWaitedLong] = useState(false);
-  const { data: topicState } = useTopicQuery(draft.topicId ?? '', {
+  const { data: topicState, isError: topicNotFound } = useTopicQuery(draft.topicId ?? '', {
     skip: !draft.topicId,
     pollingInterval: settled
       ? 0
@@ -128,8 +130,8 @@ export default function OnboardingPage() {
 
   const status = topicState?.status;
   useEffect(() => {
-    if (status && status !== 'generating') setSettled(true);
-  }, [status]);
+    if ((status && status !== 'generating') || topicNotFound) setSettled(true);
+  }, [status, topicNotFound]);
 
   const set = (patch: Parameters<typeof draftChanged>[0]) => dispatch(draftChanged(patch));
   const go = (step: number) => dispatch(stepChanged(step));
@@ -185,24 +187,43 @@ export default function OnboardingPage() {
   }
 
   if (draft.topicId) {
-    const failed = status === 'failed';
+    // `topicNotFound` is a *different* failure from `status === 'failed'`: the
+    // job never errored, this browser's `topicId` (persisted in `localStorage`,
+    // see the comment above) just doesn't name a row this API knows about —
+    // stale state left over from a different backend/database, or a topic
+    // deleted server-side. Treated identically here because both need the
+    // same recovery (clear it, let the learner start over); without this,
+    // `topicState` stays undefined forever the same way it does mid-generation,
+    // and the wait screen shows "Starting up…" with no error and no way out
+    // (T-159, found live).
+    const failed = status === 'failed' || topicNotFound;
     return (
       <div className="step">
         <h1 className="step__title">{failed ? 'That didn’t build' : 'Building your map'}</h1>
         <p className="step__lede">
           {failed
-            ? (topicState?.error ?? 'Something went wrong while generating the course.')
+            ? (topicState?.error ??
+              (topicNotFound
+                ? 'This course could not be found — it may have been created somewhere else. Start again below.'
+                : 'Something went wrong while generating the course.'))
             : 'Writing out every concept and the questions that go with them. This takes a few minutes — you can close the tab and come back.'}
         </p>
         {failed ? (
           <Button
             onClick={() => {
-              // `dismissedTopicId` first, in the same patch: the recovery
+              // `dismissedTopicIds` first, in the same patch: the recovery
               // effect above reads it on the very next render, and a failed
               // topic that's still sitting in the database (nothing deletes
               // it) would otherwise be re-adopted the instant `topicId`
-              // clears — the exact loop this field exists to break.
-              set({ topicId: null, dismissedTopicId: draft.topicId });
+              // clears — the exact loop this field exists to break. Appended,
+              // not replaced (T-160) — a second dead topic must not un-hide
+              // the first.
+              set({
+                topicId: null,
+                dismissedTopicIds: draft.topicId
+                  ? [...draft.dismissedTopicIds, draft.topicId]
+                  : draft.dismissedTopicIds,
+              });
               setSettled(false);
               setWaitedLong(false);
             }}

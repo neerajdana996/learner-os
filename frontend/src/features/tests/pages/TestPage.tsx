@@ -4,6 +4,7 @@ import { Button, ConfidenceTap, QuestionCard } from '@learnos/ui';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { useAnswerColdTestMutation, useColdTestQuery, useCompleteColdTestMutation } from '../testsApi';
 import { setTestConfidence, setTestResponse, showTestQuestion } from '../testsSlice';
+import { renderFlowDiagram } from '../../diagrams/renderFlowDiagram';
 
 const percent = (value: number | null) => value === null ? 'Not measured' : `${Math.round(value * 100)}%`;
 export default function TestPage() {
@@ -50,7 +51,12 @@ export default function TestPage() {
     <p className="u-muted">Recall check · {data.progress.answered + 1} of {data.progress.total}</p>
     <p>Answer from memory, without looking things up. We’ll show your results at the end.</p>
     <fieldset disabled={busy}>
-      <QuestionCard item={item} value={draft.response} onChange={(value) => dispatch(setTestResponse(value))} />
+      <QuestionCard
+        item={item}
+        value={draft.response}
+        onChange={(value) => dispatch(setTestResponse(value))}
+        renderDiagram={renderFlowDiagram}
+      />
       <ConfidenceTap value={draft.confidence} onChange={(value) => dispatch(setTestConfidence(value))} />
     </fieldset>
     {answerState.isError ? <p role="alert">We couldn’t save your answer. It is still here; please try again.</p> : null}
