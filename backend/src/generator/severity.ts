@@ -99,6 +99,10 @@ export const REPAIRABLE_REASONS: ReadonlySet<GenerationErrorReason> = new Set([
    * once there is a run where it fires.
    */
   'held_out_leak',
+  /** Decoration on one lesson or one question, not an unusable course — and
+   *  the block is dropped rather than kept, so what is stored is what the
+   *  prompts describe (T-166/T-167). */
+  'block_without_domain',
 ]);
 
 /**

@@ -166,7 +166,7 @@ describe('the code domain fragment', () => {
     // The escape hatch, blessed with a number so it actually gets used.
     expect(system).toContain('right answer roughly half the time');
     // The time budget, which is what every format decision really is.
-    expect(system).toContain('at most 2 of them may use a rich answer format');
+    expect(system).toContain("at most 2 of that concept's own items may use a rich answer format");
     // Falsifiable justification per rich format.
     expect(system).toContain('clozeCode.failure');
     // Contrastive pairs — the type missing from every other prompt here.

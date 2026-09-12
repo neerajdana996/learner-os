@@ -52,6 +52,9 @@ const CLASSIFIED: Record<GenerationErrorReason, 'integrity' | 'preference'> = {
   // The control arm — reported for a human to judge, not fatal (T-165).
   thin_control_arm: 'preference',
   held_out_leak: 'preference',
+
+  // A block nobody specified — dropped and reported, not fatal (T-166/T-167).
+  block_without_domain: 'preference',
 };
 
 describe('rule severity', () => {

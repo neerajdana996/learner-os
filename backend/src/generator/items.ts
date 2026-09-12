@@ -18,6 +18,15 @@ export const MAX_RICH_ITEMS = 2;
 import { GenerationError, type GenerationErrorReason } from './errors.js';
 import { failer, isRepairable, type ValidateOptions } from './severity.js';
 
+/** The batch's domain — the same value that selects the prompt fragment, so
+ *  "a block was authorised" and "a block was asked for" cannot diverge. */
+interface ItemsValidateOptions extends ValidateOptions {
+  domain?: string | undefined;
+  /** See the teaching option of the same name: the retry hook has no domain,
+   *  and a block nobody asked for is dropped rather than re-requested. */
+  enforceBlockDomain?: boolean;
+}
+
 export { GenerationError, type GenerationErrorReason };
 
 export interface GeneratedItem {
@@ -228,7 +237,7 @@ export function validateItemsBatch(
   data: unknown,
   topic: string,
   requested: string[],
-  options: ValidateOptions = {},
+  options: ItemsValidateOptions = {},
 ): GeneratedItemsBatch {
   const fail = failer('items', options.tolerate);
   const parsed = BatchResponseSchema.parse(data);
@@ -267,6 +276,39 @@ export function validateItemsBatch(
   for (const [slug, items] of bySlug) {
     if (items.length < MIN_ITEMS) {
       fail('too_few_items', `concept ${slug} got ${items.length} items, need at least ${MIN_ITEMS}`);
+    }
+  }
+
+  /**
+   * The other half of T-166: a block only where a domain section describes one.
+   *
+   * Making `blocks` visible in the generic prompt is what lets a `code` batch
+   * write them at all — it was absent from the output contract and from the
+   * example, so the model never wrote one, on any topic, ever. The risk of
+   * making it visible is the failure the teaching side already had: blocks
+   * appearing on `prose` and `math` concepts, in shapes nobody specified.
+   *
+   * A batch shares one domain (`batchConcepts` groups by it), so the check is
+   * the same one the fragment selection makes, which is what keeps the rule and
+   * the instruction from disagreeing.
+   */
+  if (options.enforceBlockDomain && domainFragment(options.domain) === undefined) {
+    for (const [slug, items] of bySlug) {
+      const withBlocks = items.filter((item) => item.payload.blocks?.length);
+      if (withBlocks.length === 0) continue;
+      fail(
+        'block_without_domain',
+        `concept ${slug} carries ${withBlocks.length} item(s) with blocks, but its domain ` +
+          `(${options.domain ?? 'none'}) has no section describing one`,
+      );
+      bySlug.set(
+        slug,
+        items.map((item) => {
+          if (!item.payload.blocks?.length) return item;
+          const { blocks: _dropped, ...rest } = item.payload;
+          return { ...item, payload: rest as typeof item.payload };
+        }),
+      );
     }
   }
 
@@ -625,7 +667,7 @@ export const itemsJsonSchema = {
  * attempt, which is exactly what putting `validate` inside the loop exists to
  * prevent.
  */
-export function itemsBatchPrompt(topic: string, slugs: string[]) {
+export function itemsBatchPrompt(topic: string, slugs: string[], domain?: string) {
   return definePrompt({
     name: 'items',
     schema: BatchResponseSchema,
@@ -725,7 +767,7 @@ export interface ItemsBatchInput {
 
 export async function generateItemsBatch(input: ItemsBatchInput): Promise<GeneratedItemsBatch> {
   const slugs = input.concepts.map((c) => c.slug);
-  const prompt = itemsBatchPrompt(input.topic, slugs);
+  const prompt = itemsBatchPrompt(input.topic, slugs, input.domain);
 
   let response: unknown;
   try {
@@ -754,7 +796,11 @@ export async function generateItemsBatch(input: ItemsBatchInput): Promise<Genera
   // `validateItems` (T-164) — checked out here it sat outside the retry, so the
   // one rule nobody could repair was the one about having too little to work
   // with.
-  const batch = validateItemsBatch(response, input.topic, slugs, { tolerate: true });
+  const batch = validateItemsBatch(response, input.topic, slugs, {
+    tolerate: true,
+    domain: input.domain,
+    enforceBlockDomain: true,
+  });
   for (const [slug, items] of batch.bySlug) {
     batch.bySlug.set(slug, items.map((item) => shuffleOptions(item)));
   }

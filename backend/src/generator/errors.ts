@@ -57,7 +57,16 @@ export type GenerationErrorReason =
   /** Fewer held-out concepts than the floor, because too few were eligible. */
   | 'thin_control_arm'
   /** A taught lesson names a concept the learner is never taught. */
-  | 'held_out_leak';
+  | 'held_out_leak'
+  /**
+   * A block on a concept whose domain has no prompt fragment (T-166/T-167).
+   *
+   * The fragment is the only place that says what may be drawn and how, so a
+   * block written without one is a shape nobody specified — and it is what
+   * `prose` concepts came back with while `code` concepts, which *do* have a
+   * fragment asking for blocks, came back with none.
+   */
+  | 'block_without_domain';
 
 export class GenerationError extends Error {
   constructor(

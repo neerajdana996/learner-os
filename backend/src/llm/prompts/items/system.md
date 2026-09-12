@@ -91,6 +91,12 @@ A transfer item applies the concept in a context it was **not** taught in, to te
 
 Every item needs an explicit `isTransfer` boolean, and the 1-or-2-per-concept count above is a hard rule, not a target. The commonest way to break it is to write a concept's six items straight through and forget: the count is per slug, and a single concept with none ends the generation for every concept in the batch.
 
+## `blocks`
+
+Every item carries a `blocks` field, and for most items it is `null`: a plain prompt and a typed answer.
+
+**A domain section may appear below this one.** If it does, it tells you when an item should carry a listing, a diagram or a blanked-out line instead, and gives you the exact shapes — read it and use them, within the limits it states. If there is no such section, `blocks` is `null` on every item and there is nothing further to decide.
+
 ## Output
 
 Respond with **only** a single JSON object, no prose before or after. Return every slug you were given, and no others:
@@ -101,12 +107,14 @@ Respond with **only** a single JSON object, no prose before or after. Return eve
     {
       "slug": "string",
       "items": [
-        { "type": "recall", "prompt": "string", "answer": "string", "accept": ["string", ...], "isTransfer": false },
-        { "type": "recognition", "prompt": "string", "options": ["string", "string", "string", "string"], "answerIndex": 0, "distractorSource": "string", "isTransfer": false },
-        { "type": "application", "prompt": "string", "answer": "string", "accept": ["string", ...], "isTransfer": false },
-        { "type": "explain", "prompt": "string", "rubric": "string (<=200 chars)", "isTransfer": false }
+        { "type": "recall", "prompt": "string", "answer": "string", "accept": ["string", ...], "isTransfer": false, "blocks": null },
+        { "type": "recognition", "prompt": "string", "options": ["string", "string", "string", "string"], "answerIndex": 0, "distractorSource": "string", "isTransfer": false, "blocks": null },
+        { "type": "application", "prompt": "string", "answer": "string", "accept": ["string", ...], "isTransfer": false, "blocks": null },
+        { "type": "explain", "prompt": "string", "rubric": "string (<=200 chars)", "isTransfer": false, "blocks": null }
       ]
     }
   ]
 }
 ```
+
+`blocks` is shown as `null` here because that is the common case, not because it is the only one — a domain section below overrides it for the items it describes.

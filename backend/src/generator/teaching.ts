@@ -10,6 +10,21 @@ import {
 import type { TeachMode } from '@learnos/shared';
 import { GenerationError } from './errors.js';
 import { failer, isRepairable, type ValidateOptions } from './severity.js';
+
+/** `domain` decides whether a `teachBlock` was authorised at all — it is the
+ *  same value that selects the prompt fragment, so the check and the
+ *  instruction cannot disagree (T-167). */
+interface TeachingValidateOptions extends ValidateOptions {
+  domain?: string | undefined;
+  /**
+   * Run the domain check at all. Off inside `runPrompt`'s retry hook, which has
+   * no domain to judge against and must not re-ask the model over decoration:
+   * six `prose` concepts in a sixteen-concept topic would each buy a second
+   * call to be told the same thing. The remedy is to drop the block, and
+   * dropping happens once, on the way out.
+   */
+  enforceBlockDomain?: boolean;
+}
 import { domainFragment } from './items.js';
 import { renderDiagram, renderSequence } from './systemsSvg.js';
 
@@ -118,7 +133,7 @@ function resolveTeachBlock(block: z.infer<typeof TeachBlockGenerationSchema> | n
   return TeachBlockSchema.parse(block);
 }
 
-export function validateTeaching(data: unknown, options: ValidateOptions = {}): GeneratedTeaching {
+export function validateTeaching(data: unknown, options: TeachingValidateOptions = {}): GeneratedTeaching {
   const fail = failer('teaching', options.tolerate);
   const parsed = TeachingResponseSchema.safeParse(data);
   if (!parsed.success) {
@@ -146,7 +161,35 @@ export function validateTeaching(data: unknown, options: ValidateOptions = {}): 
     );
   }
 
-  return { ...result, teachBlock: resolveTeachBlock(result.teachBlock ?? null) };
+  /**
+   * A block is kept only where a domain section authorised one (T-167).
+   *
+   * Rule 5 of `teaching/system.md` is explicit — *"Without that section, always
+   * `null` — do not invent one for a `prose` concept because the idea could be
+   * drawn"* — and nothing enforced it: all 13 taught concepts of the first real
+   * generation came back with a block, 12 of kind `code`, including six `prose`
+   * concepts whose prompt never loaded a fragment at all.
+   *
+   * Dropped rather than rejected, and reported rather than dropped silently.
+   * Rejecting would end a nineteen-call generation over decoration on one
+   * lesson, which is exactly what T-164 exists to prevent; keeping it would
+   * leave the prompts describing one thing and the database holding another.
+   *
+   * **If the rule is what is wrong, this is the line to change**: the blocks in
+   * that generation looked like illustration rather than decoration, and a
+   * Python snippet beside a prose concept may well be worth having. That is a
+   * content decision, so it is written down rather than made here.
+   */
+  const block = resolveTeachBlock(result.teachBlock ?? null);
+  if (options.enforceBlockDomain && block && domainFragment(options.domain) === undefined) {
+    fail(
+      'block_without_domain',
+      `a ${block.kind} teachBlock was written for a concept with no domain section (domain: ${options.domain ?? 'none'})`,
+    );
+    return { ...result, teachBlock: null };
+  }
+
+  return { ...result, teachBlock: block };
 }
 
 export function parseTeachingResponse(raw: string): GeneratedTeaching {
@@ -299,5 +342,5 @@ export async function generateTeaching(input: TeachingInput): Promise<GeneratedT
   // exact reply: either it passed, in which case tolerance changes nothing, or
   // it was accepted as a preference violation, in which case re-throwing here
   // would undo that decision. Integrity rules still throw either way.
-  return validateTeaching(response, { tolerate: true });
+  return validateTeaching(response, { tolerate: true, domain: input.domain, enforceBlockDomain: true });
 }

@@ -19,7 +19,7 @@ Work down this list and **stop at the first yes**. Do not read ahead and pick th
 
 ### Second: how many
 
-You get **6 to 8 items**, and **at most 2 of them may use a rich answer format** (`clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`). The rest are plain.
+Each concept gets **6 to 8 items**, and **at most 2 of that concept's own items may use a rich answer format** (`clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`). The rest are plain. The cap is per concept, not per reply: four concepts in one batch means up to two each, counted separately.
 
 This is a time budget, not a style preference. The learner has about fifteen minutes a day and today already holds two new concepts plus six reviews from earlier ones. A plain item costs ~10 seconds; `hotspotLine` 8–15s; `clozeCode` 15–30s; `orderLines` 25–45s; `codeEditor` **two to four minutes**. Each of these items comes back three or four times inside the teaching week, so an expensive item is an expensive *habit*. Reviews have to stay cheap or they stop happening.
 
