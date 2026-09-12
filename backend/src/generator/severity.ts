@@ -80,6 +80,25 @@ export const REPAIRABLE_REASONS: ReadonlySet<GenerationErrorReason> = new Set([
   /** The long explanation is no longer than the short one, so "read more"
    *  reveals the same text. A flat affordance, not an unteachable concept. */
   'explanation_not_expanded',
+
+  // ---- the control arm (T-165) ----
+  /** Fewer held-out concepts than `HELD_OUT_MIN`, because the prereq graph left
+   *  too few eligible. A thin control arm is a weak result; refusing to build
+   *  the course at all is no result. */
+  'thin_control_arm',
+  /**
+   * A taught explanation names a held-out concept.
+   *
+   * A warning rather than fatal, deliberately, and it is the weaker of the two
+   * halves of T-165 — the structural fix is `pickHeldOut` no longer choosing a
+   * concept with taught dependants, which removes the reason a lesson would
+   * reach for one. This is the backstop, and it matches model-written prose
+   * against a title, so it is exactly the kind of rule that would one day fail
+   * a nineteen-call generation over the words "time and space cost". Content QA
+   * reads it; whether it should harden into an integrity rule is a call to make
+   * once there is a run where it fires.
+   */
+  'held_out_leak',
 ]);
 
 /**

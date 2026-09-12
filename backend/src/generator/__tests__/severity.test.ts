@@ -48,6 +48,10 @@ const CLASSIFIED: Record<GenerationErrorReason, 'integrity' | 'preference'> = {
   // Teaching — a thinner lesson, not an unteachable one.
   corrections_count: 'preference',
   explanation_not_expanded: 'preference',
+
+  // The control arm — reported for a human to judge, not fatal (T-165).
+  thin_control_arm: 'preference',
+  held_out_leak: 'preference',
 };
 
 describe('rule severity', () => {

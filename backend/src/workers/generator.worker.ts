@@ -10,11 +10,11 @@ import { generateFraming, formatSpine } from '../generator/framing.js';
 import { generateItemsBatch, SPLITTABLE_BATCH_REASONS, type GeneratedItem } from '../generator/items.js';
 import { generateTeaching } from '../generator/teaching.js';
 import { GenerationError } from '../generator/errors.js';
-import { pickHeldOut, seededRng, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER } from '../lib/heldOut.js';
+import { pickHeldOut, seededRng, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER, HELD_OUT_MIN } from '../lib/heldOut.js';
 import { teachModeFor } from '../lib/teachMode.js';
 import { env } from '../lib/env.js';
 import { collectUsage } from '../llm/usage.js';
-import { collectWarnings } from '../generator/severity.js';
+import { collectWarnings, recordWarning } from '../generator/severity.js';
 import { LlmError } from '../llm/errors.js';
 import { answerKindOf } from '@learnos/shared';
 
@@ -96,6 +96,23 @@ export async function processGenerationJob(
     const indexed = map.concepts.map((concept, index) => ({ ...concept, order: index + 1 }));
     const crux = new Set(map.crux);
     const heldOut = pickHeldOut(indexed, HELD_OUT_RATIO, HELD_OUT_MIN_ORDER, rng, crux);
+
+    /**
+     * Reported, not thrown (T-165). Excluding every concept with a taught
+     * dependant can leave fewer than the floor eligible on a deep map, and the
+     * two outcomes are not symmetric: a thin control arm is a weak result,
+     * while a contaminated one is a wrong result that looks like a real one.
+     * Take the thin arm, and say so.
+     */
+    if (heldOut.size < HELD_OUT_MIN) {
+      recordWarning({
+        reason: 'thin_control_arm',
+        prompt: 'conceptMap',
+        message:
+          `held out ${heldOut.size} of a wanted ${HELD_OUT_MIN}: too few concepts have no taught ` +
+          'concept standing on them. The day-30 control arm is this many questions wide.',
+      });
+    }
 
     // teach_mode is decided here rather than at insert time because the
     // teaching prompt is conditioned on it — an `example_first` concept needs a
@@ -260,6 +277,39 @@ export async function processGenerationJob(
         total: ordered.length,
         concept: concept.title,
       });
+    }
+
+    /**
+     * The backstop for T-165: does a taught lesson name a concept the learner
+     * is never taught?
+     *
+     * `pickHeldOut` no longer chooses a concept with taught dependants, which
+     * removes the reason a lesson would reach for one — this catches the case
+     * where it happens anyway, since the cost of missing it is the pilot's
+     * headline number and the cost of reporting it is a log line.
+     *
+     * A warning, not a failure, and the reason is in `severity.ts`: this
+     * matches model prose against a title, so it is precisely the rule that
+     * would one day end a nineteen-call generation over a concept called
+     * "Time and space cost". Titles under three words are skipped for the same
+     * reason — they are the ones that appear in ordinary sentences.
+     */
+    for (const control of ordered.filter((c) => c.heldOut)) {
+      if (control.title.split(/\s+/).length < 3) continue;
+      const needle = control.title.toLowerCase();
+      for (const [slug, teaching] of teachingBySlug) {
+        const prose = [
+          teaching.tryFirstPrompt,
+          teaching.explanationShort,
+          teaching.explanationLong,
+        ].join(' ').toLowerCase();
+        if (!prose.includes(needle)) continue;
+        recordWarning({
+          reason: 'held_out_leak',
+          prompt: 'teaching',
+          message: `${slug} names the held-out concept "${control.title}" — the control arm for this topic is contaminated`,
+        });
+      }
     }
 
     await onProgress({ stage: 'saving', completed: ordered.length, total: ordered.length });

@@ -3057,7 +3057,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - **`T-161` and `T-162` have no entry in this file.** Both are referenced throughout the generator, the prompts and `models.ts` — phase-0 framing, `crux`, `hardBecause`-derived teach mode, batched items, `distractorSource` — and the history for them is in the code comments only. Worth writing up retrospectively; this task depends on neither but reads as if it does.
 
 ### T-165 · A held-out concept can be the prerequisite of a taught one
-- **status:** todo
+- **status:** done
 - **sprint:** 6
 - **depends_on:** —
 - **files:** `backend/src/lib/heldOut.ts`, `backend/src/workers/generator.worker.ts`, `backend/src/lib/__tests__/heldOut.test.ts`
@@ -3072,7 +3072,11 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A concept whose only dependants are themselves held out **is** eligible — the exclusion is about *taught* dependants, and two adjacent control concepts are fine.
   - Regression on the real shape: the 16-concept map from topic `8454d6a6` as a fixture, asserting `prefix-complement` is not selected.
   - The eligible pool shrinking below `HELD_OUT_MIN` warns and still returns what it can, rather than throwing or back-filling.
-- **notes:** (2026-09-12) A cheap second line of defence, worth considering in the same task: after teaching is generated, check no taught explanation contains a held-out concept's title or slug. That would have caught this one twice over — *"the prefix complement you already know"* names it literally. It is a `dangling_reference`-shaped rule and would be an integrity failure, not a preference one.
+- **notes:** (2026-09-12) **Built.** `pickHeldOut` takes the graph (`OrderedConcept.prereqs`, optional so `seed.ts` and the older tests can keep passing bare pairs) and selects by repeated passes rather than one: a concept joins the arm only once everything standing on it has joined. Passes repeat because eligibility depends on what has already been chosen — a prereq only becomes available after its dependants are taken — and adding to the set can never invalidate an earlier choice, so the fixpoint is safe and the rng having fixed the order keeps it deterministic.
+  - **The old selection was not unlucky, it was near-certain.** Replayed over the real map from topic `8454d6a6`: 60 seeds, `prefix-complement` held out in 13 of them, and **53 of 60 seeds produced a control arm with at least one taught concept standing on it.** Nearly every generation shipped a contaminated control. The regression test sweeps seeds for that reason rather than pinning one.
+  - A thin arm is reported, not thrown: `thin_control_arm`, through T-164's warning channel. The two outcomes are not symmetric — a thin control arm is a weak result, a contaminated one is a wrong result that looks like a real one.
+  - **The backstop is built too, as a warning.** After teaching, a taught lesson naming a held-out concept's title records `held_out_leak`. Deliberately not fatal, and deliberately skipping titles under three words: it matches model prose against a title, so it is exactly the rule that would one day end a nineteen-call generation over a concept called *"Time and space cost"*. Whether it should harden into an integrity rule is a call to make after a run where it fires on something real.
+  - Original note, kept because it is what the backstop implements: a cheap second line of defence, worth considering in the same task: after teaching is generated, check no taught explanation contains a held-out concept's title or slug. That would have caught this one twice over — *"the prefix complement you already know"* names it literally. It is a `dangling_reference`-shaped rule and would be an integrity failure, not a preference one.
 
 ### T-166 · The generator has never written a block, on any topic
 - **status:** todo

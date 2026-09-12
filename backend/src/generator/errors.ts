@@ -52,7 +52,12 @@ export type GenerationErrorReason =
   // (T-164): a concept that came back with one correction is a thinner lesson,
   // not an unusable one.
   | 'corrections_count'
-  | 'explanation_not_expanded';
+  | 'explanation_not_expanded'
+  // the control arm (T-165)
+  /** Fewer held-out concepts than the floor, because too few were eligible. */
+  | 'thin_control_arm'
+  /** A taught lesson names a concept the learner is never taught. */
+  | 'held_out_leak';
 
 export class GenerationError extends Error {
   constructor(
