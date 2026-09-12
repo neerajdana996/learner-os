@@ -1,0 +1,10 @@
+# Terraform state carries resource IDs and, depending on the resource,
+# sensitive values in plain text — never committed.
+# .terraform.lock.hcl IS committed on purpose (pins provider versions, like a
+# lockfile) — only the local plugin cache and state itself are excluded here.
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# The generated SSH private key.
+*.pem

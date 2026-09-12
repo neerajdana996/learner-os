@@ -18,6 +18,7 @@ ENV VITE_API_URL=$VITE_API_URL
 # @learnos/ui is plain SCSS and needs no build; @learnos/shared does, because
 # the frontend typechecks against its emitted declarations.
 RUN pnpm --filter @learnos/shared build \
+ && pnpm --filter @learnos/ui build \
  && pnpm --filter learner-os-frontend build
 
 # compose targets this stage for dev and runs `pnpm dev` from the package dir.
