@@ -31,14 +31,21 @@ describe('cold test assembly', () => {
     const selected = assembleTest(concepts, [...items, { ...items[0]!, id: 'editor', answerKind: 'codeEditor' }]);
     expect(selected.some((i) => i.conceptId === 'c0' || i.id === 'editor')).toBe(false);
   });
+  // Seeded, and the two extras are explicitly not transfers. Unseeded this
+  // failed about one run in three: `selected[0]` was whatever Math.random put
+  // first, and when that was a transfer item the two copies pushed the count
+  // past five, so the transfer check fired before the budget check under test.
   it('rejects two graphBuild questions and an oversized time budget', () => {
     const { concepts, items } = pool();
-    const selected = assembleTest(concepts, items);
+    const selected = assembleTest(concepts, items, seededRng(7));
     selected[0]!.answerKind = 'graphBuild';
     selected[1]!.answerKind = 'graphBuild';
     expect(() => assertTestAssembly(selected, concepts)).toThrow(/At most one/);
     selected.forEach((i) => { i.answerKind = null; i.type = 'explain'; });
-    selected.push({ ...selected[0]!, id: 'extra1' }, { ...selected[0]!, id: 'extra2' });
+    selected.push(
+      { ...selected[0]!, id: 'extra1', isTransfer: false },
+      { ...selected[0]!, id: 'extra2', isTransfer: false },
+    );
     expect(() => assertTestAssembly(selected, concepts)).toThrow(/20 minutes/);
   });
 });
