@@ -10,6 +10,7 @@ const recognition = (answerIndex = 0): GeneratedItem => ({
     prompt: 'Which situation is a network partition?',
     options: ['correct', 'wrong one', 'wrong two', 'wrong three'],
     answerIndex,
+    distractorSource: 'A partition means the other machines have crashed.',
   },
 });
 
@@ -64,6 +65,7 @@ describe('shuffleOptions (T-121)', () => {
         prompt: 'p',
         options: ['same', 'same', 'b', 'c'],
         answerIndex: 1,
+        distractorSource: 'x',
       },
     };
 

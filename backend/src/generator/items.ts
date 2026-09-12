@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
-import { ItemPayloadSchema, LangSchema, BlockSlotSchema, type ItemPayload } from '@learnos/shared';
+import { ItemPayloadSchema, LangSchema, BlockSlotSchema, DRAWING_ALT_MAX, type ItemPayload } from '@learnos/shared';
 import { parseGeneratedItemBlocks } from './blocks.js';
 
 /** sprint.md's Sprint 1 demo expects 6–8 items per taught concept. */
@@ -16,6 +16,7 @@ export const MIN_ITEMS = 6;
 export const MAX_RICH_ITEMS = 2;
 
 import { GenerationError, type GenerationErrorReason } from './errors.js';
+import { failer, isRepairable, type ValidateOptions } from './severity.js';
 
 export { GenerationError, type GenerationErrorReason };
 
@@ -28,6 +29,29 @@ export interface GeneratedItems {
   topic: string;
   items: GeneratedItem[];
 }
+
+/**
+ * One batch: several neighbouring concepts, written together (T-162).
+ *
+ * Generating a concept at a time is what produced four questions with the same
+ * one-word answer inside one concept, and near-duplicates across neighbouring
+ * ones — each call was doing its best with the only thing it could see. A batch
+ * lets the model differentiate deliberately, and makes the discrimination item
+ * ("tell this from its neighbour") writable at all: `items/system.md` has asked
+ * for one since T-FIX-006 while the call was never told what the neighbours
+ * were.
+ */
+export interface GeneratedItemsBatch {
+  topic: string;
+  /** Keyed by concept slug, one entry per slug requested. */
+  bySlug: Map<string, GeneratedItem[]>;
+}
+
+const BatchResponseSchema = z.object({
+  concepts: z
+    .array(z.object({ slug: z.string().min(1), items: z.array(z.unknown()).min(1) }))
+    .min(1),
+});
 
 /**
  * A prompt pointing at an artefact the item does not carry (T-125).
@@ -85,9 +109,14 @@ export function parseItemsResponse(raw: string): GeneratedItems {
 
 /**
  * Per-item shape + the cross-item rules. Size-agnostic on purpose so it can be
- * unit tested with small sets; the 6-item floor lives in generateItems.
+ * unit tested with small sets; the 6-item floor is a batch-level check in
+ * `validateItemsBatch`, which is what `runPrompt`'s retry hook calls.
+ *
+ * Pass `{ tolerate: true }` to downgrade the preference rules — transfer count,
+ * rich-format count — to warnings (T-164).
  */
-export function validateItems(data: unknown): GeneratedItems {
+export function validateItems(data: unknown, options: ValidateOptions = {}): GeneratedItems {
+  const fail = failer('items', options.tolerate);
   const { topic, items: rawItems } = RawItemsResponseSchema.parse(data);
   const items = rawItems.map(parseGeneratedItem);
 
@@ -98,10 +127,10 @@ export function validateItems(data: unknown): GeneratedItems {
 
   const transferCount = items.filter((item) => item.isTransfer).length;
   if (transferCount === 0) {
-    throw new GenerationError('transfer_count', 'at least one item must be marked as transfer');
+    fail('transfer_count', 'at least one item must be marked as transfer');
   }
   if (transferCount > 2) {
-    throw new GenerationError('transfer_count', 'no more than 2 transfer items allowed');
+    fail('transfer_count', 'no more than 2 transfer items allowed');
   }
 
   for (const item of items) {
@@ -142,13 +171,175 @@ export function validateItems(data: unknown): GeneratedItems {
   // carry the volume.
   const rich = items.filter((item) => item.payload.blocks?.some((block) => block.slot === 'answer')).length;
   if (rich > MAX_RICH_ITEMS) {
-    throw new GenerationError(
+    fail(
       'too_many_rich',
       `${rich} items use a rich answer format; at most ${MAX_RICH_ITEMS} per concept`,
     );
   }
 
   return { topic, items };
+}
+
+/**
+ * A batch response: every per-concept rule, plus the ones that only exist
+ * because several concepts were written together (T-162).
+ *
+ * Per-concept checks are delegated to `validateItems` rather than reimplemented
+ * — the four types, the transfer count, the rubric limit, the dangling
+ * reference and the rich-format cap all apply unchanged to each entry.
+ */
+/**
+ * The batch failures worth retrying one concept at a time (T-164).
+ *
+ * A batch asks for up to four concepts and around thirty items in one reply,
+ * and every rule below is one the model has to hold for *each* concept while
+ * writing all of them. Asked about a single concept it has a fraction as much
+ * to track, so the same rule usually holds on the second attempt — and the
+ * split costs one small call rather than the whole course, which is what a
+ * batch failure used to cost.
+ *
+ * Two reasons are deliberately absent. `missing_api_key` is not a content
+ * problem and splitting would just produce four identical failures, and a
+ * `refused` response is about what was asked, which does not change when it is
+ * asked alone.
+ */
+export const SPLITTABLE_BATCH_REASONS: ReadonlySet<GenerationErrorReason> = new Set([
+  // Per-concept rules the model dropped while juggling four of them.
+  'missing_item_type',
+  'transfer_count',
+  'explain_rubric',
+  'too_few_items',
+  'dangling_reference',
+  'too_many_rich',
+  // Cross-concept rules. Splitting does not weaken them: `asked` still carries
+  // every prompt written so far, so a single-concept call is still checked
+  // against its neighbours' questions.
+  'duplicate_prompt',
+  'item_cues_another',
+  'batch_slug_mismatch',
+  // Shape failures that a shorter reply genuinely fixes: four concepts of items
+  // is the response most likely to run out of tokens or come back malformed.
+  'truncated',
+  'invalid_json',
+  'invalid_shape',
+]);
+
+export function validateItemsBatch(
+  data: unknown,
+  topic: string,
+  requested: string[],
+  options: ValidateOptions = {},
+): GeneratedItemsBatch {
+  const fail = failer('items', options.tolerate);
+  const parsed = BatchResponseSchema.parse(data);
+
+  const bySlug = new Map<string, GeneratedItem[]>();
+  for (const entry of parsed.concepts) {
+    if (bySlug.has(entry.slug)) {
+      throw new GenerationError('batch_slug_mismatch', `slug ${entry.slug} appears twice in the batch`);
+    }
+    // Named, because `validateItems` was written for one concept and its
+    // messages say "at least one item must be marked as transfer" with no way
+    // to tell which of the four in a batch broke the rule. A failure here ends
+    // the whole topic, so the log line that explains it has to be actionable.
+    try {
+      bySlug.set(entry.slug, validateItems({ topic, items: entry.items }, options).items);
+    } catch (error) {
+      if (error instanceof GenerationError) {
+        // `error.message` already begins with the reason, and `GenerationError`
+        // prefixes it again — so pass only the part after it, or the retry
+        // prompt reads "missing_item_type: concept c1: missing_item_type: ...".
+        const detail = error.message.slice(`${error.reason}: `.length);
+        throw new GenerationError(error.reason, `concept ${entry.slug}: ${detail}`, error.raw);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * The per-concept floor, checked here rather than after the call (T-164).
+   *
+   * `generateItemsBatch` used to apply it on the way out, which put the one
+   * rule whose fix is obviously "write two more questions" outside `runPrompt`'s
+   * retry: no second attempt, no repair turn, just a dead topic. Here it is
+   * inside the hook like every other rule, and it can name the concept.
+   */
+  for (const [slug, items] of bySlug) {
+    if (items.length < MIN_ITEMS) {
+      fail('too_few_items', `concept ${slug} got ${items.length} items, need at least ${MIN_ITEMS}`);
+    }
+  }
+
+  // Exactly the requested set. A missing slug silently leaves a concept with no
+  // questions, which `getSession` treats as a bug rather than a race; an extra
+  // one is items for a concept this batch was not asked about, and nothing
+  // downstream has anywhere to put them.
+  const wanted = new Set(requested);
+  for (const slug of bySlug.keys()) {
+    if (!wanted.has(slug)) {
+      throw new GenerationError('batch_slug_mismatch', `batch returned items for unrequested concept ${slug}`);
+    }
+  }
+  for (const slug of wanted) {
+    if (!bySlug.has(slug)) {
+      throw new GenerationError('batch_slug_mismatch', `batch returned no items for concept ${slug}`);
+    }
+  }
+
+  const all = [...bySlug.entries()].flatMap(([slug, items]) => items.map((item) => ({ slug, item })));
+
+  // The duplication this batching exists to prevent. Compared normalised,
+  // because "What is a replica?" and "what is a replica" are the same question
+  // to a learner meeting them four days apart.
+  const seenPrompts = new Map<string, string>();
+  for (const { slug, item } of all) {
+    const key = normalisePrompt(item.payload.prompt);
+    const first = seenPrompts.get(key);
+    if (first !== undefined) {
+      throw new GenerationError(
+        'duplicate_prompt',
+        `${slug} repeats a prompt already written for ${first}: "${item.payload.prompt.slice(0, 80)}"`,
+      );
+    }
+    seenPrompts.set(key, slug);
+  }
+
+  // Cueing: one item handing over another's answer. They are days apart, but
+  // they are the same set — a recognition option that spells out a recall
+  // item's answer has scored that item for free, for every learner.
+  const answers = all.flatMap(({ slug, item }) =>
+    item.payload.type === 'recall' || item.payload.type === 'application'
+      ? [{ slug, answer: normalisePrompt(item.payload.answer) }]
+      : [],
+  );
+  for (const { slug, item } of all) {
+    if (item.payload.type !== 'recognition') continue;
+    for (const option of item.payload.options) {
+      const normalised = normalisePrompt(option);
+      // Short answers collide by accident ("yes", "O(n)"); only a substantial
+      // one is evidence that the option restates another item's answer.
+      if (normalised.length < 12) continue;
+      const cued = answers.find((a) => a.answer === normalised && a.slug !== slug);
+      if (cued) {
+        throw new GenerationError(
+          'item_cues_another',
+          `an option on a ${slug} item is the exact answer to a ${cued.slug} item: "${option.slice(0, 80)}"`,
+        );
+      }
+    }
+  }
+
+  return { topic, bySlug };
+}
+
+/** Lowercased, punctuation-stripped, whitespace-collapsed — the form in which
+ *  two prompts are "the same question" to a learner, not to a string compare. */
+function normalisePrompt(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -173,6 +364,9 @@ const nullable = (schema: Record<string, unknown>) => ({ ...schema, type: [schem
 
 const str = { type: 'string' } as const;
 const strArray = { type: 'array', items: str } as const;
+/** Told to the model explicitly (T-158): matches `DRAWING_ALT_MAX`
+ *  (@learnos/shared) — see the note beside `teaching.ts`'s copy of this. */
+const altField = { type: 'string', maxLength: DRAWING_ALT_MAX } as const;
 const LANGS = [...LangSchema.options];
 const SLOTS = [...BlockSlotSchema.options];
 
@@ -285,7 +479,7 @@ export const blockJsonSchemas = [
       type: 'array',
       items: { type: 'object', additionalProperties: false, required: ['from', 'to', 'label'], properties: { from: str, to: str, label: nullable(str) } },
     },
-    alt: str,
+    alt: altField,
   }),
   blockVariant('sequence', {
     lanes: strArray,
@@ -298,7 +492,7 @@ export const blockJsonSchemas = [
         properties: { from: str, to: str, label: str, delayed: { type: ['boolean', 'null'] } },
       },
     },
-    alt: str,
+    alt: altField,
   }),
   blockVariant('numeric', { answer: { type: 'number' }, tolerance: { type: 'number' }, unit: nullable(str) }),
 ] as const;
@@ -320,6 +514,62 @@ const textVariant = (type: 'recall' | 'application') => ({
   },
 });
 
+const itemVariants = {
+  anyOf: [
+    textVariant('recall'),
+    textVariant('application'),
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['type', 'prompt', 'options', 'answerIndex', 'distractorSource', 'isTransfer', 'blocks'],
+      properties: {
+        type: { type: 'string', enum: ['recognition'] },
+        prompt: { type: 'string' },
+        options: { type: 'array', items: { type: 'string' } },
+        answerIndex: { type: 'integer' },
+        // T-162. Required, so the model cannot quietly skip the one field that
+        // proves the distractors were built from a belief rather than invented.
+        distractorSource: { type: 'string' },
+        isTransfer: { type: 'boolean' },
+        blocks: blocksProperty,
+      },
+    },
+    {
+      type: 'object',
+      additionalProperties: false,
+      required: ['type', 'prompt', 'rubric', 'isTransfer', 'blocks'],
+      properties: {
+        type: { type: 'string', enum: ['explain'] },
+        prompt: { type: 'string' },
+        rubric: { type: 'string' },
+        isTransfer: { type: 'boolean' },
+        blocks: blocksProperty,
+      },
+    },
+  ],
+} as const;
+
+/** One batch: items keyed by concept slug (T-162). */
+export const itemsBatchJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['concepts'],
+  properties: {
+    concepts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['slug', 'items'],
+        properties: {
+          slug: { type: 'string' },
+          items: { type: 'array', items: itemVariants },
+        },
+      },
+    },
+  },
+} as const satisfies Record<string, unknown>;
+
 export const itemsJsonSchema = {
   type: 'object',
   additionalProperties: false,
@@ -335,12 +585,13 @@ export const itemsJsonSchema = {
           {
             type: 'object',
             additionalProperties: false,
-            required: ['type', 'prompt', 'options', 'answerIndex', 'isTransfer', 'blocks'],
+            required: ['type', 'prompt', 'options', 'answerIndex', 'distractorSource', 'isTransfer', 'blocks'],
             properties: {
               type: { type: 'string', enum: ['recognition'] },
               prompt: { type: 'string' },
               options: { type: 'array', items: { type: 'string' } },
               answerIndex: { type: 'integer' },
+              distractorSource: { type: 'string' },
               isTransfer: { type: 'boolean' },
               blocks: blocksProperty,
             },
@@ -363,13 +614,33 @@ export const itemsJsonSchema = {
   },
 } as const satisfies Record<string, unknown>;
 
+/**
+ * Built per call rather than once at module scope, because the batch checks
+ * need the *request* to compare the response against — which slugs were asked
+ * for, and therefore which are missing or extra.
+ *
+ * The alternative was validating after `runPrompt` returned, and that would
+ * move every check outside the retry loop: a single over-long rubric in one of
+ * ~175 generated items would fail an entire 15-minute topic with no second
+ * attempt, which is exactly what putting `validate` inside the loop exists to
+ * prevent.
+ */
+export function itemsBatchPrompt(topic: string, slugs: string[]) {
+  return definePrompt({
+    name: 'items',
+    schema: BatchResponseSchema,
+    jsonSchema: { name: 'items_response', schema: itemsBatchJsonSchema as unknown as Record<string, unknown> },
+    validate: (value) => void validateItemsBatch(value, topic, slugs),
+    tolerate: isRepairable,
+  });
+}
+
 export const itemsPrompt = definePrompt({
   name: 'items',
   schema: RawItemsResponseSchema,
   jsonSchema: { name: 'items_response', schema: itemsJsonSchema as unknown as Record<string, unknown> },
-  // Inside the retry loop: a single over-long rubric should cost one more call,
-  // not the whole topic.
   validate: (value) => void validateItems(value),
+  tolerate: isRepairable,
 });
 
 /**
@@ -424,32 +695,116 @@ export function domainFragment(domain: string | undefined): string | undefined {
   return domain !== undefined && DOMAIN_FRAGMENTS.has(domain) ? domain : undefined;
 }
 
-/** No outer retry — runPrompt already retries once (see generateConceptMap). */
-export async function generateItems(input: ItemsInput): Promise<GeneratedItems> {
+/** One concept as the batch prompt sees it. */
+export interface BatchConcept {
+  slug: string;
+  title: string;
+  summary: string;
+  /** From the concept map — the raw material for this concept's distractors. */
+  misconceptions: string[];
+}
+
+export interface ItemsBatchInput {
+  topic: string;
+  level: string;
+  /** The one situation the whole course is set in; every non-transfer item
+   *  goes here rather than inventing a premise per card. */
+  spine: string;
+  /** Every concept in this batch shares a domain, which is what lets one
+   *  `domains/<d>.md` fragment apply to all of them. */
+  domain?: string | undefined;
+  concepts: BatchConcept[];
+  /** Other concepts in the course — for discrimination items, and so this
+   *  batch does not wander into what they cover. No items are written for them. */
+  neighbours: string;
+  /** Prompts already written for earlier batches, so the model can avoid
+   *  repeating them or giving their answers away. Empty on the first batch. */
+  asked: string;
+  language?: string | undefined;
+}
+
+export async function generateItemsBatch(input: ItemsBatchInput): Promise<GeneratedItemsBatch> {
+  const slugs = input.concepts.map((c) => c.slug);
+  const prompt = itemsBatchPrompt(input.topic, slugs);
+
   let response: unknown;
   try {
-    // `language: ''` rather than omitted: the template's optional section is
-    // what decides whether the line appears, and `render` throws on a var it
-    // was never given. `domain` is not a var at all — it selects a file.
-    const { domain, ...vars } = input;
     response = await runPrompt(
-      itemsPrompt,
-      { ...vars, language: input.language ?? '' },
-      { fragment: domainFragment(domain) },
+      prompt,
+      {
+        topic: input.topic,
+        level: input.level,
+        spine: input.spine,
+        concepts: formatBatchConcepts(input.concepts),
+        neighbours: input.neighbours,
+        asked: input.asked,
+        language: input.language ?? '',
+      },
+      { fragment: domainFragment(input.domain) },
     );
   } catch (error) {
-    // A GenerationError already carries the rule it broke — re-wrapping it
-    // would flatten every domain reason into `invalid_shape`.
     if (error instanceof GenerationError) throw error;
-    if (error instanceof LlmError) throw new GenerationError(error.reason, error.message);
+    if (error instanceof LlmError) throw new GenerationError(error.reason, error.message, error.raw);
     throw new GenerationError('invalid_shape', `item generation failed: ${String(error)}`);
   }
 
-  const result = validateItems(response);
-  if (result.items.length < MIN_ITEMS) {
-    throw new GenerationError('too_few_items', `got ${result.items.length} items, need at least ${MIN_ITEMS}`);
+  // Tolerantly, for the reason the other two generators are: `runPrompt` ran
+  // these exact checks twice on this exact reply and either passed it or
+  // decided the broken rule was not worth the course. The item count moved into
+  // `validateItems` (T-164) — checked out here it sat outside the retry, so the
+  // one rule nobody could repair was the one about having too little to work
+  // with.
+  const batch = validateItemsBatch(response, input.topic, slugs, { tolerate: true });
+  for (const [slug, items] of batch.bySlug) {
+    batch.bySlug.set(slug, items.map((item) => shuffleOptions(item)));
   }
-  return { ...result, items: result.items.map((item) => shuffleOptions(item)) };
+  return batch;
+}
+
+/** One block per concept: what it is, and the beliefs its distractors are
+ *  built from. Indented under the slug so the model can key its reply. */
+export function formatBatchConcepts(concepts: BatchConcept[]): string {
+  return concepts
+    .map((c) =>
+      [
+        `- slug: ${c.slug}`,
+        `  title: ${c.title}`,
+        `  summary: ${c.summary}`,
+        `  misconceptions:`,
+        ...c.misconceptions.map((m) => `    - ${m}`),
+      ].join('\n'),
+    )
+    .join('\n\n');
+}
+
+/**
+ * One concept, as a batch of one (T-162).
+ *
+ * Kept because `tests.worker.ts` needs a single replacement question when a
+ * held-out concept's only cached item turns out to be `codeEditor`, which the
+ * extension popup cannot render. It delegates rather than keeping a second
+ * prompt path: two `items/system.md` files would drift, and the rules that
+ * matter here — the four types, the transfer count, the rubric limit — are
+ * identical whether one concept is being written or four.
+ *
+ * `misconceptions` is empty on this path, so the distractors are the model's
+ * own. That is a real weakening of the distractor rule, and acceptable only
+ * because this is a fallback for one substitute question rather than the path
+ * a learner's course is built on.
+ */
+export async function generateItems(input: ItemsInput): Promise<GeneratedItems> {
+  const slug = 'concept';
+  const batch = await generateItemsBatch({
+    topic: input.topic,
+    level: 'working',
+    spine: input.topic,
+    domain: input.domain,
+    concepts: [{ slug, title: input.concept, summary: input.summary, misconceptions: [] }],
+    neighbours: '',
+    asked: '',
+    language: input.language,
+  });
+  return { topic: input.topic, items: batch.bySlug.get(slug) ?? [] };
 }
 
 /**

@@ -68,7 +68,11 @@ describe('shared schemas', () => {
   });
 
   it('ItemPayloadSchema for recognition requires exactly 4 options and answerIndex in 0..3', () => {
-    const base = { type: 'recognition' as const, prompt: 'Which one?' };
+    const base = {
+      type: 'recognition' as const,
+      prompt: 'Which one?',
+      distractorSource: 'Calling setState updates the variable immediately.',
+    };
     expect(
       ItemPayloadSchema.safeParse({ ...base, options: ['a', 'b', 'c', 'd'], answerIndex: 0 }).success,
     ).toBe(true);
@@ -78,6 +82,15 @@ describe('shared schemas', () => {
     expect(
       ItemPayloadSchema.safeParse({ ...base, options: ['a', 'b', 'c', 'd'], answerIndex: 4 }).success,
     ).toBe(false);
+  });
+
+  // The field is a forcing function on the generator (T-162): a distractor is
+  // only nameable as a belief if it was built from one. Nothing enforced that
+  // before, so the omission has to be rejected rather than defaulted.
+  it('ItemPayloadSchema for recognition requires distractorSource', () => {
+    const base = { type: 'recognition' as const, prompt: 'Which one?', options: ['a', 'b', 'c', 'd'], answerIndex: 0 };
+    expect(ItemPayloadSchema.safeParse(base).success).toBe(false);
+    expect(ItemPayloadSchema.safeParse({ ...base, distractorSource: '   ' }).success).toBe(false);
   });
 
   it('ItemPayloadSchema for recall requires non-empty answer', () => {

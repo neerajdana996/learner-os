@@ -151,6 +151,13 @@ const codeFields = {
  *  a concept needing six boxes is a concept that has not been split yet. */
 export const DIAGRAM_MAX_NODES = 5;
 export const SEQUENCE_MAX_LANES = 3;
+/** Raised from 200 (T-158): a real generation for a 4-node, two-component
+ *  diagram ("a network partition splits A/B from C/D") needed 227 characters
+ *  for an accurate, non-padded description, and every prompt and JSON schema
+ *  that mentioned `alt` at all never stated a limit — so nothing told the
+ *  model to compress. 260 was chosen to fit that real case with headroom,
+ *  not because 200 was measured to be exactly wrong. */
+export const DRAWING_ALT_MAX = 260;
 
 const NodeSchema = z.object({
   id: z.string().trim().min(1).max(24),
@@ -170,7 +177,7 @@ const diagramCommon = {
   /** Read aloud instead of the drawing. Not optional: a diagram with no text
    *  equivalent is unreadable to a screen reader, and the extension is a
    *  notification-driven surface people reach with a keyboard. */
-  alt: z.string().trim().min(1).max(200),
+  alt: z.string().trim().min(1).max(DRAWING_ALT_MAX),
 };
 
 const MessageSchema = z.object({
@@ -186,7 +193,7 @@ const MessageSchema = z.object({
 const sequenceCommon = {
   lanes: z.array(z.string().trim().min(1).max(20)).min(2).max(SEQUENCE_MAX_LANES),
   messages: z.array(MessageSchema).min(2).max(8),
-  alt: z.string().trim().min(1).max(200),
+  alt: z.string().trim().min(1).max(DRAWING_ALT_MAX),
 };
 
 const numericFields = {
@@ -441,10 +448,12 @@ export const PublicBlockSchema = z.discriminatedUnion('kind', [
     starter: z.string(),
     cases: z.array(PublicCodeEditorCaseSchema),
   }),
-  // Content blocks: the drawing and its text equivalent. `nodes` and `edges`
-  // are not carried — the client has nothing to do with them once the SVG
-  // exists, and shipping them would be shipping the diagram twice.
-  block('diagram', { svg: z.string(), alt: z.string() }),
+  // `diagram` carries the raw topology alongside the SVG (2026-09-11): the web
+  // app renders it interactively (ReactFlow) rather than placing the flattened
+  // picture, so the client needs the structure back. `sequence` keeps the old
+  // svg-only projection — a swimlane/timing diagram is not a node graph, so
+  // there is nothing a graph library would do with `lanes`/`messages` here.
+  block('diagram', { ...diagramCommon, svg: z.string() }),
   block('sequence', { svg: z.string(), alt: z.string() }),
   // `answer` and `tolerance` are the answer key and stay on the server, the
   // same way `answerIndex` and `rubric` do (T-010).
@@ -504,12 +513,10 @@ export function toPublicBlock(b: Block): PublicBlock {
         starter: b.starter,
         cases: b.cases.map((c) => ({ name: c.name, call: c.call })),
       };
-    // `nodes` and `edges` stay behind. The worker already drew them into `svg`
-    // at generation time, and shipping both would be shipping the diagram twice
-    // — once as a picture and once as the data to redraw it, which is exactly
-    // the client graph library this design exists to avoid.
+    // `nodes`/`edges` now ship alongside `svg` (2026-09-11) for the web app's
+    // interactive ReactFlow rendering; the extension still just places the SVG.
     case 'diagram':
-      return { ...base, kind: 'diagram', svg: b.svg, alt: b.alt };
+      return { ...base, kind: 'diagram', svg: b.svg, alt: b.alt, nodes: b.nodes, edges: b.edges };
     case 'sequence':
       return { ...base, kind: 'sequence', svg: b.svg, alt: b.alt };
     // `answer` and `tolerance` are the answer key. Grading stays server-side,

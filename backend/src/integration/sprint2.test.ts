@@ -34,26 +34,48 @@ const prereqsFor = (index: number) => (index < 3 ? [] : [`concept-${(index % 3) 
 vi.mock('../generator/conceptMap.js', () => ({
   generateConceptMap: vi.fn(async () => ({
     topic: 'React Hooks',
+    crux: [],
     concepts: Array.from({ length: CONCEPT_COUNT }, (_, index) => ({
       slug: `concept-${index + 1}`,
       title: `Concept ${index + 1}`,
       summary: `Summary ${index + 1}`,
       prereqs: prereqsFor(index),
+      serves: ['cap'],
+      misconceptions: ['the adjacent idea'],
+      hardBecause: index % 2 === 0 ? 'counterintuitive' : 'no-prior-hook',
     })),
   })),
 }));
 
+vi.mock('../generator/framing.js', () => ({
+  generateFraming: vi.fn(async () => ({
+    topic: 'Topic',
+    level: 'working',
+    capabilities: [{ id: 'cap', statement: 'Do the thing.', evidence: 'Does it.' }],
+    centralMisconception: 'The obvious reading is right.',
+    spine: { name: 'one running example', description: 'one system', whyItFits: 'serves cap' },
+    assumedKnowledge: ['a', 'b'],
+    outOfScope: ['x', 'y'],
+  })),
+  formatSpine: (spine: { name: string }) => spine.name,
+}));
+
 vi.mock('../generator/items.js', () => ({
-  generateItems: vi.fn(async (concept: string) => ({
-    topic: concept,
-    items: [
-      { payload: { type: 'recall', prompt: `${concept}: recall`, answer: 'the answer', accept: [] }, isTransfer: false },
-      { payload: { type: 'recognition', prompt: `${concept}: recognition`, options: ['a', 'b', 'c', 'd'], answerIndex: 1 }, isTransfer: false },
-      { payload: { type: 'application', prompt: `${concept}: application`, answer: 'the answer', accept: [] }, isTransfer: false },
-      { payload: { type: 'explain', prompt: `${concept}: explain`, rubric: 'Mentions the answer.' }, isTransfer: false },
-      { payload: { type: 'recall', prompt: `${concept}: transfer`, answer: 'the answer', accept: [] }, isTransfer: true },
-      { payload: { type: 'recall', prompt: `${concept}: extra`, answer: 'the answer', accept: [] }, isTransfer: false },
-    ],
+  generateItemsBatch: vi.fn(async ({ topic, concepts }: { topic: string; concepts: { slug: string; title: string }[] }) => ({
+    topic,
+    bySlug: new Map(
+      concepts.map(({ slug, title }) => [
+        slug,
+        [
+          { payload: { type: 'recall', prompt: `${title}: recall`, answer: 'the answer', accept: [] }, isTransfer: false },
+          { payload: { type: 'recognition', prompt: `${title}: recognition`, options: ['a', 'b', 'c', 'd'], answerIndex: 1, distractorSource: 'the adjacent idea' }, isTransfer: false },
+          { payload: { type: 'application', prompt: `${title}: application`, answer: 'the answer', accept: [] }, isTransfer: false },
+          { payload: { type: 'explain', prompt: `${title}: explain`, rubric: 'Mentions the answer.' }, isTransfer: false },
+          { payload: { type: 'recall', prompt: `${title}: transfer`, answer: 'the answer', accept: [] }, isTransfer: true },
+          { payload: { type: 'recall', prompt: `${title}: extra`, answer: 'the answer', accept: [] }, isTransfer: false },
+        ],
+      ]),
+    ),
   })),
 }));
 

@@ -20,6 +20,11 @@
  * actually differ), and a failure retries once before failing the job loudly.
  */
 export const MODELS = {
+  /** Once per topic, short output, and every other call inherits it (T-161).
+   *  The capabilities, the spine and the central misconception are judgement
+   *  calls made from one sentence of learner intent — the highest reasoning
+   *  density in the pipeline, on the fewest tokens. Worth the top tier. */
+  framing: { model: 'gpt-5.6-sol', reasoningEffort: 'high' },
   /** Once per topic, and the foundation the whole course is built on. A better
    *  map is also fewer corrections during content QA, which T-045 measures. */
   conceptMap: { model: 'gpt-5.6-sol', reasoningEffort: 'medium' },

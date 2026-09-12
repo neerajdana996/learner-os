@@ -8,7 +8,11 @@ const { db } = await import('../../db/client.js');
 const { cards, items, tests, topics } = await import('../../db/schema.js');
 const { truncateAll } = await import('../../test/db.js');
 const { NOW, seedColdTopic } = await import('../../modules/tests/tests.fixtures.js');
-const fixture = readFileSync(new URL('../../../fixtures/items.usestate.json', import.meta.url), 'utf8');
+const fixtureText = readFileSync(new URL('../../../fixtures/items.usestate.json', import.meta.url), 'utf8');
+/** The item generator speaks in batches now (T-162), and the replacement path
+ *  sends a batch of one under the slug `concept` — so the fixture, which is a
+ *  bare item list, has to arrive in that envelope. */
+const fixture = JSON.stringify({ concepts: [{ slug: 'concept', items: JSON.parse(fixtureText).items }] });
 beforeEach(async () => { await truncateAll(); create.mockReset(); });
 describe('held-out test generation', () => {
   it('replaces a control whose only question is codeEditor, caches one question and reuses the test on retry', async () => {

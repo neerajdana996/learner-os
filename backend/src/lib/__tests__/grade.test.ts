@@ -19,6 +19,7 @@ const recognition = {
   prompt: 'Pick',
   options: ['a', 'b', 'c', 'd'],
   answerIndex: 2,
+  distractorSource: 'Someone who picked the first plausible-looking option.',
 };
 
 beforeEach(() => gradeExplanation.mockReset());

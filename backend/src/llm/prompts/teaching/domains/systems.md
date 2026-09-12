@@ -16,11 +16,11 @@ A correct answer here is a **shape** — a topology or an ordering of events —
 
 **The test: delete the drawing. Can `tryFirstPrompt` still be answered?** If yes, the drawing was decoration — write `teachBlock: null` instead. If the question becomes unanswerable without it, it earned its place.
 
-`alt` is required and is not optional politeness — it is what a screen reader reads. Write what the drawing *shows*, not that a drawing exists.
+`alt` is required and is not optional politeness — it is what a screen reader reads. Write what the drawing *shows*, not that a drawing exists. **Keep it to one or two sentences, 260 characters or fewer** — a diagram with several disconnected parts (e.g. two groups that cannot reach each other) needs a sentence per part plus one naming what cannot happen between them; anything longer is describing more than the drawing needs to say.
 
 ### Hard limits
 
-Identical to the items fragment, because this is the same renderer: `diagram` gets 2–5 nodes and at most 8 edges; `sequence` gets 2–3 lanes and 2–8 messages. Node and lane labels are participants, never verbs. `delayed` on a `sequence` message is a real decision, not a default — set it only when a message genuinely arrives after a later one was sent, which is what turns a happy-path picture into the bug the question is about.
+Identical to the items fragment, because this is the same renderer: `diagram` gets 2–5 nodes and at most 8 edges; `sequence` gets 2–3 lanes and 2–8 messages; `alt` is capped at 260 characters. Node and lane labels are participants, never verbs. `delayed` on a `sequence` message is a real decision, not a default — set it only when a message genuinely arrives after a later one was sent, which is what turns a happy-path picture into the bug the question is about.
 
 ### Worked example — concept: "A read from a replica can be stale", `try_first` mode
 

@@ -23,6 +23,7 @@
         "while (lo !== hi - 1)"
       ],
       "answerIndex": 1,
+      "distractorSource": "The nearest wrong belief a learner still holds.",
       "isTransfer": false,
       "blocks": [
         {
@@ -34,7 +35,8 @@
           "notes": [],
           "dim": null
         }
-      ]
+      ],
+      "distractorSource": "The nearest plausible-sounding alternative, which is what a learner who half-remembers reaches for."
     },
     {
       "type": "application",
@@ -139,7 +141,8 @@
       ],
       "answerIndex": 0,
       "isTransfer": false,
-      "blocks": null
+      "blocks": null,
+      "distractorSource": "The nearest plausible-sounding alternative, which is what a learner who half-remembers reaches for."
     }
   ]
 }

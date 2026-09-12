@@ -78,6 +78,7 @@ describe('the systems blocks end to end', () => {
     prompt: 'Which read can return a stale value?',
     options: ['a', 'b', 'c', 'd'],
     answerIndex: 1,
+    distractorSource: 'the nearest wrong belief a learner still holds',
     isTransfer: false,
     blocks: [{ kind: 'sequence' as const, slot: 'context' as const, lanes: ['Client', 'Replica'], messages: [{ from: 'Client', to: 'Replica', label: 'read', delayed: null }, { from: 'Replica', to: 'Client', label: 'x=0', delayed: true }], alt: 'A client reads from a replica and gets a stale value.' }],
   };

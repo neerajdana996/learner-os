@@ -25,6 +25,7 @@ const recognitionPayload = {
   prompt: 'Pick one',
   options: ['a', 'b', 'c', 'd'],
   answerIndex: 2,
+  distractorSource: 'the nearest wrong belief a learner still holds',
 };
 
 const explainPayload = { type: 'explain' as const, prompt: 'Explain', rubric: 'SECRET RUBRIC' };

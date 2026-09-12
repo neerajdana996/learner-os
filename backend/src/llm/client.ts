@@ -48,6 +48,16 @@ export interface CompleteOpts {
    * the cheap tier safe on the constrained prompts.
    */
   jsonSchema?: { name: string; schema: Record<string, unknown> };
+  /**
+   * Turns the retry into a correction rather than a re-roll (T-164).
+   *
+   * The retry used to re-send the identical prompt and hope for a different
+   * sample, which is why a generation could break the *same* rule twice and
+   * die: nothing ever told the model what was wrong. Supplying the reply it
+   * actually gave and the rule it broke turns a one-field mistake into a
+   * one-field fix, on a call that costs the same as the re-roll it replaces.
+   */
+  repair?: { previous: string; problem: string };
 }
 
 /** One non-streaming completion. Returns the message content. */
@@ -67,6 +77,20 @@ export async function complete(opts: CompleteOpts): Promise<string> {
     messages: [
       { role: 'system', content: opts.system },
       { role: 'user', content: opts.user },
+      // The failed reply goes back as the assistant turn it was, so the model
+      // is correcting its own answer rather than reading a description of it.
+      ...(opts.repair
+        ? [
+            { role: 'assistant' as const, content: opts.repair.previous },
+            {
+              role: 'user' as const,
+              content:
+                `That reply was rejected: ${opts.repair.problem}\n\n` +
+                'Return the whole JSON object again, corrected. Keep everything that was already ' +
+                'right — do not rewrite the parts the message above did not complain about.',
+            },
+          ]
+        : []),
     ],
     // Must be explicit: gpt-5.6 defaults to `medium` when omitted, so leaving
     // it off silently buys reasoning latency and tokens on every call.

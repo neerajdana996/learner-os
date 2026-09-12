@@ -30,12 +30,12 @@ A drawing is context. It must be the thing the question is *about*, not decorati
 
 **The test: delete the drawing. Can the item still be answered?** If yes, the drawing was decoration — remove it and write a plain item. If the question becomes unanswerable, the block earned its place.
 
-`alt` is required on every drawing and is not optional politeness: it is what a screen reader reads, and the extension is a notification-driven surface people reach with a keyboard. Write what the drawing *shows*, not that a drawing exists. Good: "A client writes to the primary, which replicates to a replica asynchronously; the client then reads from the replica." Useless: "A diagram of replication."
+`alt` is required on every drawing and is not optional politeness: it is what a screen reader reads, and the extension is a notification-driven surface people reach with a keyboard. Write what the drawing *shows*, not that a drawing exists. Good: "A client writes to the primary, which replicates to a replica asynchronously; the client then reads from the replica." Useless: "A diagram of replication." **260 characters or fewer** — a diagram with several disconnected parts needs a sentence per part plus what cannot happen between them, not more.
 
 ### Hard limits
 
-- `diagram`: **2–5 nodes**, ≤8 edges. Node labels ≤28 characters, edge labels ≤24. Five is a cap, not a target — a concept needing six boxes has not been split into one idea yet.
-- `sequence`: **2–3 lanes**, 2–8 messages. Lane names are participants ("Client", "Primary", "Replica"), never verbs.
+- `diagram`: **2–5 nodes**, ≤8 edges. Node labels ≤28 characters, edge labels ≤24, `alt` ≤260. Five is a cap, not a target — a concept needing six boxes has not been split into one idea yet.
+- `sequence`: **2–3 lanes**, 2–8 messages, `alt` ≤260. Lane names are participants ("Client", "Primary", "Replica"), never verbs.
 - `numeric`: `answer` is a number and `tolerance` is a **fraction** — `0.1` accepts ±10%, `0.5` accepts an order-of-magnitude estimate. Put the unit in `unit`; never ask the learner to type it.
 - `edges` and `messages` reference nodes and lanes **by the exact `id` or lane name**. A reference that matches nothing is dropped from the drawing, so the question loses the arrow it was about.
 - `prompt` stays required on every item, blocks or not. It is what a screen reader and the extension read.

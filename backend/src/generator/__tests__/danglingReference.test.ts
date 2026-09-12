@@ -11,6 +11,7 @@ const baseItems = (): Record<string, unknown>[] => [
     prompt: 'Which situation is a network partition?',
     options: ['a', 'b', 'c', 'd'],
     answerIndex: 1,
+    distractorSource: 'the nearest wrong belief a learner still holds',
     isTransfer: false,
   },
   { type: 'application', prompt: 'Node A and node B both store X. What is B?', answer: 'a replica', accept: [], isTransfer: true },

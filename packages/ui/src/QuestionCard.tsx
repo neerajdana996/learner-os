@@ -1,5 +1,5 @@
 import type { PublicItem } from '@learnos/shared';
-import { BlockList } from './blocks/BlockList.js';
+import { BlockList, type BlockListProps } from './blocks/BlockList.js';
 import { ClozeCode } from './blocks/ClozeCode.js';
 import { HotspotLine } from './blocks/HotspotLine.js';
 import { OrderLines } from './blocks/OrderLines.js';
@@ -16,6 +16,8 @@ export interface QuestionCardProps {
   /** `codeEditor` only: fetches the skeleton, which is never in the payload.
    *  Omitted, the hint is not offered. */
   onSkeleton?: () => Promise<string>;
+  /** Forwarded to `BlockList` — see its own doc comment. */
+  renderDiagram?: BlockListProps['renderDiagram'];
 }
 
 /**
@@ -27,7 +29,7 @@ export interface QuestionCardProps {
  * the prompt and the answer surface, and an item that does not renders exactly
  * as it did before, which is every item generated so far.
  */
-export function QuestionCard({ item, value, onChange, onAssisted, onSkeleton }: QuestionCardProps) {
+export function QuestionCard({ item, value, onChange, onAssisted, onSkeleton, renderDiagram }: QuestionCardProps) {
   /**
    * An answer block replaces the default surface, whatever the item's `type`
    * (T-108). `numeric` is the one implemented; the four code answer surfaces
@@ -40,7 +42,7 @@ export function QuestionCard({ item, value, onChange, onAssisted, onSkeleton }: 
     <div>
       <h1 className="question__prompt">{item.prompt}</h1>
 
-      {item.blocks ? <BlockList blocks={item.blocks} /> : null}
+      {item.blocks ? <BlockList blocks={item.blocks} renderDiagram={renderDiagram} /> : null}
 
       {answerBlock?.kind === 'clozeCode' ? (
         <ClozeCode

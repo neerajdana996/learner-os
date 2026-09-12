@@ -96,4 +96,25 @@ describe('CodeBlock', () => {
       expect(child.tagName).not.toBe('DIV');
     }
   });
+
+  /**
+   * T-156 — a note past line 1 used to overwrite its own row's gutter number.
+   *
+   * `notedLines` maps a line number to that note's 1-based *rank* (for the
+   * small circle in the caption below), and the gutter used to display that
+   * rank instead of the line's own number on a hit row. A single note on line
+   * 3 has rank 1, so line 3's gutter read "1" — indistinguishable from line 1
+   * — while every unannotated line still read correctly. Found live while
+   * building the landing page's code sample.
+   */
+  it('keeps the true line number in the gutter for a note past line 1', () => {
+    const withLateNote: Code = { ...TEN_LINES, notes: [{ line: 3, text: 'off by one here' }] };
+    const { container } = render(<CodeBlock block={withLateNote} />);
+
+    const gutters = Array.from(container.querySelectorAll('.code__gutter'));
+    expect(gutters.map((el) => el.textContent)).toEqual(
+      Array.from({ length: 10 }, (_, i) => String(i + 1)),
+    );
+    expect(gutters[2]).toHaveClass('code__gutter--hit');
+  });
 });

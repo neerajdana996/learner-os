@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
+/** Item generation speaks in batches now (T-162). These fixtures are one
+ *  concept, so wrap them in the envelope the model would actually return —
+ *  `generateItems` sends a batch of one under the slug `concept`. */
+const asBatch = (json: string) =>
+  JSON.stringify({ concepts: [{ slug: 'concept', items: JSON.parse(json).items }] });
+
 const create = vi.fn();
 vi.mock('openai', () => ({
   default: class {
@@ -11,6 +17,7 @@ vi.mock('openai', () => ({
 const { itemsJsonSchema, itemsPrompt, blockJsonSchemas } = await import('../items.js');
 const { conceptMapJsonSchema, ConceptMapSchema, conceptMapPrompt } = await import('../conceptMap.js');
 const { teachingJsonSchema, teachingPrompt } = await import('../teaching.js');
+const { framingPrompt } = await import('../framing.js');
 const { ItemGenerationSchema, BlockGenerationSchema } = await import('@learnos/shared');
 
 type JsonSchema = {
@@ -164,6 +171,7 @@ describe('runPrompt sends the schema to the provider', () => {
     ['items', itemsPrompt, 'items_response'],
     ['conceptMap', conceptMapPrompt, 'concept_map_response'],
     ['teaching', teachingPrompt, 'teaching_response'],
+    ['framing', framingPrompt, 'framing_response'],
   ])('%s', async (_name, prompt, schemaName) => {
     create.mockReset();
     create.mockResolvedValue(asText('{"not":"valid"}'));
@@ -173,11 +181,28 @@ describe('runPrompt sends the schema to the provider', () => {
     // supplied empty rather than omitted: it is an *optional value*, not an
     // optional var, and `render` throws on a var it was never given — the same
     // loud failure a renamed `{{concept}}` gets (T-091).
+    // Every var the four templates between them reference. Optional *values*
+    // are supplied empty rather than omitted: `render` throws on a var it was
+    // never given — the same loud failure a renamed `{{concept}}` gets (T-091).
     await runPrompt(prompt as never, {
       topic: 'x',
       concept: 'y',
       summary: 'z',
       teachMode: 'try_first',
+      level: 'working',
+      why: '',
+      spine: 'a running example',
+      capabilities: '- cap: do the thing',
+      centralMisconception: 'the obvious reading is right',
+      assumedKnowledge: '- a',
+      outOfScope: '- b',
+      concepts: '- slug: c',
+      neighbours: '',
+      asked: '',
+      misconceptions: '- m',
+      items: '- [recall] q',
+      prereqs: '',
+      notYetTaught: '',
       language: '',
     } as never).catch(() => undefined);
 
@@ -193,17 +218,20 @@ describe('runPrompt sends the schema to the provider', () => {
 describe('domain validation is retried, not fatal on first offence', () => {
   const asText = (text: string) => ({ choices: [{ message: { content: text }, finish_reason: 'stop' }] });
 
-  /** Six items, all four types, one transfer — valid unless a rule is broken. */
+  /** Six items, all four types, one transfer — valid unless a rule is broken.
+   *  Wrapped in the batch envelope the item generator speaks now (T-162);
+   *  `generateItems` sends a batch of one under the slug `concept`.
+   *  Every prompt differs: T-162 rejects a repeated prompt across the batch,
+   *  and a fixture that trips that rule can never reach the one under test. */
   const itemSet = (rubric: string) => ({
-    topic: 'useState',
-    items: [
-      { type: 'recall', prompt: 'q', answer: 'a', accept: [], isTransfer: false },
-      { type: 'recognition', prompt: 'q', options: ['a', 'b', 'c', 'd'], answerIndex: 0, isTransfer: false },
-      { type: 'application', prompt: 'q', answer: 'a', accept: [], isTransfer: true },
-      { type: 'explain', prompt: 'q', rubric, isTransfer: false },
-      { type: 'recall', prompt: 'q2', answer: 'a', accept: [], isTransfer: false },
-      { type: 'recall', prompt: 'q3', answer: 'a', accept: [], isTransfer: false },
-    ],
+    concepts: [{ slug: 'concept', items: [
+      { type: 'recall', prompt: 'q1', answer: 'a', accept: [], isTransfer: false },
+      { type: 'recognition', prompt: 'q2', options: ['a', 'b', 'c', 'd'], distractorSource: 'the nearest wrong belief', answerIndex: 0, isTransfer: false },
+      { type: 'application', prompt: 'q3', answer: 'a', accept: [], isTransfer: true },
+      { type: 'explain', prompt: 'q4', rubric, isTransfer: false },
+      { type: 'recall', prompt: 'q5', answer: 'a', accept: [], isTransfer: false },
+      { type: 'recall', prompt: 'q6', answer: 'a', accept: [], isTransfer: false },
+    ] }],
   });
 
   it('retries once when a rubric is over length, then succeeds', async () => {

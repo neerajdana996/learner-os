@@ -1,5 +1,7 @@
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type { TeachBlock } from '@learnos/shared';
+
+type TeachDiagram = Extract<TeachBlock, { kind: 'diagram' }>;
 
 /**
  * The visual attached to a concept's `tryFirstPrompt` (T-145) — a listing or a
@@ -16,7 +18,16 @@ import type { TeachBlock } from '@learnos/shared';
  * markup this produces is a strict subset of `CodeBlock`'s (no gutter badges,
  * no notes rail) and identical to `DrawingBlock`'s.
  */
-export function TeachBlockView({ block }: { block: TeachBlock }) {
+export interface TeachBlockViewProps {
+  block: TeachBlock;
+  /** Same seam as `BlockList`'s prop of the same name: lets the web app swap
+   *  in an interactive ReactFlow graph for `diagram` without this package
+   *  taking on that dependency. Omitted (as the extension always leaves it),
+   *  `diagram` renders the same static SVG `sequence` does. */
+  renderDiagram?: (block: TeachDiagram) => ReactNode | null;
+}
+
+export function TeachBlockView({ block, renderDiagram }: TeachBlockViewProps) {
   if (block.kind === 'code') {
     const lines = block.src.split('\n');
     return (
@@ -44,6 +55,11 @@ export function TeachBlockView({ block }: { block: TeachBlock }) {
         </div>
       </figure>
     );
+  }
+
+  if (block.kind === 'diagram') {
+    const overridden = renderDiagram?.(block);
+    if (overridden) return <>{overridden}</>;
   }
 
   // `diagram` and `sequence` were already drawn to SVG by the worker at

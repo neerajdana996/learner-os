@@ -1,28 +1,175 @@
 {
   "topic": "React Hooks",
+  "crux": ["state-updates-are-async", "dependency-array", "stale-closure"],
   "concepts": [
-    { "slug": "state", "title": "State", "summary": "State stores values that live inside a component instance.", "prereqs": [], "domain": "prose" },
-    { "slug": "render", "title": "Render", "summary": "Rendering is when React updates the UI from component state and props.", "prereqs": ["state"], "domain": "prose" },
-    { "slug": "props", "title": "Props", "summary": "Props are inputs passed from parent components to children.", "prereqs": ["render"], "domain": "prose" },
-    { "slug": "component", "title": "Component", "summary": "A component is a reusable unit of UI.", "prereqs": [], "domain": "prose" },
-    { "slug": "hooks", "title": "Hooks", "summary": "Hooks are functions that let function components use React features.", "prereqs": ["component", "state"], "domain": "prose" },
-    { "slug": "use-state", "title": "useState", "summary": "useState lets a component hold local state.", "prereqs": ["hooks", "state"], "domain": "code" },
-    { "slug": "use-effect", "title": "useEffect", "summary": "useEffect runs side effects after render.", "prereqs": ["hooks", "render"], "domain": "code" },
-    { "slug": "use-context", "title": "useContext", "summary": "useContext reads a value from context without prop drilling.", "prereqs": ["hooks", "component"], "domain": "code" },
-    { "slug": "memoization", "title": "Memoization", "summary": "Memoization avoids unnecessary recomputation or rerendering.", "prereqs": ["render", "use-state"], "domain": "prose" },
-    { "slug": "dependency-array", "title": "Dependency array", "summary": "The dependency array tells effect code when to rerun.", "prereqs": ["use-effect"], "domain": "code" },
-    { "slug": "cleanup", "title": "Cleanup", "summary": "Cleanup handles teardown work when an effect is removed or rerun.", "prereqs": ["use-effect"], "domain": "code" },
-    { "slug": "event-handlers", "title": "Event handlers", "summary": "Event handlers respond to user actions like clicks and typing.", "prereqs": ["render", "component"], "domain": "code" },
-    { "slug": "controlled-input", "title": "Controlled input", "summary": "A controlled input stores its value in state.", "prereqs": ["use-state", "event-handlers"], "domain": "code" },
-    { "slug": "derived-state", "title": "Derived state", "summary": "Derived state is computed from current props or other state instead of stored independently.", "prereqs": ["state", "props"], "domain": "prose" },
-    { "slug": "re-render", "title": "Re-render", "summary": "A re-render happens when React updates the component tree after changes.", "prereqs": ["render", "state"], "domain": "prose" },
-    { "slug": "immutability", "title": "Immutability", "summary": "Immutability means not mutating objects or arrays in place.", "prereqs": ["state", "re-render"], "domain": "prose" },
-    { "slug": "effect-order", "title": "Effect order", "summary": "Effects run after the paint, in the order they are declared.", "prereqs": ["use-effect", "render"], "domain": "systems" },
-    { "slug": "context", "title": "Context", "summary": "Context is a way to share values across a component tree without prop drilling.", "prereqs": ["component", "props"], "domain": "systems" },
-    { "slug": "custom-hook", "title": "Custom hook", "summary": "A custom hook packages reusable stateful logic.", "prereqs": ["hooks", "use-state"], "domain": "code" },
-    { "slug": "callback", "title": "useCallback", "summary": "useCallback memoizes a function between renders.", "prereqs": ["memoization", "hooks"], "domain": "code" },
-    { "slug": "memo", "title": "memo", "summary": "memo prevents rerenders when props are unchanged.", "prereqs": ["memoization", "render"], "domain": "code" },
-    { "slug": "use-ref", "title": "useRef", "summary": "useRef stores a mutable value that survives renders without causing rerenders.", "prereqs": ["state", "hooks"], "domain": "code" },
-    { "slug": "lifecycle", "title": "Lifecycle", "summary": "Lifecycle is the sequence of mount, update and unmount phases.", "prereqs": ["render", "use-effect"], "domain": "systems" }
+    {
+      "slug": "component",
+      "title": "Function components",
+      "summary": "A component is a function that takes props and returns what should be on the screen.",
+      "prereqs": [],
+      "serves": ["pick-a-hook"],
+      "domain": "prose",
+      "hardBecause": "not-hard",
+      "misconceptions": ["A component is an object with methods, like a class."]
+    },
+    {
+      "slug": "state",
+      "title": "State",
+      "summary": "State is a value a component remembers between renders, and changing it is what asks React to run the component again.",
+      "prereqs": [],
+      "serves": ["pick-a-hook", "read-a-rerender"],
+      "domain": "prose",
+      "hardBecause": "no-prior-hook",
+      "misconceptions": ["A plain variable in the component body would work just as well."]
+    },
+    {
+      "slug": "render",
+      "title": "What a render actually is",
+      "summary": "A render is React calling your function to find out what the screen should look like — it is not the browser painting.",
+      "prereqs": [],
+      "serves": ["read-a-rerender"],
+      "domain": "prose",
+      "hardBecause": "counterintuitive",
+      "misconceptions": ["A render means the DOM was updated."]
+    },
+    {
+      "slug": "hooks",
+      "title": "What a hook is",
+      "summary": "A hook is a function that lets a component use React features, and it must be called in the same order on every render.",
+      "prereqs": ["component", "state"],
+      "serves": ["pick-a-hook"],
+      "domain": "prose",
+      "hardBecause": "no-prior-hook",
+      "misconceptions": ["Hooks can be called conditionally as long as the condition is stable."]
+    },
+    {
+      "slug": "re-render",
+      "title": "What triggers a re-render",
+      "summary": "A component re-renders when its own state changes or when its parent re-renders, and then its effects run.",
+      "prereqs": ["render", "state"],
+      "serves": ["read-a-rerender"],
+      "domain": "systems",
+      "hardBecause": "confusable-neighbour",
+      "misconceptions": ["A component only re-renders when its own state changes."]
+    },
+    {
+      "slug": "use-state",
+      "title": "useState",
+      "summary": "useState returns the current value and a setter, and calling the setter schedules a re-render with the new value.",
+      "prereqs": ["hooks", "state"],
+      "serves": ["pick-a-hook"],
+      "domain": "code",
+      "hardBecause": "not-hard",
+      "misconceptions": ["The setter changes the variable you already have in scope."]
+    },
+    {
+      "slug": "state-updates-are-async",
+      "title": "State updates do not apply immediately",
+      "summary": "After you call the setter the variable you are holding still has the old value — the new one arrives on the next render.",
+      "prereqs": ["use-state", "re-render"],
+      "serves": ["read-a-rerender", "fix-a-stale-value"],
+      "domain": "code",
+      "hardBecause": "counterintuitive",
+      "misconceptions": [
+        "setCount(count + 1) updates count, so I can read it on the next line.",
+        "Calling the setter twice in a row adds two."
+      ]
+    },
+    {
+      "slug": "immutability",
+      "title": "Why you replace state instead of changing it",
+      "summary": "React decides whether to re-render by comparing the old value to the new one, so editing the old object in place looks like nothing happened.",
+      "prereqs": ["state", "use-state"],
+      "serves": ["read-a-rerender"],
+      "domain": "prose",
+      "hardBecause": "counterintuitive",
+      "misconceptions": ["Pushing onto the array and calling the setter with it is the same as passing a new array."]
+    },
+    {
+      "slug": "use-effect",
+      "title": "useEffect",
+      "summary": "useEffect runs a piece of code after the render that it belongs to, for work that is not part of producing the screen.",
+      "prereqs": ["hooks", "render"],
+      "serves": ["pick-a-hook"],
+      "domain": "code",
+      "hardBecause": "no-prior-hook",
+      "misconceptions": ["useEffect runs before the component renders, like a constructor."]
+    },
+    {
+      "slug": "dependency-array",
+      "title": "The dependency array",
+      "summary": "The array says which values the effect reads, and React re-runs the effect whenever one of them differs from last time.",
+      "prereqs": ["use-effect"],
+      "serves": ["fix-a-stale-value", "read-a-rerender"],
+      "domain": "code",
+      "hardBecause": "confusable-neighbour",
+      "misconceptions": [
+        "The dependency array is a list of things I want the effect to change.",
+        "An empty array just means run it once, so it is the safe default."
+      ]
+    },
+    {
+      "slug": "stale-closure",
+      "title": "Stale values in effects and handlers",
+      "summary": "A function created during one render keeps that render's values forever, so an effect with a missing dependency reads an old one.",
+      "prereqs": ["dependency-array"],
+      "serves": ["fix-a-stale-value"],
+      "domain": "code",
+      "hardBecause": "counterintuitive",
+      "misconceptions": [
+        "Reading count inside the callback gives me whatever count is now.",
+        "If the value is wrong I should move the variable outside the component."
+      ]
+    },
+    {
+      "slug": "cleanup",
+      "title": "Effect cleanup",
+      "summary": "Returning a function from an effect tells React how to undo it, and React runs that before the effect goes again and when the component leaves.",
+      "prereqs": ["use-effect"],
+      "serves": ["pick-a-hook"],
+      "domain": "code",
+      "hardBecause": "many-moving-parts",
+      "misconceptions": ["Cleanup only runs when the component is removed from the screen."]
+    },
+    {
+      "slug": "effect-timing",
+      "title": "When effects run",
+      "summary": "React finishes the render and lets the browser paint, then runs your effects — so the user sees the first frame before the effect has happened.",
+      "prereqs": ["use-effect", "re-render"],
+      "serves": ["read-a-rerender"],
+      "domain": "systems",
+      "hardBecause": "many-moving-parts",
+      "misconceptions": ["The effect runs before the user can see anything, so a flash is impossible."]
+    },
+    {
+      "slug": "use-ref",
+      "title": "useRef",
+      "summary": "A ref is a box that survives re-renders and does not cause one when you change it, which is what makes it different from state.",
+      "prereqs": ["hooks", "state"],
+      "serves": ["pick-a-hook", "fix-a-stale-value"],
+      "domain": "code",
+      "hardBecause": "confusable-neighbour",
+      "misconceptions": ["Changing a ref re-renders the component, like state does."]
+    },
+    {
+      "slug": "memoization",
+      "title": "useMemo and useCallback",
+      "summary": "Both skip work when their dependencies have not changed — useMemo keeps a value, useCallback keeps a function.",
+      "prereqs": ["re-render"],
+      "serves": ["pick-a-hook", "read-a-rerender"],
+      "domain": "prose",
+      "hardBecause": "confusable-neighbour",
+      "misconceptions": ["Wrapping everything in useMemo makes the app faster."]
+    },
+    {
+      "slug": "custom-hook",
+      "title": "Custom hooks",
+      "summary": "A custom hook is a function starting with `use` that calls other hooks, so shared logic moves without the state being shared.",
+      "prereqs": ["hooks", "use-state"],
+      "serves": ["pick-a-hook"],
+      "domain": "code",
+      "hardBecause": "not-hard",
+      "misconceptions": ["Two components using the same custom hook share its state."]
+    }
   ]
 }

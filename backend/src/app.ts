@@ -113,7 +113,11 @@ export function createApp(): Express {
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const message = err instanceof Error ? err.message : 'unknown';
-    if (!isProd) console.error(err);
+    // Always logged server-side — only the client-facing response withholds
+    // the message in production. The previous `if (!isProd)` guard on this
+    // line meant a real production failure logged nothing at all, anywhere,
+    // making every 500 a total black box (T-154).
+    console.error(err);
     res.status(500).json({ error: 'internal', message: isProd ? undefined : message });
   });
 

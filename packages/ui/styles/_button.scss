@@ -3,6 +3,7 @@
 
 .btn {
   @include control;
+  text-decoration: none;
 
   &--primary {
     background: var(--clay);

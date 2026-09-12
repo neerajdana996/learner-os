@@ -58,8 +58,24 @@ export function pickHeldOut(
   ratio: number = HELD_OUT_RATIO,
   minOrder: number = HELD_OUT_MIN_ORDER,
   rng: () => number = Math.random,
+  /**
+   * Slugs that must never be held out — the map's `crux` concepts (T-163).
+   *
+   * Selection is otherwise uniform over everything past `minOrder`, which meant
+   * a threshold concept could be silently removed from a learner's course. Two
+   * things go wrong when it is: the learner is never taught the idea the rest of
+   * the topic hangs off, and the day-30 comparison spends one of its three
+   * control questions on the concept most likely to show an effect.
+   *
+   * Excluded from the *eligible pool*, not from the count — the control arm
+   * stays ~10% of the whole topic rather than shrinking because some concepts
+   * are load-bearing.
+   */
+  exclude: ReadonlySet<string> = new Set(),
 ): Set<string> {
-  const eligible = concepts.filter((concept) => concept.order > minOrder);
+  const eligible = concepts.filter(
+    (concept) => concept.order > minOrder && !exclude.has(concept.slug),
+  );
   const wanted = Math.max(HELD_OUT_MIN, Math.round(concepts.length * ratio));
   const target = Math.min(
     wanted,

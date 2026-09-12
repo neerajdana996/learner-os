@@ -12,8 +12,10 @@ import { describe, expect, it } from 'vitest';
 import {
   BlockSchema,
   BlockGenerationSchema,
+  TeachBlockGenerationSchema,
   ItemPayloadSchema,
   ItemGenerationSchema,
+  DRAWING_ALT_MAX,
   answerKindOf,
   toPublicBlocks,
   type Block,
@@ -132,6 +134,60 @@ describe('every block kind parses', () => {
   });
 });
 
+/**
+ * T-158 — a real generation for a network-partition diagram (four machines,
+ * two disconnected pairs) wrote a 227-character `alt`, and the cap was 200
+ * with nothing in the prompt or the JSON schema saying so. `DRAWING_ALT_MAX`
+ * (260) exists so this exact honest description fits, and both `diagram` and
+ * `sequence` use the one constant rather than two numbers that could drift.
+ */
+describe('a diagram alt describing several disconnected parts fits', () => {
+  const partitionAlt =
+    "Four running machines are split into two disconnected groups. Machine A and Machine B can exchange messages. Machine C and Machine D can exchange messages. There is no communication path between the A-B group and the C-D group.";
+
+  it('is the length that actually failed before DRAWING_ALT_MAX was raised', () => {
+    expect(partitionAlt.length).toBeGreaterThan(200);
+    expect(partitionAlt.length).toBeLessThanOrEqual(DRAWING_ALT_MAX);
+  });
+
+  it('parses as a generated diagram block', () => {
+    const result = BlockGenerationSchema.safeParse({
+      kind: 'diagram',
+      slot: 'context',
+      nodes: [
+        { id: 'a', label: 'Machine A' },
+        { id: 'b', label: 'Machine B' },
+        { id: 'c', label: 'Machine C' },
+        { id: 'd', label: 'Machine D' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', label: 'messages pass' },
+        { from: 'c', to: 'd', label: 'messages pass' },
+      ],
+      alt: partitionAlt,
+    });
+    expect(result.success, JSON.stringify(result.success ? {} : result.error.issues)).toBe(true);
+  });
+
+  it('parses as a generated teaching diagram block, the shape that actually failed', () => {
+    const result = TeachBlockGenerationSchema.safeParse({
+      kind: 'diagram',
+      nodes: [
+        { id: 'a', label: 'Machine A' },
+        { id: 'b', label: 'Machine B' },
+        { id: 'c', label: 'Machine C' },
+        { id: 'd', label: 'Machine D' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', label: 'messages pass' },
+        { from: 'c', to: 'd', label: 'messages pass' },
+      ],
+      alt: partitionAlt,
+    });
+    expect(result.success, JSON.stringify(result.success ? {} : result.error.issues)).toBe(true);
+  });
+});
+
 describe('slots', () => {
   it('rejects an answer block that is not in the answer slot', () => {
     const result = BlockSchema.safeParse(clozeBlock({ slot: 'context' }));
@@ -159,6 +215,7 @@ describe('cross-block rules', () => {
       prompt: 'What prints?',
       options: ['a', 'b', 'c', 'd'],
       answerIndex: 1,
+      distractorSource: 'The loop variable is captured per iteration.',
       blocks: [clozeBlock()],
     });
     expect(result.success).toBe(false);
@@ -171,6 +228,7 @@ describe('cross-block rules', () => {
       prompt: 'What prints?',
       options: ['0 1 2', '3 3 3', '0 0 0', 'it throws'],
       answerIndex: 1,
+      distractorSource: 'The loop variable is captured per iteration.',
       blocks: [codeBlock()],
     });
     expect(result.success).toBe(true);

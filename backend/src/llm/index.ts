@@ -46,6 +46,17 @@ export interface PromptDef<Vars extends Record<string, string>, Out> {
    * failure, same treatment.
    */
   validate?: (value: Out) => void;
+  /**
+   * Whether a `validate` failure that survived the repair attempt should be
+   * accepted rather than thrown (T-164).
+   *
+   * The policy belongs to the generator, not here: this layer knows a rule was
+   * broken, only the domain knows whether the rule was "this item cannot be
+   * answered" or "this concept got five questions instead of six". Returning
+   * true hands the reply back unchanged — the caller is then responsible for
+   * re-validating tolerantly and reporting the warning.
+   */
+  tolerate?: (error: unknown) => boolean;
   /** Marker for the Vars type; never read at runtime. */
   readonly _vars?: Vars;
 }
@@ -100,6 +111,17 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
 
   let lastRaw = '';
   let lastDomainError: unknown = null;
+  /** The most recent reply that satisfied the schema but broke a domain rule —
+   *  what `tolerate` returns when the rule turns out not to be worth dying for. */
+  let lastValid: Out | undefined;
+  /**
+   * Set after a rejected reply, so the next attempt is a correction rather than
+   * a re-roll (T-164). Not set after malformed JSON: there is no coherent reply
+   * to hand back, and asking a model to repair a broken brace works worse than
+   * asking again.
+   */
+  let repair: { previous: string; problem: string } | undefined;
+
   // Two attempts total: one retry for a model that returns malformed or
   // mis-shaped JSON. Errors thrown by complete() itself (truncation, missing
   // key, refusal, SDK failures after its own retries) propagate immediately —
@@ -113,31 +135,54 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
       reasoningEffort,
       maxTokens: def.maxTokens,
       jsonSchema: def.jsonSchema,
+      ...(repair ? { repair } : {}),
     });
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripFences(lastRaw));
     } catch {
+      repair = undefined;
       continue; // malformed JSON — retry once, then fall through to throw
     }
     const result = def.schema.safeParse(parsed);
     if (result.success) {
       if (!def.validate) return result.data;
+      lastValid = result.data;
       try {
         def.validate(result.data);
         return result.data;
       } catch (error) {
+        lastDomainError = error;
         // Last attempt: surface the domain error itself, which names the rule
         // that was broken, rather than a generic shape complaint.
-        if (attempt === 1) throw error;
-        lastDomainError = error;
+        if (attempt === 1) break;
+        // Logged, not just kept. When both attempts break a rule the thrown
+        // error is the *second* one, and whether the first broke the same rule
+        // decides what the fix is: the same rule twice is a prompt that does
+        // not carry, two different rules is a model having a bad day.
+        console.warn(`${def.name}: attempt 1 failed validation, retrying — ${String(error)}`);
+        repair = { previous: lastRaw, problem: String(error) };
         continue;
       }
     }
-    // valid JSON but wrong shape — retry once, then throw
+    // Valid JSON, wrong shape. Worth repairing for the same reason a domain
+    // failure is: the model has the content right and a field wrong.
+    repair = {
+      previous: lastRaw,
+      problem: result.error.issues.map((issue) => `${issue.path.join('.')} ${issue.message}`).join('; '),
+    };
   }
 
-  if (lastDomainError) throw lastDomainError;
+  if (lastDomainError) {
+    /**
+     * The rule broke twice and the caller says it is not worth the course
+     * (T-164). The reply is returned as it stands; the caller's own validator
+     * runs tolerantly over the same data and is what records the warning, so
+     * the rule is still checked and still reported — just not fatal.
+     */
+    if (lastValid !== undefined && def.tolerate?.(lastDomainError)) return lastValid;
+    throw lastDomainError;
+  }
 
   // Second attempt still failed. Report why based on the last response.
   try {

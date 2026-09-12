@@ -17,6 +17,11 @@ type Code = Extract<PublicBlock, { kind: 'code' }>;
  */
 export function CodeBlock({ block }: { block: Code }) {
   const lines = block.src.split('\n');
+  // Line number -> that note's 1-based rank, for the small circle in the
+  // caption below (code__badge) -- never for the gutter itself. The gutter's
+  // job is the listing's own line number; a hit row used to show this rank
+  // *instead* of `n` (T-156), so a lone note past line 1 displayed the wrong
+  // line number for the row it was annotating.
   const notedLines = new Map(block.notes.map((note, i) => [note.line, i + 1]));
 
   return (
@@ -25,9 +30,9 @@ export function CodeBlock({ block }: { block: Code }) {
         <div className="code__grid">
           {lines.map((line, i) => {
             const n = i + 1;
-            const badge = notedLines.get(n);
+            const hit = notedLines.has(n);
             const dimmed = block.dim ? n >= block.dim.from && n <= block.dim.to : false;
-            const mark = [badge ? 'hit' : null, dimmed ? 'dim' : null].filter(Boolean);
+            const mark = [hit ? 'hit' : null, dimmed ? 'dim' : null].filter(Boolean);
             const cls = (base: string) => [base, ...mark.map((m) => `${base}--${m}`)].join(' ');
 
             return (
@@ -43,7 +48,7 @@ export function CodeBlock({ block }: { block: Code }) {
               // hit the identical bug before either was fixed.
               <Fragment key={n}>
                 <span className={cls('code__gutter')} aria-hidden="true">
-                  {badge ?? n}
+                  {n}
                 </span>
                 <code className={cls('code__line')}>{line === '' ? ' ' : line}</code>
               </Fragment>

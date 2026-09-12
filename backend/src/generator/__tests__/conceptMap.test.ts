@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { aFraming } from './fixtures.js';
 
 // Mock at the SDK boundary (openai.chat.completions.create) so the real
 // complete() → stripFences → JSON.parse → Zod → graph-validation pipeline runs,
@@ -13,7 +14,7 @@ vi.mock('openai', () => ({
   },
 }));
 
-const { generateConceptMap, validateConceptMap, parseConceptMapResponse, domainSplit, ConceptMapSchema, GenerationError } =
+const { generateConceptMap, validateConceptMap, parseConceptMapResponse, domainSplit, ConceptMapSchema, GenerationError, EXPECTED_MIN_CONCEPTS } =
   await import('../conceptMap.js');
 
 const fixtureText = readFileSync(
@@ -26,12 +27,29 @@ const asText = (text: string, finishReason = 'stop') => ({
   choices: [{ message: { content: text }, finish_reason: finishReason }],
 });
 
-/** Structurally valid map, small enough to sit under MIN_CONCEPTS. */
+
+/** The capability ids the default framing promises. A map is only valid
+ *  against a framing if every one of them is served (`capability_unserved`),
+ *  so fixtures that reach the outer checks have to cover all three. */
+const CAPS = aFraming().capabilities.map((capability) => capability.id);
+
+/** A structurally complete concept; individual tests break one field on purpose. */
+const aConcept = (over: Record<string, unknown>) => ({
+  title: 'A', summary: 'a', prereqs: [], serves: [CAPS[0]],
+  misconceptions: ['the obvious reading'], hardBecause: 'not-hard' as const,
+  domain: 'prose' as const, ...over,
+});
+
+/** Valid in every other respect — three roots, all capabilities served — and
+ *  small enough to sit under MIN_CONCEPTS, so the count is the only thing left
+ *  to reject it. Anything else here fails earlier and tests a different rule. */
 const smallMap = {
   topic: 'React Hooks',
+  crux: ['a', 'b'],
   concepts: [
-    { slug: 'a', title: 'A', summary: 'a', prereqs: [], domain: 'prose' as const },
-    { slug: 'b', title: 'B', summary: 'b', prereqs: ['a'], domain: 'code' as const },
+    aConcept({ slug: 'a', misconceptions: ['one', 'two'] }),
+    aConcept({ slug: 'b', title: 'B', serves: [CAPS[1]], domain: 'code' as const, misconceptions: ['one', 'two'] }),
+    aConcept({ slug: 'c', title: 'C', serves: [CAPS[2]] }),
   ],
 };
 
@@ -42,25 +60,25 @@ describe('concept map generation', () => {
     expect(() => ConceptMapSchema.parse(fixture)).not.toThrow();
   });
 
-  it('parses the fixture and returns 20+ concepts in one model call', async () => {
+  it('parses the fixture and returns a full-sized map in one model call', async () => {
     create.mockResolvedValueOnce(asText(fixtureText));
-    const result = await generateConceptMap('React Hooks');
-    expect(result.concepts.length).toBeGreaterThanOrEqual(20);
+    const result = await generateConceptMap(aFraming({ topic: 'React Hooks' }));
+    expect(result.concepts.length).toBeGreaterThanOrEqual(EXPECTED_MIN_CONCEPTS);
     expect(create).toHaveBeenCalledTimes(1);
   });
 
   it('parses a response wrapped in ```json fences', async () => {
     create.mockResolvedValueOnce(asText(`Here you go:\n\`\`\`json\n${fixtureText}\n\`\`\``));
-    const result = await generateConceptMap('React Hooks');
-    expect(result.concepts.length).toBeGreaterThanOrEqual(20);
+    const result = await generateConceptMap(aFraming({ topic: 'React Hooks' }));
+    expect(result.concepts.length).toBeGreaterThanOrEqual(EXPECTED_MIN_CONCEPTS);
   });
 
   it('rejects a prereq slug that does not exist', async () => {
     // Domain failures retry once (T-FIX-013), so both attempts see the bad map.
     create.mockResolvedValue(
-      asText(JSON.stringify({ topic: 'X', concepts: [{ slug: 'state', title: 'S', summary: 's', prereqs: ['nope'], domain: 'prose' }] })),
+      asText(JSON.stringify({ topic: 'X', crux: ['state', 'other'], concepts: [aConcept({ slug: 'state', prereqs: ['nope'], misconceptions: ['a', 'b'] }), aConcept({ slug: 'other', misconceptions: ['a', 'b'] })] })),
     );
-    await expect(generateConceptMap('X')).rejects.toMatchObject({
+    await expect(generateConceptMap(aFraming({ topic: 'X' }))).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'unknown_prereq',
     });
@@ -72,14 +90,15 @@ describe('concept map generation', () => {
       asText(
         JSON.stringify({
           topic: 'X',
+          crux: ['a', 'b'],
           concepts: [
-            { slug: 'a', title: 'A', summary: 'a', prereqs: ['b'], domain: 'prose' },
-            { slug: 'b', title: 'B', summary: 'b', prereqs: ['a'], domain: 'prose' },
+            aConcept({ slug: 'a', prereqs: ['b'], misconceptions: ['x', 'y'] }),
+            aConcept({ slug: 'b', prereqs: ['a'], misconceptions: ['x', 'y'] }),
           ],
         }),
       ),
     );
-    await expect(generateConceptMap('X')).rejects.toMatchObject({ name: 'GenerationError', reason: 'cycle' });
+    await expect(generateConceptMap(aFraming({ topic: 'X' }))).rejects.toMatchObject({ name: 'GenerationError', reason: 'cycle' });
   });
 
   it('rejects duplicate slugs before they hit the concepts unique index', async () => {
@@ -88,14 +107,15 @@ describe('concept map generation', () => {
       asText(
         JSON.stringify({
           topic: 'X',
+          crux: ['a', 'b'],
           concepts: [
-            { slug: 'dup', title: 'A', summary: 'a', prereqs: [], domain: 'prose' },
-            { slug: 'dup', title: 'B', summary: 'b', prereqs: [], domain: 'prose' },
+            aConcept({ slug: 'dup', misconceptions: ['x', 'y'] }),
+            aConcept({ slug: 'dup', title: 'B', misconceptions: ['x', 'y'] }),
           ],
         }),
       ),
     );
-    await expect(generateConceptMap('X')).rejects.toMatchObject({
+    await expect(generateConceptMap(aFraming({ topic: 'X' }))).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'duplicate_slug',
     });
@@ -103,7 +123,7 @@ describe('concept map generation', () => {
 
   it('rejects a map too small to teach', async () => {
     create.mockResolvedValueOnce(asText(JSON.stringify(smallMap)));
-    await expect(generateConceptMap('X')).rejects.toMatchObject({
+    await expect(generateConceptMap(aFraming({ topic: 'X' }))).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'too_few_concepts',
     });
@@ -111,14 +131,14 @@ describe('concept map generation', () => {
 
   it('retries once when the first response is not JSON, then resolves', async () => {
     create.mockResolvedValueOnce(asText('sorry, here is your map!')).mockResolvedValueOnce(asText(fixtureText));
-    const result = await generateConceptMap('React Hooks');
-    expect(result.concepts.length).toBeGreaterThanOrEqual(20);
+    const result = await generateConceptMap(aFraming({ topic: 'React Hooks' }));
+    expect(result.concepts.length).toBeGreaterThanOrEqual(EXPECTED_MIN_CONCEPTS);
     expect(create).toHaveBeenCalledTimes(2);
   });
 
   it('rejects with GenerationError when both attempts fail, without a third call', async () => {
     create.mockResolvedValue(asText('not json'));
-    await expect(generateConceptMap('X')).rejects.toMatchObject({
+    await expect(generateConceptMap(aFraming({ topic: 'X' }))).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'invalid_json',
     });
@@ -127,7 +147,7 @@ describe('concept map generation', () => {
 
   it('does not retry a truncated response', async () => {
     create.mockResolvedValue(asText(`{"topic":"X","concepts":[`, 'length'));
-    await expect(generateConceptMap('X')).rejects.toMatchObject({
+    await expect(generateConceptMap(aFraming({ topic: 'X' }))).rejects.toMatchObject({
       name: 'GenerationError',
       reason: 'truncated',
     });
@@ -139,11 +159,15 @@ describe('concept map generation', () => {
   describe('domain', () => {
     const uniform = (domain: string) => ({
       topic: 'React Hooks',
+      crux: ['c0', 'c1'],
       concepts: Array.from({ length: 20 }, (_, i) => ({
         slug: `c${i}`,
         title: `C${i}`,
         summary: 's',
         prereqs: [],
+        serves: [CAPS[i % CAPS.length]],
+        misconceptions: ['one', 'two'],
+        hardBecause: 'not-hard' as const,
         domain,
       })),
     });
@@ -176,7 +200,7 @@ describe('concept map generation', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       create.mockResolvedValueOnce(asText(JSON.stringify(uniform('code'))));
 
-      const map = await generateConceptMap('Dynamic programming');
+      const map = await generateConceptMap(aFraming({ topic: 'Dynamic programming' }));
 
       expect(map.concepts).toHaveLength(20);
       expect(warn.mock.calls.flat().join(' ')).toMatch(/all 20 concepts are "code"/);
@@ -187,7 +211,7 @@ describe('concept map generation', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       create.mockResolvedValueOnce(asText(fixtureText));
 
-      await generateConceptMap('React Hooks');
+      await generateConceptMap(aFraming({ topic: 'React Hooks' }));
 
       expect(warn.mock.calls.flat().join(' ')).not.toMatch(/concepts are/);
       warn.mockRestore();
@@ -198,9 +222,9 @@ describe('concept map generation', () => {
       // exactly as any other invalid field is — not treated as a special case.
       create.mockResolvedValueOnce(asText(JSON.stringify(uniform('javascript')))).mockResolvedValueOnce(asText(fixtureText));
 
-      const map = await generateConceptMap('React Hooks');
+      const map = await generateConceptMap(aFraming({ topic: 'React Hooks' }));
 
-      expect(map.concepts.length).toBeGreaterThanOrEqual(20);
+      expect(map.concepts.length).toBeGreaterThanOrEqual(EXPECTED_MIN_CONCEPTS);
       expect(create).toHaveBeenCalledTimes(2);
     });
 
@@ -210,9 +234,9 @@ describe('concept map generation', () => {
   });
 
   it('validateConceptMap and parseConceptMapResponse work on raw input', () => {
-    expect(validateConceptMap(smallMap).concepts).toHaveLength(2);
-    expect(parseConceptMapResponse(`\`\`\`json\n${JSON.stringify(smallMap)}\n\`\`\``).concepts).toHaveLength(2);
-    expect(() => validateConceptMap({ topic: 'X', concepts: [{ slug: 'a', title: 'A', summary: 'a', prereqs: ['x'], domain: 'prose' }] }))
+    expect(validateConceptMap(smallMap).concepts).toHaveLength(3);
+    expect(parseConceptMapResponse(`\`\`\`json\n${JSON.stringify(smallMap)}\n\`\`\``).concepts).toHaveLength(3);
+    expect(() => validateConceptMap({ topic: 'X', crux: ['a', 'b'], concepts: [aConcept({ slug: 'a', prereqs: ['x'], misconceptions: ['m', 'n'] }), aConcept({ slug: 'b', misconceptions: ['m', 'n'] })] }))
       .toThrow(GenerationError);
   });
 });

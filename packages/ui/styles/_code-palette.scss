@@ -18,6 +18,15 @@
 // The syntax entries (`--code-kw` … `--code-punc`) are unused until T-084
 // highlights in the worker; they are defined here because they are one designed
 // set and splitting the file would be worse than a few unread lines.
+//
+// **`--node-*`, `--edge*` and `--lane` (added 2026-09-11, T-156).** `renderDiagram`/
+// `renderSequence` (`backend/src/generator/systemsSvg.ts`) have always written
+// these into the stored SVG — that file's own comment claims they live here —
+// but nothing ever actually defined them, so every diagram and sequence block
+// ever generated has drawn its arrows and lifelines in invalid CSS: no paint,
+// which is different from black. `stroke` has no visible fallback, so every
+// connecting line and lifeline was silently absent; `fill` defaults to black,
+// which is why the boxes, labels and arrowheads still happened to show.
 
 @mixin code-on-light {
   --code-surface: #f4f0ea;
@@ -32,6 +41,13 @@
   --code-punc: #8a827a;
   --diff-add: #edf3ee;
   --diff-del: #f6ecec;
+
+  --node-fill: #f4f0ea;
+  --node-stroke: #c6bab1;
+  --node-ink: #2b2723;
+  --edge: #8a4225;
+  --edge-focus: #b8873a;
+  --lane: #e6e1da;
 }
 
 @mixin code-on-dark {
@@ -47,6 +63,13 @@
   --code-punc: #948c84;
   --diff-add: #1e2a21;
   --diff-del: #2e1f1d;
+
+  --node-fill: #3a342f;
+  --node-stroke: #6b645d;
+  --node-ink: #e8e2da;
+  --edge: #d98a63;
+  --edge-focus: #d9b072;
+  --lane: #453f39;
 }
 
 // The page follows the theme, in all three of its states — an explicit choice

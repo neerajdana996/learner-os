@@ -13,6 +13,7 @@ vi.mock('openai', () => ({
 }));
 
 const { generateItems, validateItems, GenerationError } = await import('../items.js');
+const { collectWarnings } = await import('../severity.js');
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), '../../../fixtures');
 const fixtureText = readFileSync(join(fixtures, 'items.usestate.json'), 'utf8');
@@ -23,6 +24,13 @@ const codeFixtureText = readFileSync(join(fixtures, 'items.binary-search-bound.j
 const asText = (text: string, finishReason = 'stop') => ({
   choices: [{ message: { content: text }, finish_reason: finishReason }],
 });
+
+/** Item generation speaks in batches now (T-162). These fixtures are one
+ *  concept, so wrap them in the envelope the model would actually return —
+ *  `generateItems` sends a batch of one under the slug `concept`. */
+const asBatch = (json: string) =>
+  JSON.stringify({ concepts: [{ slug: 'concept', items: JSON.parse(json).items }] });
+
 
 beforeEach(() => create.mockReset());
 
@@ -39,7 +47,7 @@ describe('the code-item fixture', () => {
     });
 
   it('parses end to end, with line quotes resolved into line numbers', async () => {
-    create.mockResolvedValueOnce(asText(codeFixtureText));
+    create.mockResolvedValueOnce(asText(asBatch(codeFixtureText)));
     const result = await generate();
 
     expect(result.items).toHaveLength(8);
@@ -56,7 +64,7 @@ describe('the code-item fixture', () => {
   });
 
   it('keeps rich formats to two, and the rest plain', async () => {
-    create.mockResolvedValueOnce(asText(codeFixtureText));
+    create.mockResolvedValueOnce(asText(asBatch(codeFixtureText)));
     const result = await generate();
 
     const rich = result.items.filter((i) => i.payload.blocks?.some((b) => b.slot === 'answer'));
@@ -68,7 +76,7 @@ describe('the code-item fixture', () => {
   });
 
   it('marks its transfer item plain, not rich', async () => {
-    create.mockResolvedValueOnce(asText(codeFixtureText));
+    create.mockResolvedValueOnce(asText(asBatch(codeFixtureText)));
     const result = await generate();
 
     // A blank cut into the listing the concept was taught with is a second
@@ -91,9 +99,18 @@ describe('the code-item fixture', () => {
         failure: 'a.length - 1 skips the last element.',
       },
     ];
-    create.mockResolvedValue(asText(JSON.stringify(doc)));
+    create.mockResolvedValue(asText(asBatch(JSON.stringify(doc))));
 
-    await expect(generate()).rejects.toMatchObject({ name: 'GenerationError', reason: 'too_many_rich' });
+    // T-164: the cap is a review-time budget, not a correctness rule, so a
+    // third rich item costs a warning rather than the course. It is still
+    // checked twice and still repaired-for first — hence two calls.
+    const { result, warnings } = await collectWarnings(() => generate());
+
+    expect(result.items).toHaveLength(8);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ reason: 'too_many_rich', prompt: 'items' }),
+    );
   });
 
   it('retries once when a cloze marker has no matching hole, then succeeds', async () => {
@@ -101,7 +118,7 @@ describe('the code-item fixture', () => {
     const cloze = broken.items[2].blocks[1];
     cloze.src = 'while ({{1}} && {{2}}) {';
 
-    create.mockResolvedValueOnce(asText(JSON.stringify(broken))).mockResolvedValueOnce(asText(codeFixtureText));
+    create.mockResolvedValueOnce(asText(asBatch(JSON.stringify(broken)))).mockResolvedValueOnce(asText(asBatch(codeFixtureText)));
 
     const result = await generate();
 
@@ -112,7 +129,7 @@ describe('the code-item fixture', () => {
 
 describe('items generation', () => {
   it('parses the fixture, which contains all four types and 6+ items', async () => {
-    create.mockResolvedValueOnce(asText(fixtureText));
+    create.mockResolvedValueOnce(asText(asBatch(fixtureText)));
     const result = await generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' });
     expect(result.items.length).toBeGreaterThanOrEqual(6);
     expect(new Set(result.items.map((item) => item.payload.type))).toEqual(
@@ -130,7 +147,7 @@ describe('items generation', () => {
         { type: 'recall', prompt: 'Q1', answer: 'A', isTransfer: true },
         { type: 'application', prompt: 'Q2', answer: 'A', isTransfer: false },
         { type: 'explain', prompt: 'Q3', rubric: 'R', isTransfer: false },
-        { type: 'recognition', prompt: 'Which one?', options: ['a', 'b', 'c'], answerIndex: 1, isTransfer: false },
+        { type: 'recognition', prompt: 'Which one?', options: ['a', 'b', 'c'], distractorSource: 'the nearest wrong belief', answerIndex: 1, isTransfer: false },
       ],
     };
 
@@ -143,7 +160,7 @@ describe('items generation', () => {
       topic: 'useState',
       items: [
         { type: 'recall', prompt: 'What is state?', answer: 'value', accept: ['value'], isTransfer: false },
-        { type: 'recognition', prompt: 'Pick', options: ['a', 'b', 'c', 'd'], answerIndex: 0, isTransfer: false },
+        { type: 'recognition', prompt: 'Pick', options: ['a', 'b', 'c', 'd'], distractorSource: 'the nearest wrong belief', answerIndex: 0, isTransfer: false },
         { type: 'application', prompt: 'Apply', answer: 'A', isTransfer: false },
         { type: 'explain', prompt: 'Explain', rubric: 'R', isTransfer: false },
       ],
@@ -158,7 +175,7 @@ describe('items generation', () => {
       topic: 'useState',
       items: [
         { type: 'recall', prompt: 'Q1', answer: 'A', isTransfer: true },
-        { type: 'recognition', prompt: 'Q2', options: ['a', 'b', 'c', 'd'], answerIndex: 0, isTransfer: true },
+        { type: 'recognition', prompt: 'Q2', options: ['a', 'b', 'c', 'd'], distractorSource: 'the nearest wrong belief', answerIndex: 0, isTransfer: true },
         { type: 'application', prompt: 'Q3', answer: 'A', isTransfer: true },
         { type: 'explain', prompt: 'Q4', rubric: 'R', isTransfer: false },
       ],
@@ -174,7 +191,7 @@ describe('items generation', () => {
       items: [
         { type: 'explain', prompt: 'Explain', rubric: 'a'.repeat(201), isTransfer: false },
         { type: 'recall', prompt: 'Q', answer: 'A', accept: ['A'], isTransfer: true },
-        { type: 'recognition', prompt: 'Pick', options: ['a', 'b', 'c', 'd'], answerIndex: 0, isTransfer: false },
+        { type: 'recognition', prompt: 'Pick', options: ['a', 'b', 'c', 'd'], distractorSource: 'the nearest wrong belief', answerIndex: 0, isTransfer: false },
         { type: 'application', prompt: 'Apply', answer: 'A', isTransfer: false },
       ],
     };
@@ -190,20 +207,72 @@ describe('items generation', () => {
       topic: 'useState',
       items: [
         { type: 'recall', prompt: 'Q1', answer: 'A', isTransfer: false },
-        { type: 'recognition', prompt: 'Q2', options: ['a', 'b', 'c', 'd'], answerIndex: 0, isTransfer: false },
+        { type: 'recognition', prompt: 'Q2', options: ['a', 'b', 'c', 'd'], distractorSource: 'the nearest wrong belief', answerIndex: 0, isTransfer: false },
         { type: 'application', prompt: 'Q3', answer: 'A', isTransfer: false },
         { type: 'explain', prompt: 'Q4', rubric: 'R', isTransfer: true },
       ],
     };
-    create.mockResolvedValueOnce(asText(JSON.stringify(tooFew)));
+    create.mockResolvedValue(asText(asBatch(JSON.stringify(tooFew))));
+
+    // T-164: four items is a thinner rotation, not an unusable concept. The
+    // warning names the concept so content QA knows which one to look at.
+    const { result, warnings } = await collectWarnings(() =>
+      generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' }),
+    );
+
+    expect(result.items).toHaveLength(4);
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ reason: 'too_few_items', message: expect.stringContaining('concept') }),
+    );
+  });
+
+  // The other half of the same rule: a reply nobody could answer still ends the
+  // job, however many calls have already succeeded.
+  it('still fails the topic on an integrity rule, tolerance or not', async () => {
+    const bad = JSON.parse(fixtureText);
+    bad.items[0].prompt = 'Which operations overlap in the history shown?';
+    delete bad.items[0].blocks;
+    create.mockResolvedValue(asText(asBatch(JSON.stringify(bad))));
+
     await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).rejects.toMatchObject({
       name: 'GenerationError',
-      reason: 'too_few_items',
+      reason: 'dangling_reference',
     });
   });
 
+  // T-164: the retry is a correction, not a re-roll. Run 2 of the real flow
+  // broke the same rule on both attempts because nothing ever told the model
+  // what was wrong with the first one.
+  it('sends the rejected reply and the rule it broke back on the retry', async () => {
+    // All four types, five items: the only rule it can break is the count, so
+    // the assertion below is about the repair turn and not about which rule
+    // happened to fire first.
+    const short = {
+      topic: 'useState',
+      items: [
+        { type: 'recall', prompt: 'Q1', answer: 'A', accept: [], isTransfer: false },
+        { type: 'recognition', prompt: 'Q2', options: ['a', 'b', 'c', 'd'], distractorSource: 'the nearest wrong belief', answerIndex: 0, isTransfer: false },
+        { type: 'application', prompt: 'Q3', answer: 'A', accept: [], isTransfer: true },
+        { type: 'explain', prompt: 'Q4', rubric: 'R', isTransfer: false },
+        { type: 'recall', prompt: 'Q5', answer: 'A', accept: [], isTransfer: false },
+      ],
+    };
+    create
+      .mockResolvedValueOnce(asText(asBatch(JSON.stringify(short))))
+      .mockResolvedValueOnce(asText(asBatch(fixtureText)));
+
+    await generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' });
+
+    const retry = create.mock.calls[1]?.[0] as { messages: { role: string; content: string }[] };
+    expect(retry.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    // The assistant turn is the rejected reply itself, verbatim, so the model
+    // is correcting its own answer rather than reading a description of it.
+    expect(retry.messages[2]?.content).toContain('Q1');
+    expect(retry.messages[3]?.content).toMatch(/too_few_items/);
+  });
+
   it('retries once when the first response is not JSON, then resolves', async () => {
-    create.mockResolvedValueOnce(asText('here are your questions')).mockResolvedValueOnce(asText(fixtureText));
+    create.mockResolvedValueOnce(asText('here are your questions')).mockResolvedValueOnce(asText(asBatch(fixtureText)));
     await expect(generateItems({ topic: 'useState', concept: 'useState', summary: 'what it covers' })).resolves.toMatchObject({ topic: 'useState' });
     expect(create).toHaveBeenCalledTimes(2);
   });

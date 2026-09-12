@@ -2,11 +2,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 
 const generateConceptMap = vi.fn();
-const generateItems = vi.fn();
+const generateFraming = vi.fn();
+const generateItemsBatch = vi.fn();
 const generateTeaching = vi.fn();
 vi.mock('../../generator/conceptMap.js', () => ({ generateConceptMap: (...a: unknown[]) => generateConceptMap(...a) }));
-vi.mock('../../generator/items.js', () => ({ generateItems: (...a: unknown[]) => generateItems(...a) }));
+vi.mock('../../generator/framing.js', () => ({
+  generateFraming: (...a: unknown[]) => generateFraming(...a),
+  formatSpine: (spine: { name: string }) => spine.name,
+}));
+vi.mock('../../generator/items.js', async () => ({
+  generateItemsBatch: (...a: unknown[]) => generateItemsBatch(...a),
+  // Re-exported from the real module: the worker reads it to decide whether a
+  // failed batch is worth splitting, and a mock that omits it makes every
+  // batch failure a TypeError instead.
+  SPLITTABLE_BATCH_REASONS: (await vi.importActual<typeof import('../../generator/items.js')>('../../generator/items.js'))
+    .SPLITTABLE_BATCH_REASONS,
+}));
 vi.mock('../../generator/teaching.js', () => ({ generateTeaching: (...a: unknown[]) => generateTeaching(...a) }));
+
+const fakeFraming = () => ({
+  topic: 'React Hooks',
+  level: 'working' as const,
+  capabilities: [{ id: 'cap', statement: 'Do the thing.', evidence: 'Does the thing.' }],
+  centralMisconception: 'The obvious reading is the right one.',
+  spine: { name: 'a search box', description: 'one component', whyItFits: 'serves cap' },
+  assumedKnowledge: ['has written a component', 'knows what props are'],
+  outOfScope: ['class components', 'state libraries'],
+});
 
 const fakeTeaching = (concept: string) => ({
   tryFirstPrompt: `What do you think ${concept} does?`,
@@ -19,6 +41,7 @@ const fakeTeaching = (concept: string) => ({
 });
 
 const { processGenerationJob } = await import('../generator.worker.js');
+const { GenerationError } = await import('../../generator/errors.js');
 const { pickHeldOut, seededRng } = await import('../../lib/heldOut.js');
 const { db } = await import('../../db/client.js');
 const { concepts, conceptPrereqs, items, topics } = await import('../../db/schema.js');
@@ -26,15 +49,22 @@ const { seedUser, truncateAll } = await import('../../test/db.js');
 
 /** n concepts in teaching order, each depending on the one before it. */
 const DOMAINS = ['code', 'prose', 'systems', 'math'] as const;
+// Alternated so both teach modes appear: `teachModeFor` sends
+// `counterintuitive` to try_first and `no-prior-hook` to example_first.
+const HARDNESS = ['counterintuitive', 'no-prior-hook'] as const;
 
-function fakeMap(n: number) {
+function fakeMap(n: number, crux: string[] = []) {
   return {
     topic: 'React Hooks',
+    crux,
     concepts: Array.from({ length: n }, (_, i) => ({
       slug: `c${i + 1}`,
       title: `Concept ${i + 1}`,
       summary: `summary ${i + 1}`,
       prereqs: i === 0 ? [] : [`c${i}`],
+      serves: ['cap'],
+      misconceptions: [`c${i + 1} is the same as c${i}`],
+      hardBecause: HARDNESS[i % HARDNESS.length] as (typeof HARDNESS)[number],
       // Cycled rather than fixed, so a worker that dropped the field or wrote
       // the same one for every row would fail the assertion below (T-082).
       domain: DOMAINS[i % DOMAINS.length] as (typeof DOMAINS)[number],
@@ -42,15 +72,27 @@ function fakeMap(n: number) {
   };
 }
 
-const fakeItems = (topic: string) => ({
-  topic,
-  items: [
-    { payload: { type: 'recall' as const, prompt: 'Q1', answer: 'A' }, isTransfer: false },
-    {
-      payload: { type: 'recognition' as const, prompt: 'Q2', options: ['a', 'b', 'c', 'd'], answerIndex: 0 },
-      isTransfer: true,
-    },
-  ],
+/** One batch: the same two items for every slug it was asked about. */
+const fakeBatch = (input: { topic: string; concepts: { slug: string }[] }) => ({
+  topic: input.topic,
+  bySlug: new Map(
+    input.concepts.map(({ slug }) => [
+      slug,
+      [
+        { payload: { type: 'recall' as const, prompt: `${slug} Q1`, answer: 'A' }, isTransfer: false },
+        {
+          payload: {
+            type: 'recognition' as const,
+            prompt: `${slug} Q2`,
+            options: ['a', 'b', 'c', 'd'],
+            answerIndex: 0,
+            distractorSource: 'the adjacent idea',
+          },
+          isTransfer: true,
+        },
+      ],
+    ]),
+  ),
 });
 
 async function seedTopic(values: { language?: string } = {}) {
@@ -65,10 +107,14 @@ async function seedTopic(values: { language?: string } = {}) {
 
 beforeEach(async () => {
   generateConceptMap.mockReset();
-  generateItems.mockReset();
+  generateFraming.mockReset();
+  generateItemsBatch.mockReset();
   generateTeaching.mockReset();
-  // Default so tests that don't care about teaching content don't have to set
-  // it up; a test asserting on teaching overrides this.
+  // Defaults so tests that don't care about scoping or teaching content don't
+  // have to set them up; a test asserting on either overrides it. Framing is
+  // phase 0 (T-161) — every later stage reads its spine, so a test without one
+  // fails inside the worker rather than on the thing it is about.
+  generateFraming.mockResolvedValue(fakeFraming());
   generateTeaching.mockImplementation(async ({ concept }: { concept: string }) => fakeTeaching(concept));
   await truncateAll();
 });
@@ -110,8 +156,9 @@ describe('pickHeldOut', () => {
 describe('processGenerationJob', () => {
   it('persists the map, prereqs and items, and activates the topic', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: topic.id }, seededRng(42));
 
@@ -149,7 +196,9 @@ describe('processGenerationJob', () => {
     const heldIds = new Set(held.map((r) => r.id));
     expect(itemRows.filter((i) => heldIds.has(i.conceptId)).length).toBeGreaterThan(0);
     expect(itemRows).toHaveLength(20 * 2);
-    expect(generateItems).toHaveBeenCalledTimes(20);
+    // 20 concepts cycling four domains is five per domain, and a batch holds
+    // at most four of one domain — so four and one, twice over, per domain.
+    expect(generateItemsBatch).toHaveBeenCalledTimes(8);
 
     const [after] = await db.select().from(topics).where(eq(topics.id, topic.id));
     expect(after?.status).toBe('active');
@@ -160,8 +209,9 @@ describe('processGenerationJob', () => {
   // renders, so it has to survive the same transaction as the map.
   it('persists teaching content for every taught concept', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: topic.id }, seededRng(42));
 
@@ -182,8 +232,9 @@ describe('processGenerationJob', () => {
 
   it('generates no teaching content for held-out concepts', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: topic.id }, seededRng(42));
 
@@ -205,8 +256,9 @@ describe('processGenerationJob', () => {
 
   it('conditions the teaching prompt on the concept’s teach mode', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: topic.id }, seededRng(42));
 
@@ -229,8 +281,9 @@ describe('processGenerationJob', () => {
   // dropped this would look fine and silently disable every format decision.
   it('persists each concept’s domain from the map', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: topic.id }, seededRng(42));
 
@@ -249,13 +302,14 @@ describe('processGenerationJob', () => {
   // by JavaScript questions is the same bug seen twice.
   it('passes the topic language to both generators, and undefined when there is none', async () => {
     const withLanguage = await seedTopic({ language: 'Python' });
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: withLanguage.id }, seededRng(42));
 
-    expect(generateItems.mock.calls.length).toBeGreaterThan(0);
-    for (const call of generateItems.mock.calls) {
+    expect(generateItemsBatch.mock.calls.length).toBeGreaterThan(0);
+    for (const call of generateItemsBatch.mock.calls) {
       expect((call[0] as { language?: string }).language).toBe('Python');
     }
     for (const call of generateTeaching.mock.calls) {
@@ -263,19 +317,21 @@ describe('processGenerationJob', () => {
     }
 
     generateConceptMap.mockReset();
-    generateItems.mockReset();
+    generateFraming.mockReset();
+    generateItemsBatch.mockReset();
     generateTeaching.mockReset();
     generateTeaching.mockImplementation(async ({ concept }: { concept: string }) => fakeTeaching(concept));
 
     const bare = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: bare.id }, seededRng(42));
 
     // Undefined, not '': the generator turns an absent language into an omitted
     // prompt line, and an empty string would be indistinguishable here.
-    for (const call of generateItems.mock.calls) {
+    for (const call of generateItemsBatch.mock.calls) {
       expect((call[0] as { language?: string }).language).toBeUndefined();
     }
     for (const call of generateTeaching.mock.calls) {
@@ -288,8 +344,9 @@ describe('processGenerationJob', () => {
   // is reported out of band instead, so the screen has something true to show.
   it('reports progress as it works, ending at completed = total', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     const progress: { stage: string; completed: number; total: number; concept?: string }[] = [];
     await processGenerationJob({ topicId: topic.id }, seededRng(42), (p) => {
@@ -313,7 +370,7 @@ describe('processGenerationJob', () => {
   it('does not require a progress reporter', async () => {
     const topic = await seedTopic();
     generateConceptMap.mockResolvedValueOnce(fakeMap(6));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     // The Sprint walks and most unit tests call this directly; needing a queue
     // to run a generation would be a poor trade for a progress bar.
@@ -334,9 +391,10 @@ describe('processGenerationJob', () => {
 
   it('rolls the whole map back when item generation fails partway through', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems
-      .mockImplementationOnce(async (t: string) => fakeItems(t))
+    generateItemsBatch
+      .mockImplementationOnce(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i))
       .mockRejectedValueOnce(new Error('truncated: response hit max_tokens'));
 
     await expect(processGenerationJob({ topicId: topic.id }, seededRng(7))).rejects.toThrow(/truncated/);
@@ -348,11 +406,53 @@ describe('processGenerationJob', () => {
     const [after] = await db.select().from(topics).where(eq(topics.id, topic.id));
     expect(after?.status).toBe('failed');
   });
+  /**
+   * T-164. Two real generations died this way before the fallback existed: one
+   * concept in one batch broke one rule, and every batch that had already
+   * succeeded went with it.
+   */
+  it('retries a failed batch one concept at a time rather than failing the topic', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(8));
+    generateItemsBatch
+      .mockRejectedValueOnce(new GenerationError('transfer_count', 'concept c1: at least one item must be marked as transfer'))
+      .mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
+
+    await expect(processGenerationJob({ topicId: topic.id }, seededRng(42))).resolves.toBeUndefined();
+
+    const [after] = await db.select().from(topics).where(eq(topics.id, topic.id));
+    expect(after?.status).toBe('active');
+
+    // Nothing is skipped: the concepts in the failed batch still get their items.
+    const rows = await db.select().from(concepts).where(eq(concepts.topicId, topic.id));
+    expect(rows).toHaveLength(8);
+    for (const row of rows) {
+      expect(await db.select().from(items).where(eq(items.conceptId, row.id))).not.toHaveLength(0);
+    }
+
+    // fakeMap(8) cycles four domains, so batches are pairs: the failed pair is
+    // re-asked as two calls of one concept each.
+    const sizes = generateItemsBatch.mock.calls.map(([input]) => (input as { concepts: unknown[] }).concepts.length);
+    expect(sizes).toEqual([2, 1, 1, 2, 2, 2]);
+  });
+
+  it('does not split a batch that failed for a reason splitting cannot fix', async () => {
+    const topic = await seedTopic();
+    generateConceptMap.mockResolvedValueOnce(fakeMap(8));
+    // Four identical failures help nobody, and the key is missing for the
+    // single-concept call too.
+    generateItemsBatch.mockRejectedValue(new GenerationError('missing_api_key', 'OPENAI_API_KEY is not set'));
+
+    await expect(processGenerationJob({ topicId: topic.id }, seededRng(42))).rejects.toThrow(/missing_api_key/);
+    expect(generateItemsBatch).toHaveBeenCalledTimes(1);
+  });
+
   // T-120 — the control arm has to be answerable or it measures nothing.
   it('gives a held-out concept items but never teaching content', async () => {
     const topic = await seedTopic();
+    generateFraming.mockResolvedValue(fakeFraming());
     generateConceptMap.mockResolvedValueOnce(fakeMap(20));
-    generateItems.mockImplementation(async (t: string) => fakeItems(t));
+    generateItemsBatch.mockImplementation(async (i: Parameters<typeof fakeBatch>[0]) => fakeBatch(i));
 
     await processGenerationJob({ topicId: topic.id }, seededRng(42));
 

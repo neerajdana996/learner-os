@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { teachingInput } from './fixtures.js';
 
 // Mock at the SDK boundary so the real complete() → stripFences → JSON.parse →
 // Zod → cross-field validation pipeline runs, and so the rendered prompt can be
@@ -26,12 +27,7 @@ const asText = (text: string, finishReason = 'stop') => ({
   choices: [{ message: { content: text }, finish_reason: finishReason }],
 });
 
-const input = {
-  topic: 'React Hooks',
-  concept: 'useState',
-  summary: 'Adds state to a function component',
-  teachMode: 'try_first' as const,
-};
+const input = teachingInput();
 
 /** Smallest structurally valid payload; individual tests break one field. */
 const valid = () => ({

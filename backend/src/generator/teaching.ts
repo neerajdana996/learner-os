@@ -1,8 +1,15 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
-import { TeachBlockGenerationSchema, TeachBlockSchema, optionalOrNull, type TeachBlock } from '@learnos/shared';
+import {
+  TeachBlockGenerationSchema,
+  TeachBlockSchema,
+  optionalOrNull,
+  DRAWING_ALT_MAX,
+  type TeachBlock,
+} from '@learnos/shared';
 import type { TeachMode } from '@learnos/shared';
 import { GenerationError } from './errors.js';
+import { failer, isRepairable, type ValidateOptions } from './severity.js';
 import { domainFragment } from './items.js';
 import { renderDiagram, renderSequence } from './systemsSvg.js';
 
@@ -41,9 +48,40 @@ const TeachingResponseSchema = z.object({
 export interface TeachingInput {
   /** The wider course, so an ambiguous concept title can be disambiguated. */
   topic: string;
+  level: string;
   concept: string;
   summary: string;
+  /**
+   * Derived from the map's `hardBecause` by `lib/teachMode.ts`, not rolled
+   * (T-161). It used to be `rng() < 0.5`, which decided the single most
+   * consequential pedagogical choice per concept by coin flip.
+   */
   teachMode: TeachMode;
+  /** The one situation the course is set in; every example goes here. */
+  spine: string;
+  /**
+   * The map's named misconceptions for this concept, one per line.
+   *
+   * The same list the item distractors were built from (T-162), which is the
+   * point: generated independently, the learner was warned about one mistake
+   * and tested on another.
+   */
+  misconceptions: string;
+  /**
+   * The items already written for this concept, rendered for reading.
+   *
+   * Backward design (T-162): the explanation exists to make these answerable
+   * three weeks later. They were generated moments earlier in the same loop
+   * and then thrown away — the teaching call never saw the questions it was
+   * preparing the learner for.
+   */
+  items: string;
+  /** Concepts already taught that this one depends on — named, never
+   *  re-explained. Empty for a root concept. */
+  prereqs: string;
+  /** Concepts later in the course. Naming them here is what stops an
+   *  explanation leaning on an idea the learner has no way to look up. */
+  notYetTaught: string;
   /** The learner's chosen language (T-091). Absent drops the line entirely —
    *  see `ItemsInput.language`. */
   language?: string;
@@ -80,7 +118,8 @@ function resolveTeachBlock(block: z.infer<typeof TeachBlockGenerationSchema> | n
   return TeachBlockSchema.parse(block);
 }
 
-export function validateTeaching(data: unknown): GeneratedTeaching {
+export function validateTeaching(data: unknown, options: ValidateOptions = {}): GeneratedTeaching {
+  const fail = failer('teaching', options.tolerate);
   const parsed = TeachingResponseSchema.safeParse(data);
   if (!parsed.success) {
     throw new GenerationError(
@@ -91,8 +130,8 @@ export function validateTeaching(data: unknown): GeneratedTeaching {
   const result = parsed.data;
 
   if (result.corrections.length < MIN_CORRECTIONS || result.corrections.length > MAX_CORRECTIONS) {
-    throw new GenerationError(
-      'invalid_shape',
+    fail(
+      'corrections_count',
       `got ${result.corrections.length} corrections, need ${MIN_CORRECTIONS}-${MAX_CORRECTIONS}`,
     );
   }
@@ -101,8 +140,8 @@ export function validateTeaching(data: unknown): GeneratedTeaching {
   // the long form isn't actually longer the model has reworded rather than
   // expanded, and the learner taps through to the same text.
   if (result.explanationLong.length <= result.explanationShort.length) {
-    throw new GenerationError(
-      'invalid_shape',
+    fail(
+      'explanation_not_expanded',
       'explanationLong must be longer than explanationShort, not a reworded copy',
     );
   }
@@ -118,6 +157,11 @@ const str = { type: 'string' } as const;
 const lang = { type: 'string', enum: [
   'javascript', 'typescript', 'python', 'java', 'go', 'cpp', 'sql', 'bash', 'json', 'plain',
 ] } as const;
+/** Told to the model explicitly (T-158): `alt` had no stated limit anywhere —
+ *  not here, not in prose — so nothing signalled that a legitimate, accurate
+ *  description of a busier diagram (e.g. two disconnected components) needed
+ *  to be compressed. Matches `DRAWING_ALT_MAX` (@learnos/shared). */
+const altField = { type: 'string', maxLength: DRAWING_ALT_MAX } as const;
 
 /** The three `teachBlock` kinds, provider-JSON-schema form — deliberately
  *  smaller than `items.ts`'s `blockJsonSchemas`: no `slot`, no answer
@@ -157,7 +201,7 @@ const teachBlockJsonSchema = {
             properties: { from: str, to: str, label: { type: ['string', 'null'] } },
           },
         },
-        alt: str,
+        alt: altField,
       },
     },
     {
@@ -181,7 +225,7 @@ const teachBlockJsonSchema = {
             },
           },
         },
-        alt: str,
+        alt: altField,
       },
     },
   ],
@@ -215,6 +259,7 @@ export const teachingPrompt = definePrompt({
   schema: TeachingResponseSchema,
   jsonSchema: { name: 'teaching_response', schema: teachingJsonSchema as unknown as Record<string, unknown> },
   validate: (value) => void validateTeaching(value),
+  tolerate: isRepairable,
 });
 
 /** No outer retry — runPrompt already retries once (see generateConceptMap). */
@@ -225,9 +270,15 @@ export async function generateTeaching(input: TeachingInput): Promise<GeneratedT
       teachingPrompt,
       {
         topic: input.topic,
+        level: input.level,
         concept: input.concept,
         summary: input.summary,
         teachMode: input.teachMode,
+        spine: input.spine,
+        misconceptions: input.misconceptions,
+        items: input.items,
+        prereqs: input.prereqs,
+        notYetTaught: input.notYetTaught,
         // Empty, not omitted: the template's optional section decides whether
         // the line appears, and `render` throws on a var it was never given.
         language: input.language ?? '',
@@ -240,9 +291,13 @@ export async function generateTeaching(input: TeachingInput): Promise<GeneratedT
     // A GenerationError already carries the rule it broke — re-wrapping it
     // would flatten every domain reason into `invalid_shape`.
     if (error instanceof GenerationError) throw error;
-    if (error instanceof LlmError) throw new GenerationError(error.reason, error.message);
+    if (error instanceof LlmError) throw new GenerationError(error.reason, error.message, error.raw);
     throw new GenerationError('invalid_shape', `teaching generation failed: ${String(error)}`);
   }
 
-  return validateTeaching(response);
+  // Tolerantly, because `runPrompt` already ran this exact check twice on this
+  // exact reply: either it passed, in which case tolerance changes nothing, or
+  // it was accepted as a preference violation, in which case re-throwing here
+  // would undo that decision. Integrity rules still throw either way.
+  return validateTeaching(response, { tolerate: true });
 }

@@ -77,6 +77,7 @@ async function seedTopic() {
           prompt: 'Why are state updates asynchronous?',
           options: ['React repaints first', 'React batches updates', 'They never update', 'Only in classes'],
           answerIndex: 1,
+          distractorSource: 'the nearest wrong belief a learner still holds',
         },
         isTransfer: false,
       },
@@ -349,6 +350,7 @@ describe('qa apply', () => {
     expect(row?.payload).toMatchObject({
       options: ['React repaints first', 'React batches updates and schedules a re-render', 'They never update', 'Only in classes'],
       answerIndex: 1,
+      distractorSource: 'the nearest wrong belief a learner still holds',
     });
 
     // Three options is not a multiple-choice question; the payload schema is

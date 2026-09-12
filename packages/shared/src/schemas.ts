@@ -76,6 +76,19 @@ const itemFields = {
     prompt: z.string().min(1),
     options: z.array(z.string()).length(4),
     answerIndex: z.number().int().min(0).max(3),
+    /**
+     * The wrong belief the most tempting distractor encodes (T-162).
+     *
+     * A forcing function, not data anyone reads: "plausible distractor" is easy
+     * to satisfy with something merely adjacent, and a distractor nobody would
+     * pick makes a four-option question a two-option one. Naming the belief is
+     * only possible if the distractor was built from one, which is the same
+     * trick `clozeCode.failure` and `codeEditor.whyWhole` already use.
+     *
+     * Server-side. `toPublicItem` builds the client shape field by field, so
+     * this is excluded by default rather than by remembering to strip it.
+     */
+    distractorSource: z.string().trim().min(1).max(200),
   },
   application: { type: z.literal('application'), prompt: z.string().min(1), answer: z.string().min(1), accept: z.array(z.string()).optional() },
   // 200 chars is what items/system.md calls a hard limit, and it was not one:
