@@ -24,6 +24,12 @@ terraform {
 provider "aws" {
   region = var.aws_region
 
+  # Two AWS accounts are in play: 719312763365 holds the credit and this stack;
+  # 353400076760 runs the legacy api. Refuse to plan or apply anywhere else, so
+  # a shell pointed at the wrong profile fails loudly instead of spending money
+  # in the wrong account.
+  allowed_account_ids = ["719312763365"]
+
   default_tags {
     tags = { Project = var.project_name, ManagedBy = "terraform", Stack = "prod" }
   }
