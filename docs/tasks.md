@@ -803,6 +803,17 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
     - **Next move: a worked block example in `items/example.md`**, not more rule text in `system.md` — the same corrective that fixed the classifier in this task. Re-run a full generation to confirm, and record the per-kind counts here.
     - Measurement query for the re-run (blocks live in `payload->'blocks'`, with `answer_kind` denormalised):
       `select coalesce(answer_kind,'(plain)'), count(*) from items i join concepts c on c.id=i.concept_id where c.topic_id='<id>' group by 1;`
+  - **Second full run with a batch-shaped example (2026-09-13, topic `2f473794`, 21 calls, $0.512, 423s). Still 0 blocks in 96 items — and the diagnosis above was wrong.**
+    - The example was rewritten as a full concept in reply shape (five items, two rich, ratio stated, `"blocks": null` on the plain ones) and validated against `BlockGenerationSchema` before the run: three blocks, all valid, no missing or extra item fields. Classification was *better* than the first run — **code 8 · math 7 · prose 1**.
+    - **Delivery is confirmed, so the item prompt is no longer a credible suspect.** `loadTemplate('items','code').fragment` is **9,934 characters**, contains the new worked example, and says `blocks` ten times. Eight code concepts received it. Three separate prompt interventions have now failed to produce a single item block: making the field visible in `system.md`, fixing the classifier, and adding a batch-shaped worked example.
+    - **The model is not unwilling to write blocks. It writes them freely on the teaching side and the generator throws them away.** This run tolerated 7 rules, every one a block being discarded:
+      - `teaching/block_without_domain` ×5 — a code teachBlock written for a `math` or `prose` concept. **`math` has no fragment at all** (`loadTemplate('items','math').fragment` is 0 characters) and `math` was 7 of 16 concepts here, so blocks on nearly half the course are rejected by construction, whatever any prompt says.
+      - `teaching/block_malformed` ×2 — **diagram** blocks, dropped on size: `edges.0.label` over 24 characters, and `nodes` over 5 elements. The model reaches for diagrams unprompted and the caps eat them.
+    - So the binding constraints look structural, not persuasive, and the next moves are not more item-prompt text:
+      1. **A `math.md` domain fragment.** `DOMAIN_FRAGMENTS` is `{code, systems}`; `math` is routinely the second-largest domain and can carry `numeric` and `clozeCode` naturally.
+      2. **Revisit the diagram caps**, or state them in the prompt so the model writes inside them rather than having good diagrams deleted.
+      3. **Find what differs between the teaching and items calls.** Both go through the same strict `json_schema` client path and the same fragment, yet one writes blocks and the other never does. That asymmetry is the actual open question, and it is free to investigate — no generation run needed.
+    - The batch-shaped example is kept: it is a more faithful exemplar and adds `hotspotLine` coverage. But it is ~4k characters on every code batch and it did not move the number, so revert it if prompt size starts to matter.
 
 ### T-168 · One Coolify host on AWS, managed by Terraform
 - **status:** in_progress

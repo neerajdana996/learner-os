@@ -50,18 +50,68 @@ A transfer item applies the concept in a context it was **not** taught in. A bla
 
 ### Worked example — concept: "Exclusive upper bound in binary search"
 
-This concept **is** a rule with a boundary, so one item gets a `clozeCode` and the rest stay plain. Eight items, two rich, one transfer.
+This concept **is** a rule with a boundary, so two of its items carry a rich format and the rest stay plain. Written in the shape you must reply in, trimmed to five items; a real concept has 6–8.
+
+**Read the ratio, not just the blocks.** Three of these five are ordinary items with no `blocks` at all — that is the correct proportion, and a concept where every item carries a listing is wrong. `blocks` is `null` on a plain item; do not omit the field.
 
 ```json
 {
-  "type": "application",
-  "prompt": "Complete the loop condition so the last element is still searched.",
-  "answer": "lo < hi",
-  "accept": ["lo<hi"],
-  "isTransfer": false,
-  "blocks": [
-    { "kind": "code", "slot": "context", "lang": "javascript", "src": "function search(a, x) {\n  let lo = 0;\n  let hi = a.length;\n  while (lo < hi) {\n    const mid = (lo + hi) >> 1;\n    if (a[mid] === x) return mid;\n    a[mid] < x ? (lo = mid + 1) : (hi = mid);\n  }\n  return -1;\n}", "short": null, "notes": [{ "lineQuote": "let hi = a.length;", "text": "one past the end, not the last index" }], "dim": null },
-    { "kind": "clozeCode", "slot": "answer", "lang": "javascript", "src": "while ({{1}}) {", "holes": [{ "id": 1, "answer": "lo < hi", "accept": ["lo<hi"], "width": 8 }], "failure": "With `lo <= hi` the loop reads a[a.length] on the last step, which is undefined." }
+  "concepts": [
+    {
+      "slug": "exclusive-upper-bound",
+      "items": [
+        {
+          "type": "recall",
+          "prompt": "In a binary search written with an exclusive upper bound, what does `hi` hold when the search starts?",
+          "answer": "one past the last index — the array's length",
+          "accept": ["a.length", "the length, not the last index", "one past the end"],
+          "isTransfer": false,
+          "blocks": null
+        },
+        {
+          "type": "application",
+          "prompt": "Complete the loop condition so the last element is still searched.",
+          "answer": "lo < hi",
+          "accept": ["lo<hi"],
+          "isTransfer": false,
+          "blocks": [
+            { "kind": "code", "slot": "context", "lang": "javascript", "src": "function search(a, x) {\n  let lo = 0;\n  let hi = a.length;\n  while (lo < hi) {\n    const mid = (lo + hi) >> 1;\n    if (a[mid] === x) return mid;\n    a[mid] < x ? (lo = mid + 1) : (hi = mid);\n  }\n  return -1;\n}", "short": null, "notes": [{ "lineQuote": "let hi = a.length;", "text": "one past the end, not the last index" }], "dim": null },
+            { "kind": "clozeCode", "slot": "answer", "lang": "javascript", "src": "while ({{1}}) {", "holes": [{ "id": 1, "answer": "lo < hi", "accept": ["lo<hi"], "width": 8 }], "failure": "With `lo <= hi` the loop reads a[a.length] on the last step, which is undefined." }
+          ]
+        },
+        {
+          "type": "application",
+          "prompt": "This search never terminates when the target is missing. Click the line that has to change.",
+          "answer": "if (a[mid] < x) lo = mid;",
+          "accept": ["lo = mid", "the lo = mid line"],
+          "isTransfer": false,
+          "blocks": [
+            { "kind": "hotspotLine", "slot": "answer", "lang": "javascript", "src": "function search(a, x) {\n  let lo = 0;\n  let hi = a.length;\n  while (lo < hi) {\n    const mid = (lo + hi) >> 1;\n    if (a[mid] === x) return mid;\n    if (a[mid] < x) lo = mid;\n    else hi = mid;\n  }\n  return -1;\n}", "lineQuote": "if (a[mid] < x) lo = mid;", "why": "It must be `lo = mid + 1`; the midpoint has already been compared, so leaving it in the window makes no progress.", "failure": "With `lo = mid` and a two-element window, `mid` is `lo`, so `lo` never advances and the loop spins forever.", "acceptAdjacent": false }
+          ]
+        },
+        {
+          "type": "recognition",
+          "prompt": "Why is `hi` initialised to `a.length` rather than `a.length - 1`?",
+          "options": [
+            "Because the window is half-open, so `hi` is the first index not yet searched",
+            "Because the midpoint calculation would overflow with a smaller bound",
+            "Because the array might be empty and `-1` would be an invalid index",
+            "Because the loop compares with `<`, which skips the final element otherwise"
+          ],
+          "answerIndex": 0,
+          "distractorSource": "An exclusive bound skips the last element, so it must be a fencepost bug.",
+          "isTransfer": false,
+          "blocks": null
+        },
+        {
+          "type": "explain",
+          "prompt": "A colleague writes a sliding window with `while (right <= n)` and it reads one element past the end. Explain the shared idea.",
+          "rubric": "Must mention: the bound is exclusive, so the comparison is `<`; `<=` visits one index past the last; the invariant is which indices remain unsearched, not which index is last.",
+          "isTransfer": true,
+          "blocks": null
+        }
+      ]
+    }
   ]
 }
 ```
