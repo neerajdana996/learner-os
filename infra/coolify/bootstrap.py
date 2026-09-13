@@ -164,8 +164,13 @@ def read_dotenv_values(keys):
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, v = line.split("=", 1)
-            if k in keys and v.strip():
-                found[k] = v.strip()
+            v = v.strip()
+            # .env values may be quoted (MAIL_FROM="name <addr>"); the quotes are
+            # shell syntax, not part of the value, and must not reach Coolify.
+            if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+                v = v[1:-1]
+            if k in keys and v:
+                found[k] = v
     return found
 
 
