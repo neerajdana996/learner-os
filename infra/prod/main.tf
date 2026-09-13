@@ -4,6 +4,8 @@ module "host" {
   project_name   = var.project_name
   instance_type  = var.instance_type
   root_volume_gb = var.root_volume_gb
+
+  database_access_cidrs = var.database_access_cidrs
 }
 
 # --- Web records, before and after cutover ---

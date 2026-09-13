@@ -54,6 +54,22 @@ resource "aws_security_group" "host" {
     ipv6_cidr_blocks = ["::/0"]
   }
 
+  # Direct database access, for working from a laptop. Opened only for the
+  # addresses in var.database_access_cidrs; with the default empty list neither
+  # rule exists. Both databases have generated passwords, but an open 5432 or
+  # 6379 is scanned and brute-forced within hours, so keep the list narrow.
+  dynamic "ingress" {
+    for_each = length(var.database_access_cidrs) > 0 ? [5432, 6379] : []
+
+    content {
+      description = "Database port ${ingress.value} from allowed addresses only"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = var.database_access_cidrs
+    }
+  }
+
   egress {
     from_port        = 0
     to_port          = 0

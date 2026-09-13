@@ -37,3 +37,9 @@ variable "snapshot_retention_count" {
   type        = number
   default     = 7
 }
+
+variable "database_access_cidrs" {
+  description = "Addresses allowed to reach Postgres (5432) and Redis (6379) directly. Empty keeps both closed, which is the default."
+  type        = list(string)
+  default     = []
+}

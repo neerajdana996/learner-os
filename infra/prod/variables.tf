@@ -57,3 +57,9 @@ variable "legacy_api_host" {
   type        = string
   default     = "ec2-13-200-206-246.ap-south-1.compute.amazonaws.com"
 }
+
+variable "database_access_cidrs" {
+  description = "Addresses allowed to reach Postgres and Redis directly, e.g. [\"203.0.113.7/32\"]. Empty keeps both closed."
+  type        = list(string)
+  default     = []
+}
