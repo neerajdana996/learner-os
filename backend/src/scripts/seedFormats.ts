@@ -42,7 +42,14 @@ const MARKER = '[fmt]';
  */
 type Seed = { type: 'recall' | 'application'; payload: unknown };
 
-const SEEDS: Seed[] = [
+/**
+ * Exported so `seedFormatShowcase.ts` can place **one** of these per concept.
+ * All five on a single concept is right for this script — it is proving the
+ * payloads store — but the scheduler serves one item per due concept, so a
+ * spec that wants to *see* every format needs them spread out. One array, so
+ * the two arrangements cannot drift.
+ */
+export const FORMAT_SEEDS: Seed[] = [
   // ---- clozeCode: the cheap answer surface (T-086)
   {
     type: 'recall',
@@ -168,7 +175,7 @@ export async function seedFormatsFor(conceptId: string): Promise<number> {
   for (const row of mine) await db.delete(items).where(eq(items.id, row.id));
 
   let written = 0;
-  for (const seed of SEEDS) {
+  for (const seed of FORMAT_SEEDS) {
     // The gate: what the worker is allowed to store is what gets stored here.
     const payload: ItemPayload = ItemPayloadSchema.parse(seed.payload);
     await db.insert(items).values({
@@ -203,7 +210,7 @@ async function main(): Promise<void> {
   const written = await seedFormatsFor(target.id);
 
   console.log(`\nseeded ${written} format items on "${target.title}" (${target.id})`);
-  console.log(`  kinds: ${SEEDS.map((s) => (s.payload as { blocks: { kind: string }[] }).blocks[0]?.kind).join(', ')}\n`);
+  console.log(`  kinds: ${FORMAT_SEEDS.map((s) => (s.payload as { blocks: { kind: string }[] }).blocks[0]?.kind).join(', ')}\n`);
   process.exit(0);
 }
 

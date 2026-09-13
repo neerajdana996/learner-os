@@ -48,6 +48,12 @@ export default function globalSetup() {
   console.log('[e2e] seeding a map fixture…');
   execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:map'], { cwd: root, stdio: 'inherit' });
 
+  // One concept per answer format (E2E-008) — the formats specs need every
+  // format reachable, and the dev topic serves one item per due concept, so
+  // all five on one concept would show whichever the queue picked.
+  console.log('[e2e] seeding the answer-format showcase…');
+  execFileSync('pnpm', ['--filter', 'learner-os-backend', 'seed:formats:showcase'], { cwd: root, stdio: 'inherit' });
+
   console.log('[e2e] building the extension…');
   execFileSync('pnpm', ['--filter', 'learner-os-extension', 'build'], { cwd: root, stdio: 'inherit' });
 }

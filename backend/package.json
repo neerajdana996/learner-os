@@ -22,6 +22,7 @@
     "qa:retire": "tsx src/scripts/qa.ts retire",
     "preflight": "tsx src/scripts/preflight.ts",
     "seed:formats": "tsx src/scripts/seedFormats.ts",
+    "seed:formats:showcase": "tsx src/scripts/seedFormatShowcase.ts",
     "seed:matrix": "tsx src/scripts/seedMatrix.ts",
     "seed:fresh": "tsx src/scripts/seedFreshUser.ts",
     "seed:diagnostic": "tsx src/scripts/seedDiagnosticUsers.ts",

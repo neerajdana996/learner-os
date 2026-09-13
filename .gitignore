@@ -18,6 +18,7 @@ e2e/fresh-user.json
 e2e/diagnostic-users.json
 e2e/session-users.json
 e2e/map-user.json
+e2e/format-user.json
 .vercel
 .env*
 
