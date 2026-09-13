@@ -83,7 +83,11 @@ Do **not** ask what subject the concept belongs to. That question has the same a
 | a topology, an ordering of events, or which component talks to which | `systems` |
 | a sentence — a reason, a trade-off, a distinction, a definition | `prose` |
 
-**`prose` is the most common answer and it is a good one.** In a healthy code topic roughly **half** the concepts are `prose`, and if fewer than a third of yours are, you have classified by subject and should go back through them. "Why memoisation changes the complexity class" is answered in a sentence; forcing it into a code format produces a question about the format instead of about the idea.
+**`prose` is a legitimate answer and often the right one.** "Why memoisation changes the complexity class" is answered in a sentence; forcing it into a code format produces a question about the format instead of about the idea.
+
+**Check it in both directions.** Classifying by subject is one failure — every concept in a topic called *Dynamic programming* coming back `code` — and it is not the only one. The opposite failure is filing a concept as `prose` because it *could* be described in a sentence, when a correct answer to it is a line someone writes. On a topic whose ideas are procedures, expect a real share of `code`; a course about implementing something that comes back with one `code` concept in sixteen has been classified by how the titles *read* rather than by what answering them takes.
+
+Do not aim at a ratio. Ask the question concept by concept, and the ratio follows from the topic.
 
 Two concepts in the same topic routinely differ. In a topic on hash tables, "Big-O of a hash lookup" is `math`, "write a hash function" is `code`, "why chaining degrades under a bad hash" is `prose`, and "how a resize rehashes every bucket" is `systems`.
 
@@ -92,6 +96,19 @@ Two concepts in the same topic routinely differ. In a topic on hash tables, "Big
 - "Stale reads" → **`systems`**, not `prose`. A correct answer is a specific interleaving: the write completed, the read went to a replica, replication had not arrived yet. The sentence "a read that returns an outdated value" is a definition of the term, not an answer about the mechanism.
 - "Read-your-writes consistency" → **`systems`**. What makes it true or false is the order two operations landed in.
 - "Why availability and consistency trade off" → **`prose`**, genuinely. That one is a reason, and a reason is a sentence.
+
+### A worked pass over a code topic
+
+Real classifications from *HashMap + prefix sums*, a Python course. The first three are the ones that went wrong, and each went wrong the same way — the title reads like a sentence, so it was filed as one.
+
+- "For counting, store frequencies" → **`code`**, not `prose`. A correct answer is `freq[p] = freq.get(p, 0) + 1` — which structure, holding what. Describing the choice in a sentence is a description *of* the answer, not the answer.
+- "Look up before recording the current prefix" → **`code`**, not `systems`. There is an ordering in it, but the ordering is two statements in one loop body, not two components talking. `systems` is for what talks to what.
+- "Remembering earlier prefix sums" → **`code`**, not `prose`. The answer is the dictionary and what goes in it.
+- "Why negative values break the sliding window" → **`prose`**, genuinely. A reason is a sentence.
+- "A subarray is the difference of two prefixes" → **`math`**. The answer is `prefix[j] - prefix[i-1]`, an identity.
+- "Time and space of the scan" → **`math`**. The answer is O(n) and why.
+
+Three of six are `code` here, and that is what a course about writing something looks like. The sourdough example below has none, because nothing in it is written in a language — not because `code` is a last resort.
 
 Getting this wrong is expensive and silent: `domain` decides which question formats the concept can be asked with, so a mis-filed concept simply never gets the format that would have taught it, and nothing anywhere reports a problem.
 

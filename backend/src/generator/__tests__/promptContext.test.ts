@@ -196,6 +196,35 @@ describe('concept map prompt', () => {
     expect(user).toContain('Sliding window');
     expect(all).not.toMatch(/\{\{\s*\w+\s*\}\}/);
   });
+
+  /**
+   * T-166. Two live runs of a Python algorithms topic classified 3 of 16 and
+   * then 1 of 16 concepts as `code`, which is why no item ever carried a block:
+   * the fragment that asks for them reached one batch of one concept. The
+   * prompt was getting what it asked for — it named a ~half-prose target and a
+   * floor to re-check *below* a third prose, with no corresponding check in the
+   * other direction, and its only worked example is a baking topic with no
+   * `code` concept in it at all.
+   */
+  it('checks the domain classification in both directions, and shows a code topic being classified', async () => {
+    create.mockResolvedValueOnce(asText(read('conceptMap.react-hooks.json')));
+
+    await generateConceptMap(aFraming({ topic: 'HashMap + prefix sums' }));
+    const { system } = sentMessages();
+
+    // No ratio to aim at — the ratio is an outcome of asking per concept.
+    expect(system).not.toMatch(/roughly \*\*half\*\* the concepts are `prose`/);
+    expect(system).toContain('Do not aim at a ratio');
+    expect(system).toContain('Check it in both directions');
+
+    // A worked pass where `code` is the right answer, so the only example of
+    // the decision is not one in which nothing is code.
+    expect(system).toContain('A worked pass over a code topic');
+    expect(system).toMatch(/"For counting, store frequencies" → \*\*`code`\*\*/);
+    expect(system).toMatch(/"Look up before recording the current prefix" → \*\*`code`\*\*/);
+    // ...and it still says when prose is right, so this is not a swing back.
+    expect(system).toMatch(/"Why negative values break the sliding window" → \*\*`prose`\*\*/);
+  });
 });
 
 describe('teaching prompt', () => {
