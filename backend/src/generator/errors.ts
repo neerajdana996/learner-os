@@ -66,7 +66,11 @@ export type GenerationErrorReason =
    * `prose` concepts came back with while `code` concepts, which *do* have a
    * fragment asking for blocks, came back with none.
    */
-  | 'block_without_domain';
+  | 'block_without_domain'
+  /** A block whose own shape breaks its schema — a diagram edge label one
+   *  character over the limit, as in run 5. The block is optional decoration,
+   *  so it is dropped and the lesson kept. */
+  | 'block_malformed';
 
 export class GenerationError extends Error {
   constructor(

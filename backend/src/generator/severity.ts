@@ -103,6 +103,10 @@ export const REPAIRABLE_REASONS: ReadonlySet<GenerationErrorReason> = new Set([
    *  the block is dropped rather than kept, so what is stored is what the
    *  prompts describe (T-166/T-167). */
   'block_without_domain',
+  /** A malformed block is the same kind of loss as an unauthorised one: one
+   *  lesson without its diagram, not a course that cannot exist. Run 5 died on
+   *  this as `invalid_shape` — 25 characters in a 24-character label. */
+  'block_malformed',
 ]);
 
 /**

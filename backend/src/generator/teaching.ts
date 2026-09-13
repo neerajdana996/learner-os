@@ -53,7 +53,11 @@ export interface GeneratedTeaching {
 const TeachingResponseSchema = z.object({
   tryFirstPrompt: z.string().trim().min(1),
   explanationShort: z.string().trim().min(1),
-  teachBlock: optionalOrNull(TeachBlockGenerationSchema),
+  // Accepted as anything here and parsed on its own in `validateTeaching`.
+  // Parsed as part of the whole reply, one bad block failed the lesson — and
+  // with it the course: run 5 died after ~20 successful calls because one
+  // diagram edge label was 25 characters against a 24-character limit.
+  teachBlock: z.unknown(),
   explanationLong: z.string().trim().min(1),
   corrections: z
     .array(z.object({ wrong: z.string().trim().min(1), why: z.string().trim().min(1) }))
@@ -133,6 +137,47 @@ function resolveTeachBlock(block: z.infer<typeof TeachBlockGenerationSchema> | n
   return TeachBlockSchema.parse(block);
 }
 
+/**
+ * The block, parsed apart from the lesson it decorates.
+ *
+ * A malformed block is dropped rather than failing the reply. The provider's
+ * strict JSON schema guarantees the block's *structure* but not its string
+ * limits, so a label one character too long reaches Zod — and before this, Zod
+ * rejected the whole reply as `invalid_shape`, which is fatal and runs before
+ * T-164's severity split ever gets a say. The repair turn did not save it
+ * either: the retry was told the label was too long and wrote another one.
+ *
+ * Checked only on the outer call, the same as the domain check below it and
+ * for the same reason — inside `runPrompt`'s retry hook a bad block is treated
+ * as absent, so it cannot buy a second model call over decoration.
+ */
+function parseTeachBlock(
+  raw: unknown,
+  options: TeachingValidateOptions,
+  fail: ReturnType<typeof failer>,
+): TeachBlock | null {
+  if (raw === null || raw === undefined) return null;
+
+  let problem: string | null = null;
+  let block: TeachBlock | null = null;
+  const parsed = TeachBlockGenerationSchema.safeParse(raw);
+  if (!parsed.success) {
+    problem = parsed.error.issues.map((i) => `${i.path.join('.')} ${i.message}`).join('; ');
+  } else {
+    // Resolution renders SVG and re-parses against the stored schema, and
+    // either can reject a block the generation schema accepted.
+    try {
+      block = resolveTeachBlock(parsed.data);
+    } catch (error) {
+      problem = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  if (problem === null) return block;
+  if (options.enforceBlockDomain) fail('block_malformed', `teachBlock dropped: ${problem}`);
+  return null;
+}
+
 export function validateTeaching(data: unknown, options: TeachingValidateOptions = {}): GeneratedTeaching {
   const fail = failer('teaching', options.tolerate);
   const parsed = TeachingResponseSchema.safeParse(data);
@@ -180,7 +225,7 @@ export function validateTeaching(data: unknown, options: TeachingValidateOptions
    * Python snippet beside a prose concept may well be worth having. That is a
    * content decision, so it is written down rather than made here.
    */
-  const block = resolveTeachBlock(result.teachBlock ?? null);
+  const block = parseTeachBlock(result.teachBlock, options, fail);
   if (options.enforceBlockDomain && block && domainFragment(options.domain) === undefined) {
     fail(
       'block_without_domain',

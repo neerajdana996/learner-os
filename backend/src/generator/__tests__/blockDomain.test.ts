@@ -37,6 +37,25 @@ const asText = (value: unknown) => ({
 const codeItems = read('items.binary-search-bound.json');
 const asBatch = (slug: string, items: unknown[]) => ({ concepts: [{ slug, items }] });
 
+/** The teachBlock that ended run 5, verbatim from the model. Everything about
+ *  it is valid except `edges[2].label`: 25 characters against a limit of 24. */
+const RUN5_BLOCK = {
+  kind: 'diagram',
+  nodes: [
+    { id: 'p3', label: 'P[3]: days 1–3 = 6' },
+    { id: 'range', label: 'days 4–9 total 1' },
+    { id: 'p9', label: 'P[9]: days 1–9 = 7' },
+    { id: 'result', label: 'P[9] − P[3] = 7 − 6 = 1' },
+  ],
+  edges: [
+    { from: 'p3', to: 'p9', label: 'P[9] includes days 1–3' },
+    { from: 'range', to: 'p9', label: 'and days 4–9' },
+    { from: 'p9', to: 'result', label: 'subtract: days 1–3 cancel' },
+    { from: 'p3', to: 'result', label: 'remove' },
+  ],
+  alt: 'P[3] contains days 1 through 3. P[9] contains days 1 through 9. Subtracting P[3] from P[9] leaves days 4 through 9.',
+};
+
 const batchInput = (domain?: string) => ({
   topic: 'Binary search',
   level: 'working',
@@ -121,6 +140,24 @@ describe('teaching: a teachBlock needs a domain section', () => {
     expect(warnings).toContainEqual(
       expect.objectContaining({ reason: 'block_without_domain', prompt: 'teaching' }),
     );
+  });
+
+  it('drops a malformed block and keeps the lesson — the failure that ended run 5', async () => {
+    create.mockResolvedValue(asText({ ...teaching, teachBlock: RUN5_BLOCK }));
+
+    // `systems` authorises a diagram, so the domain check is not what drops it.
+    const { result, warnings } = await collectWarnings(() =>
+      generateTeaching(teachingInput({ domain: 'systems' })),
+    );
+
+    expect(result.teachBlock).toBeNull();
+    expect(result.explanationShort.length).toBeGreaterThan(0);
+    expect(result.corrections.length).toBeGreaterThanOrEqual(2);
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ reason: 'block_malformed', prompt: 'teaching', message: expect.stringContaining('edges.2.label') }),
+    );
+    // Dropped once on the way out, never re-requested.
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
   it('drops it for a concept with no domain at all', async () => {

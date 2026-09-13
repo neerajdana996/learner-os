@@ -55,6 +55,7 @@ const CLASSIFIED: Record<GenerationErrorReason, 'integrity' | 'preference'> = {
 
   // A block nobody specified — dropped and reported, not fatal (T-166/T-167).
   block_without_domain: 'preference',
+  block_malformed: 'preference',
 };
 
 describe('rule severity', () => {
