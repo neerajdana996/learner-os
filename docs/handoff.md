@@ -5,14 +5,11 @@
 
 ## Git
 
-- Working branch: `task/T-168-coolify-single-host`. `origin/main` is at `d61e9bb`.
-- **Five local commits are not on GitHub** — pushing to `main` triggers Coolify auto-deploy, so
-  ask the founder before pushing:
-  - `9fecaa4` Coolify bootstrap script
-  - `1a7b990` optional public DB access (Terraform)
-  - `7889d2e` T-168 notes
-  - `56500bd` `set-secrets.py` + `.env` quote fix
-  - `87cb1e6` **backend Dockerfile runs `drizzle-kit push` at container start** (see open item 3)
+- Working branch: `task/T-168-coolify-single-host`. `origin/main` is at `4cf036f`.
+- The five pending commits were pushed on 2026-09-13 (founder OK), together with `4cf036f`
+  "Connect to Postgres over TLS only when the server offers it". The backend redeployed from
+  `4cf036f` and is healthy; the frontend did not redeploy (no watch path matched) and is healthy.
+- Local `main` is stale (18 behind); the branch is what gets pushed to `main`.
 
 ## Done this session
 
@@ -60,25 +57,41 @@ the reviewed resource counts — keep doing that.
 
 - Both apps auto-deploy on push to `main`, with watch paths (`backend/**`, `packages/shared/**`,
   lockfile / `frontend/**`, `packages/**`, lockfile).
-- Schema: `drizzle-kit push` was run **by hand** on the empty database → 14 tables.
+- Schema: `drizzle-kit push` now runs at container start (`87cb1e6`); the `4cf036f` deploy logged
+  "No changes detected" against the 14 tables, which is also the first proof the container itself
+  can reach Postgres — the original push was run by hand from the founder's laptop over public 5432.
+- Verified live on `http://l2am3wo5nncpsmnb4w1fwpdu.13.204.7.173.sslip.io` after the `4cf036f`
+  deploy: `/health` 200; `/auth/verify?token=bogus` → 401 `invalid_token` (a real DB read, not a
+  500); `/topics` → 401; `POST /auth/magic` → 200, which exercises user insert, token insert and
+  the Mailgun send. The emailed link points at `API_URL` (`api.coldrecall.info`), which still
+  resolves to the **legacy** host until cutover, so that link is not usable yet.
 - Secrets were set by the founder running `python3 infra/coolify/set-secrets.py`.
 - Scripts: `infra/coolify/bootstrap.py` (idempotent create), `infra/coolify/set-secrets.py`
   (founder runs it; prints names only).
 
 ## Open — in order
 
-1. **Backend lifecycle job fails every minute, even after the schema exists.** Its query (topics
-   join users, status in active/holdout/testing/done) failed at 07:55:39Z, after the push. The same
-   query run in `psql` as `learnos` returns 0 rows without error, and `users.timezone` exists.
-   Drizzle logs only the query, not the cause. Leading guess: the worker's connection or prepared
-   state predates the tables — **restart the backend container and see whether failures stop**; if
-   not, capture the real Postgres error (e.g. run the query from inside the backend container with
-   its own `DATABASE_URL`).
-2. **Verify the frontend** — `running:unhealthy` contradicts the healthy rolling update.
-3. **Push the five local commits** (founder OK). Once `87cb1e6` is live, clear the backend's
-   `pre_deployment_command` in Coolify (still `pnpm drizzle-kit push`): Coolify runs it in the
-   *old* container, so it would push the previous version's schema.
-4. **DNS cutover** — founder approved "after backend and frontend are healthy". Set `cutover = true`
+1. ~~Backend lifecycle job fails every minute~~ **Fixed in `4cf036f`.** The cause was never the
+   query: `client.ts` set `ssl: 'require'` whenever `NODE_ENV === 'production'`, but the Coolify
+   Postgres has `enable_ssl = false`, so *every* connection died during TLS negotiation
+   (`ECONNRESET`). It looked like a query bug because drizzle wraps failures in
+   `DrizzleQueryError`, whose `message` is only the SQL — the driver's error sits in `cause`, and
+   the workers logged `.message`. It went unnoticed because `/health` touches no database.
+   `sslmode` now comes from `DATABASE_URL` and defaults to `prefer`, which encrypts when the
+   server offers TLS and falls back when it doesn't. Verified: no lifecycle failures since deploy.
+2. ~~Verify the frontend~~ **Healthy.** `running:unhealthy` was a transient rolling-update reading.
+3. ~~Push the local commits~~ **Pushed.** Still to do: clear the backend's `pre_deployment_command`
+   in Coolify (still `pnpm drizzle-kit push`). `87cb1e6` is now live, so the container pushes the
+   schema at start; the pre-deploy copy runs in the *old* container. It is currently a harmless
+   no-op only because the schema hasn't changed — it will push a stale schema the first time it does.
+3b. **Enable SSL on the Postgres** (`enable_ssl = false`, `ssl_mode = require`, `is_public = true`
+   on 5432). Until then credentials cross the public port in cleartext. No code or connection-string
+   change is needed — `prefer` picks TLS up automatically. Stronger still: close public 5432
+   (`database_access_cidrs` is `0.0.0.0/0`) and use Coolify's internal network.
+4. **DNS cutover** — the precondition is now met (both apps healthy), but do items 5 and 4 as one
+   sitting: moving DNS before the proxy can issue certificates leaves apex/`www` serving broken
+   https, where Vercel serves them fine today. Founder approved "after backend and frontend are
+   healthy". Set `cutover = true`
    in `infra/prod/terraform.tfvars`; the plan must be exactly **0 add, 3 change, 0 destroy**
    (`apex`, `www`, `api`); apply that saved plan.
 5. **Restart Coolify's proxy** once DNS resolves everywhere, so Let's Encrypt issues certificates
@@ -88,7 +101,11 @@ the reviewed resource counts — keep doing that.
    `set-secrets.py`, save the new token to `~/.coolify-token`.
 7. After 48 quiet hours on the new host: `terraform destroy` the legacy stack (`infra/*.tf`, account
    `353400076760`), remove the Vercel project.
-8. Later: T-166 live generation to observe item blocks; OAuth callback URLs for
+8. **Give the health check something that can fail.** `/health` returns a static `{ok:true}` and
+   touches no database, so Coolify reported `running:healthy` through a total DB outage. A
+   readiness endpoint that pings Postgres would have caught this in minutes. Keep it separate from
+   the liveness path Coolify restarts on, so a DB blip can't cause a restart loop.
+9. Later: T-166 live generation to observe item blocks; OAuth callback URLs for
    `https://api.coldrecall.info`; `EXTENSION_ORIGINS` once the extension has a fixed ID; the
    `@xyflow/react` vs `loop.md` §2 decision; delete `.pnpm-store/` (gitignored) if unwanted;
    migrate from `drizzle-kit push` to real migrations.
