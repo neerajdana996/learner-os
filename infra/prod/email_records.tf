@@ -9,10 +9,13 @@
 #   - k1._domainkey: Mailgun's signing key, which is what signs the app's
 #     magic-link and notification emails.
 #
-# Copied as they are, not improved. Adding Mailgun to the SPF record and
-# publishing a DMARC policy are deliberately left for later — wanted, but a
-# separate change from moving the zone, so that if email misbehaves after the
-# move there is exactly one thing that could have caused it.
+# The zone move is done, so the deferred email work landed on 2026-09-13 from
+# Mailgun's verification instructions: Mailgun added to SPF, tracking CNAME and
+# a reporting-only DMARC policy. Two records Mailgun asked for are deliberately
+# NOT here — its MX records, which would take inbound mail away from Google
+# Workspace and silence every @coldrecall.info address (Mailgun needs them only
+# for inbound routes, and nothing here receives mail), and its standalone SPF
+# record, which is merged into the existing one above instead.
 #
 # TTL 14400 matches the live records.
 locals {
@@ -29,8 +32,13 @@ locals {
       name = ""
       type = "TXT"
       ttl  = 14400
+      # One SPF record only. Mailgun's instructions give a bare
+      # "v=spf1 include:mailgun.org ~all"; publishing that as a second SPF
+      # string would be a permerror and fail both senders, so the include is
+      # merged into the existing record instead. Google stays first: it carries
+      # the human mail.
       records = [
-        "v=spf1 include:_spf.google.com ~all",
+        "v=spf1 include:_spf.google.com include:mailgun.org ~all",
         "google-site-verification=DdWkwFwFzaxlpReHNfVAI36Io1CKso99RxtcqELabQs",
       ]
     }
@@ -48,6 +56,24 @@ locals {
       type    = "TXT"
       ttl     = 14400
       records = ["k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDGZrQW5BoAdkBQhmsNdHDxS1EmA5bYP9rq9kI6TEsQo6w3dfDZddYU3H/oBEGWBXhKNyS9anrUrSmjRkk66gf3WSz40Xo5dA0LZgznn3qpRrk/EesSFmCI14KzlbIoQ6FcDI7Hz/5Gx/Qyhj4cQ1jK1y3QGGJ1LvB0pIszkih3qQIDAQAB"]
+    }
+
+    # Mailgun's open/click tracking host.
+    mailgun_tracking = {
+      name    = "email"
+      type    = "CNAME"
+      ttl     = 14400
+      records = ["mailgun.org"]
+    }
+
+    # `p=none` only reports; it asks no receiver to reject anything, so it
+    # cannot break delivery. Leave it at none until the Mailgun aggregate
+    # reports show both senders aligning, then tighten.
+    dmarc = {
+      name    = "_dmarc"
+      type    = "TXT"
+      ttl     = 14400
+      records = ["v=DMARC1; p=none; pct=100; fo=1; ri=3600; rua=mailto:da7b0f95@dmarc.mailgun.org,mailto:xpnvieaw4ec@inbox.ondmarc.com; ruf=mailto:da7b0f95@dmarc.mailgun.org,mailto:xpnvieaw4ec@inbox.ondmarc.com;"]
     }
   }
 }

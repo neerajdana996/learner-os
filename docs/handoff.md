@@ -32,7 +32,7 @@
 | Instance | `i-0b2c0c0c89d40b0ee`, t4g.large arm64, Elastic IP `13.204.7.173`, ~$41/month |
 | State | S3 `learnos-tfstate-719312763365`; bootstrap state only in `infra/bootstrap/terraform.tfstate` (gitignored — keep a copy) |
 | DNS | Route 53 zone `Z03726822IYSE191YYZ40`; BigRock nameservers already switched to it |
-| `cutover` | **false** — `coldrecall.info`/`www` → Vercel `76.76.21.21`, `api` → legacy EC2. `deploy` → new host |
+| `cutover` | **true** (applied 2026-09-13, plan was exactly 0 add / 3 change / 0 destroy). apex, `www`, `api` and `deploy` all → `13.204.7.173` |
 | DB access | `database_access_cidrs = ["0.0.0.0/0"]` in gitignored `infra/prod/terraform.tfvars` (founder decision) |
 
 Stacks are pinned with `allowed_account_ids`. Every apply so far ran from a saved plan gated on
@@ -63,11 +63,29 @@ the reviewed resource counts — keep doing that.
 - Verified live on `http://l2am3wo5nncpsmnb4w1fwpdu.13.204.7.173.sslip.io` after the `4cf036f`
   deploy: `/health` 200; `/auth/verify?token=bogus` → 401 `invalid_token` (a real DB read, not a
   500); `/topics` → 401; `POST /auth/magic` → 200, which exercises user insert, token insert and
-  the Mailgun send. The emailed link points at `API_URL` (`api.coldrecall.info`), which still
-  resolves to the **legacy** host until cutover, so that link is not usable yet.
+  the Mailgun send. Re-verified after cutover on the real domain: `https://api.coldrecall.info`
+  serves a valid Let's Encrypt cert, `/health` → 200, `/auth/verify?token=bogus` → 401, and
+  `POST /auth/magic` → 200, so the emailed sign-in link now resolves to the new host and works.
 - Secrets were set by the founder running `python3 infra/coolify/set-secrets.py`.
 - Scripts: `infra/coolify/bootstrap.py` (idempotent create), `infra/coolify/set-secrets.py`
   (founder runs it; prints names only).
+
+## Email DNS (2026-09-13)
+
+Mailgun's verification instructions were applied in `infra/prod/email_records.tf`, but **not
+verbatim** — two of its records would have broken live mail:
+
+- **SPF** is merged into the existing record (`v=spf1 include:_spf.google.com include:mailgun.org
+  ~all`). Mailgun hands you a standalone `v=spf1 include:mailgun.org ~all`; publishing that as a
+  second SPF record is a permerror that fails *both* senders.
+- **Mailgun's MX records were deliberately not added.** They would take inbound mail away from
+  Google Workspace and silence every `@coldrecall.info` address. Mailgun needs them only for
+  inbound routes, and nothing here receives mail — learnos only sends.
+- Added: the `email` tracking CNAME and a `_dmarc` policy at `p=none` (reporting only, cannot
+  affect delivery). Tighten it once the aggregate reports show both senders aligning.
+- `k1._domainkey` was already present and byte-identical to what Mailgun asked for — no change.
+
+Applied plan was 2 add / 1 change / 0 destroy. Verified: MX still `1 smtp.google.com.`
 
 ## Open — in order
 
@@ -88,14 +106,22 @@ the reviewed resource counts — keep doing that.
    on 5432). Until then credentials cross the public port in cleartext. No code or connection-string
    change is needed — `prefer` picks TLS up automatically. Stronger still: close public 5432
    (`database_access_cidrs` is `0.0.0.0/0`) and use Coolify's internal network.
-4. **DNS cutover** — the precondition is now met (both apps healthy), but do items 5 and 4 as one
-   sitting: moving DNS before the proxy can issue certificates leaves apex/`www` serving broken
-   https, where Vercel serves them fine today. Founder approved "after backend and frontend are
-   healthy". Set `cutover = true`
-   in `infra/prod/terraform.tfvars`; the plan must be exactly **0 add, 3 change, 0 destroy**
-   (`apex`, `www`, `api`); apply that saved plan.
-5. **Restart Coolify's proxy** once DNS resolves everywhere, so Let's Encrypt issues certificates
-   for `deploy`, `api`, apex and `www` (its only attempts were at 07:11Z, before DNS moved).
+4. ~~DNS cutover~~ **Applied 2026-09-13**, plan exactly 0 add / 3 change / 0 destroy. apex and `www`
+   moved off Vercel, `api` flipped CNAME→A off the legacy host. All four names resolve to
+   `13.204.7.173` authoritatively and on public resolvers.
+5. ~~Restart Coolify's proxy~~ **Not needed — Traefik issued every certificate on its own.**
+   Forced at the host (`curl --resolve <name>:443:13.204.7.173`), apex, `www`, `api` and `deploy`
+   all serve valid Let's Encrypt certs.
+
+   **Measure through `--resolve`, not through your resolver.** Both wrong conclusions this session
+   came from trusting a stale cache: apex looked self-signed and `api` looked like it was missing
+   CORS, when in truth requests were still landing on the *legacy* host (`13.200.206.246`). The
+   giveaway is `via: 1.1 Caddy` in a response header — the legacy host runs Caddy, the new one runs
+   Traefik, so any Caddy header means you are talking to the old box. `dig` can disagree with
+   `curl`: `dig` queries the nameserver directly while `curl` goes through the OS cache, and
+   Google's anycast nodes expire independently. The old `api` CNAME was cached with a ~4 hour TTL
+   from BigRock, well beyond the 300s Terraform sets, so expect stale clients for hours after a
+   cutover even though the zone is correct.
 6. **Rotate secrets exposed in chat:** OpenAI key, Mailgun SMTP password, GitHub and Google OAuth
    client secrets, and the Coolify `claude-setup` root token. Update `backend/.env`, re-run
    `set-secrets.py`, save the new token to `~/.coolify-token`.
