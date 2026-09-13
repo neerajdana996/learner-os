@@ -796,6 +796,13 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
     - *Consistency in distributed systems* (no language), as the regression guard: **systems 11 · prose 5 · code 0.** The change did not pull a non-code topic toward `code`. It is systems-heavy, but that follows the pre-existing ordering-is-`systems` guidance rather than anything changed here — recorded, not acted on.
   - **Still open: one full live generation**, to confirm that code concepts reaching the fragment now actually produce rich-format items. The classifier was the blocker; whether the item side follows is the acceptance, and it has not been observed yet.
   - Do not "fix" the rest by loosening `MAX_RICH_ITEMS` or by adding blocks in post-processing. The cap is a review-time budget (T-083) and the blocks have to be the model's, resolved from line *quotes* by the worker — a generated block is the only kind the answer key can be trusted for.
+  - **Full live run done (2026-09-13, topic `4d6cccb5`, ~5 min). The classifier fix holds and it is still not enough: 0 blocks in 91 items.**
+    - Classification is now healthy on a code topic: **code 6 · math 5 · prose 4** across 15 concepts, against code 1 of 16 in run 4. So this is no longer the binding constraint.
+    - The `code` concepts carried **36 items**, every one of them `answer_kind = NULL`. Batches group by domain (`items.ts:291`), so `code.md` was appended to batches covering all six concepts. The fragment reached the model, over 36 chances, and moved nothing.
+    - **The remaining cause is the one this task already named and the fix did not touch: the example.** `items/system.md` now mentions `blocks` 8 times and `domains/code.md` 3 times, but `items/example.md` mentions it **zero** times and names **zero** rich-format kinds across its nine worked items. T-082, T-106 and T-107 all concluded the example is the load-bearing part; `system.md`'s Output template was made block-aware while the example that follows it still demonstrates nine plain items in a row.
+    - **Next move: a worked block example in `items/example.md`**, not more rule text in `system.md` — the same corrective that fixed the classifier in this task. Re-run a full generation to confirm, and record the per-kind counts here.
+    - Measurement query for the re-run (blocks live in `payload->'blocks'`, with `answer_kind` denormalised):
+      `select coalesce(answer_kind,'(plain)'), count(*) from items i join concepts c on c.id=i.concept_id where c.topic_id='<id>' group by 1;`
 
 ### T-168 · One Coolify host on AWS, managed by Terraform
 - **status:** in_progress
