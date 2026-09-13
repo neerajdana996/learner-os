@@ -85,9 +85,10 @@ def backend_app(project_uuid, env_uuid):
         "health_check_enabled": True,
         "health_check_path": "/health",
         "health_check_port": "3001",
-        # Push, not migrate: there is no migrations folder yet. Without --force a
-        # change that would drop data fails the deploy instead of dropping it.
-        "pre_deployment_command": "pnpm drizzle-kit push",
+        # No pre_deployment_command: Coolify runs it inside the container being
+        # replaced, so it would push the previous version's schema (and is
+        # skipped entirely on a first deploy). The schema push runs at start in
+        # the new container instead — see backend/Dockerfile's CMD.
         "watch_paths": "backend/**\npackages/shared/**\npnpm-lock.yaml",
     }
 

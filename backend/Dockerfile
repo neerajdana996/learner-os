@@ -26,7 +26,13 @@ RUN pnpm --filter @learnos/shared build \
  && pnpm --filter learner-os-backend build
 
 EXPOSE 3001
-# compose overrides CMD to run `drizzle-kit push` first, and its command runs in
-# the package directory, so end here rather than at /app.
 WORKDIR /app/backend
-CMD ["node", "dist/index.js"]
+# Bring the schema up to date, then start. Run here — in the NEW container, with
+# the NEW schema.ts — rather than as a Coolify pre-deployment command, which runs
+# inside the container being replaced and so pushes the previous version's schema
+# (and on a first deploy, with nothing running yet, is skipped outright).
+#
+# No --force: a change that would drop data makes `push` fail, the container
+# exits before listening, its health check never passes, and the rolling update
+# keeps the old container serving. compose overrides CMD for local development.
+CMD ["sh", "-c", "pnpm drizzle-kit push && exec node dist/index.js"]
