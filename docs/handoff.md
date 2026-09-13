@@ -98,14 +98,16 @@ Applied plan was 2 add / 1 change / 0 destroy. Verified: MX still `1 smtp.google
    `sslmode` now comes from `DATABASE_URL` and defaults to `prefer`, which encrypts when the
    server offers TLS and falls back when it doesn't. Verified: no lifecycle failures since deploy.
 2. ~~Verify the frontend~~ **Healthy.** `running:unhealthy` was a transient rolling-update reading.
-3. ~~Push the local commits~~ **Pushed.** Still to do: clear the backend's `pre_deployment_command`
-   in Coolify (still `pnpm drizzle-kit push`). `87cb1e6` is now live, so the container pushes the
-   schema at start; the pre-deploy copy runs in the *old* container. It is currently a harmless
-   no-op only because the schema hasn't changed — it will push a stale schema the first time it does.
-3b. **Enable SSL on the Postgres** (`enable_ssl = false`, `ssl_mode = require`, `is_public = true`
-   on 5432). Until then credentials cross the public port in cleartext. No code or connection-string
-   change is needed — `prefer` picks TLS up automatically. Stronger still: close public 5432
-   (`database_access_cidrs` is `0.0.0.0/0`) and use Coolify's internal network.
+3. ~~Push the local commits~~ **Pushed**, and the backend's `pre_deployment_command` is now cleared
+   (it was `pnpm drizzle-kit push`, which Coolify ran in the *old* container). The container-start
+   push from `87cb1e6` is the only schema push now.
+3b. ~~Enable SSL on the Postgres~~ **Done 2026-09-13.** `enable_ssl = true`. Coolify rewrote
+   `internal_db_url` to carry `?sslmode=require`, and the backend's `DATABASE_URL` was re-synced
+   from it, so TLS is now *enforced*, not merely preferred. Verified after a restart: healthy,
+   a live DB read returns 401, zero connection errors. `set-secrets.py` reads `internal_db_url`
+   directly, so re-running it keeps `sslmode=require` rather than regressing it.
+   Still open: public 5432 is open to `0.0.0.0/0`, and `require` encrypts without verifying the
+   certificate. Closing the public port and using only Coolify's internal network is the real fix.
 4. ~~DNS cutover~~ **Applied 2026-09-13**, plan exactly 0 add / 3 change / 0 destroy. apex and `www`
    moved off Vercel, `api` flipped CNAME→A off the legacy host. All four names resolve to
    `13.204.7.173` authoritatively and on public resolvers.
