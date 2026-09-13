@@ -5,7 +5,7 @@
 ## 0. Session start (every time)
 1. Read `plan.md` sections 5 and 6 (architecture + design rules). Don't skip.
 2. Read `sprint.md` to find the current sprint.
-3. Open `tasks.md`. Find the **first task with status `todo` whose `depends_on` are all `done`**. That is your task. Do not pick a later one because it looks more interesting.
+3. List open tasks without reading `tasks.md` whole: `grep -n -A1 '^### T-' tasks.md`. Find the **first task with status `todo` whose `depends_on` are all `done`** — a dependency no longer listed in `tasks.md` has moved to `tasks-done.md` and is done. Read only that task's block. That is your task. Do not pick a later one because it looks more interesting.
 4. From the repo root, run `pnpm install && pnpm lint`. One install covers the whole workspace. If it fails, fixing it is your task now (log it as a new task `T-FIX-xxx`).
 5. If the task touches `packages/shared` or `packages/ui`, every app feels it immediately — there are no copies to sync, so run `pnpm test` at the root rather than in one app.
 
@@ -49,7 +49,7 @@
 - [ ] No TODO left in the code without a task ID next to it (`// TODO(T-031): ...`).
 
 ## 5. Closing the task
-1. Set `status: done` in `tasks.md`. Fill `notes` with: what you built, what you deliberately skipped, anything the next task needs to know.
+1. Set `status: done` in `tasks.md`. Fill `notes` with: what you built, what you deliberately skipped, anything the next task needs to know. Then move the whole block from `tasks.md` to `tasks-done.md` in the same commit, so the file sessions read stays small.
 2. If you discovered work that isn't in `tasks.md`, **add it as a new task** with the same format (status `todo`, a sprint, dependencies, tests). Do not silently do extra work.
 3. Commit: `T-xxx: <one-line summary>`.
 4. Go back to step 0. Next task.

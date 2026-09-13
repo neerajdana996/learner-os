@@ -5,7 +5,7 @@ You are working on **learnos**. Before doing anything:
 1. Read `docs/plan.md` — sections 5 and 6 at minimum.
 2. Read `docs/loop.md` — this is your operating procedure. Follow it exactly.
 3. Read `docs/sprint.md` — find the current sprint.
-4. Open `docs/tasks.md` — pick the first `todo` task whose dependencies are `done`.
+4. Find your task without reading `docs/tasks.md` whole: `grep -n -A1 '^### T-' docs/tasks.md` lists every open task with its status. Pick the first `todo` whose dependencies are `done` — a dependency no longer in `tasks.md` has moved to `docs/tasks-done.md` and is done — then read only that task's block and its `depends_on` entries. Grep `docs/tasks-done.md` when a note cites a finished task; never read it whole.
 
 Rules that override everything else:
 - **One pnpm workspace**, driven by Turborepo: three apps (`backend/`, `frontend/`, `extension/`) and two packages (`packages/shared`, `packages/ui`). TypeScript, ESM. Run `pnpm install` once, at the root. (Founder decision 2026-09-06, replacing the three-separate-repos design — see plan.md §5.)
@@ -15,7 +15,7 @@ Rules that override everything else:
 - Every task's listed test cases must be implemented and passing before it is `done`.
 - Never remove a test to go green. Never edit `schema.ts` outside a schema task.
 - Never ask users how they "learn best".
-- Keep `tasks.md` up to date: status, notes, and new tasks for anything you discover.
+- Keep `tasks.md` up to date: status, notes, and new tasks for anything you discover. When a task becomes `done`, move its whole block to `docs/tasks-done.md` in the same commit.
 
 Commands (from the repo root): `pnpm install` · `pnpm lint` · `pnpm test` · `pnpm build` · `pnpm check` (all three)
 One app: `pnpm --filter learner-os-backend <script>` · or `cd backend && pnpm <script>`
