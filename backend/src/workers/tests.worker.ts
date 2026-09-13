@@ -52,7 +52,7 @@ export function createTestWorker() {
   const worker = new Worker<TestJobData>(TEST_QUEUE, (job) => processTestJob(job.data), {
     connection: { url: env.REDIS_URL }, concurrency: 2,
   });
-  worker.on('failed', (job, error) => console.error(`Cold test ${job?.id} failed: ${error.message}`));
+  worker.on('failed', (job, error) => console.error(`Cold test ${job?.id} failed:`, error));
   worker.on('error', (error) => console.error('Cold test worker error:', error));
   return worker;
 }

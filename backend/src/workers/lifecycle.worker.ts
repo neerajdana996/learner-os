@@ -54,7 +54,9 @@ export async function startLifecycle() {
     name: 'tick', data: { event: 'tick' }, opts: { removeOnComplete: 10, removeOnFail: 50 },
   });
   const worker = new Worker<LifecycleJob>(LIFECYCLE_QUEUE, (job) => processLifecycleJob(job.data), { connection: { url: env.REDIS_URL } });
-  worker.on('failed', (job, error) => console.error(`Lifecycle ${job?.id} failed: ${error.message}`));
+  // Log the error, not `.message`: drizzle wraps failures in DrizzleQueryError,
+  // whose message is only the SQL — the driver's real error is in `cause`.
+  worker.on('failed', (job, error) => console.error(`Lifecycle ${job?.id} failed:`, error));
   worker.on('error', (error) => console.error('Lifecycle worker error:', error));
   return worker;
 }
