@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+
+alert_email = "you@coldrecall.info"
+
+# Leave false until the apps are deployed in Coolify and tested.
+# cutover = true

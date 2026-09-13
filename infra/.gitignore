@@ -8,3 +8,12 @@
 
 # The generated SSH private key.
 *.pem
+
+# Real variable values (the alert address today, possibly secrets later).
+# The .example beside each one is committed.
+*.tfvars
+!*.tfvars.example
+
+# A saved plan embeds resolved values, including any sensitive ones.
+tfplan
+*.tfplan

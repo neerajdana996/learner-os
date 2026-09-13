@@ -1,0 +1,24 @@
+#!/bin/bash
+# First boot only (cloud-init). Installs Coolify and nothing else: apps,
+# databases and domains are configured inside Coolify, so a bad deploy never
+# means re-provisioning the machine.
+set -euxo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+# Swap as headroom, not capacity: a build or migration spike should slow the
+# box down, not have the kernel kill Postgres to free memory.
+if [ ! -f /swapfile ]; then
+  fallocate -l ${swap_gb}G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+apt-get update
+apt-get install -y curl ca-certificates
+
+# Coolify's official installer: Docker, the Coolify stack and its proxy.
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+
+touch /var/lib/coolify-bootstrap-complete
