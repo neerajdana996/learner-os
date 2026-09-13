@@ -814,6 +814,25 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
       2. **Revisit the diagram caps**, or state them in the prompt so the model writes inside them rather than having good diagrams deleted.
       3. **Find what differs between the teaching and items calls.** Both go through the same strict `json_schema` client path and the same fragment, yet one writes blocks and the other never does. That asymmetry is the actual open question, and it is free to investigate — no generation run needed.
     - The batch-shaped example is kept: it is a more faithful exemplar and adds `hotspotLine` coverage. But it is ~4k characters on every code batch and it did not move the number, so revert it if prompt size starts to matter.
+  - **Cause found (2026-09-13): it is the batch, and it is cardinality rather than wording.** Six isolated `generateItemsBatch` calls, same domain, same spine, same fragment, varying only how many concepts are in the batch:
+
+    | concepts in batch | items | items with blocks |
+    | --- | --- | --- |
+    | 1 | 6 | **1** (`code` + `clozeCode`) |
+    | 1 (repeat) | 8 | 0 |
+    | 1 (repeat) | 6 | **1** (`code` + `clozeCode`) |
+    | 2 | 14 | 0 |
+    | 3 | 18 | 0 |
+    | 4 | 28 | 0 |
+
+    - Blocks appear **only at cardinality 1**, and there only about two times in three. Every multi-concept batch produced zero, which is corroborated by the two full runs above: 187 items across batches of four, not one block.
+    - This is the suspect this task raised on 2026-09-12 and then treated as a wording problem. `code.md` now says explicitly *"The cap is per concept, not per reply: four concepts in one batch means up to two each, counted separately"* — and four concepts still returns zero. **The model is not misreading the cap; a 28-item reply makes it drop the optional, structurally expensive field.** No prompt edit has moved this in three attempts, and this experiment says none will.
+    - It also explains the teaching/items asymmetry exactly. Teaching makes **one** 3-variant decision per call and writes blocks freely, even though its prompts discourage them harder (*"most concepts here still don't want one"*). Items makes ~28 eleven-variant decisions per call, each needing a `slot` and every field of the chosen variant, and writes none.
+    - **So the conflict is T-162 (batching) against T-080/T-083 (rich formats), and it needs a founder call.** Options, in increasing order of how much they keep:
+      1. Generate items **per concept** for `code`/`systems` batches. Costs the discrimination items T-162 exists for.
+      2. **Two phase**: batch for item text as today, then a per-concept pass over the eligible items that converts up to two of them to rich formats. Keeps T-162's benefit; adds one call per code concept.
+      3. Make the count explicit rather than capped — a required per-concept field the model must fill before writing items, so "zero" becomes a stated choice instead of a default.
+    - Reproduction script is throwaway; the call is `generateItemsBatch({ topic, level, spine, domain: 'code', concepts, neighbours, asked, language })` and the only variable that matters is `concepts.length`. About $0.10 for all six calls — far cheaper than a full run, and the right way to test any fix here.
 
 ### T-168 · One Coolify host on AWS, managed by Terraform
 - **status:** in_progress
