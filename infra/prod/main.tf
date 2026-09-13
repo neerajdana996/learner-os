@@ -34,9 +34,12 @@ locals {
       ttl     = 300
       records = [var.cutover ? local.host_ip : var.legacy_api_host]
     }
-    # New, so safe to point at the host from the start: nothing uses it yet.
-    coolify = {
-      name    = "coolify"
+    # Coolify's dashboard. New, so safe to point at the host from the start:
+    # nothing answers on it until the instance domain is set inside Coolify —
+    # which must only happen after the admin account exists, or the first
+    # visitor to this name can register as admin.
+    deploy = {
+      name    = "deploy"
       type    = "A"
       ttl     = 300
       records = [local.host_ip]

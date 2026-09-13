@@ -77,7 +77,7 @@ $(terraform output -raw coolify_dashboard_tunnel)   # then open http://localhost
 
 - Create the admin account **immediately** — until then, anyone who can reach
   the dashboard can claim it. (It is only reachable through the tunnel.)
-- Settings → set the instance domain to `https://coolify.coldrecall.info`. After
+- Settings → set the instance domain to `https://deploy.coldrecall.info`. After
   that the dashboard is served over HTTPS and the tunnel is no longer needed.
 - Add an S3 destination using `terraform output backup_bucket`, and schedule
   Postgres backups (every 4 hours, keep 7 days is a sensible start).
