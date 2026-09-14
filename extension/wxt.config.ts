@@ -43,7 +43,9 @@ export default defineConfig({
     // storage: the token and T-028's per-day counters. alarms: the five-minute
     // "should I pop?" tick. idle: don't interrupt someone who isn't there.
     // notifications: how a card announces itself when the popup isn't open.
-    permissions: ['storage', 'alarms', 'notifications', 'idle'],
+    // sidePanel: the card opens in a panel that stays put rather than a popup
+    // that closes the moment the learner clicks anything (T-170).
+    permissions: ['storage', 'alarms', 'notifications', 'idle', 'sidePanel'],
     // Without these Chrome shows the default puzzle piece in the toolbar — the
     // thing ten people are told to click — and `notifications.create` has no
     // icon to draw. A clay square with a paper dot; the same two colours the
