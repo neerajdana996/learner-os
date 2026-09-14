@@ -20,8 +20,24 @@ export const PARITY_FILE = fileURLToPath(new URL('./.artifacts/card-parity.json'
 export interface CardFingerprint {
   surface: string;
   prompt: string;
-  /** The answer surface the card chose for this item's type. */
-  answerKind: 'radio' | 'text' | 'textarea' | 'number' | 'unknown';
+  /**
+   * The answer surface the card chose for this item's type.
+   *
+   * The block formats are listed because the dev topic carries one seeded item
+   * per kind (`pnpm seed:formats`), so a popup or session can legitimately
+   * serve a `clozeCode` card — and this helper returning `unknown` for it read
+   * as a rendering failure when the card was in fact correct.
+   */
+  answerKind:
+    | 'radio'
+    | 'text'
+    | 'textarea'
+    | 'number'
+    | 'cloze'
+    | 'hotspot'
+    | 'order'
+    | 'editor'
+    | 'unknown';
   promptFont: string;
   promptColor: string;
   boxSizing: string;
@@ -47,6 +63,12 @@ export async function fingerprint(page: Page, surface: string): Promise<CardFing
   });
 
   const answerKind = await page.evaluate(() => {
+    // Block surfaces first: they replace the default control entirely, and a
+    // `codeEditor` contains a textarea that would otherwise match below.
+    if (document.querySelector('.cloze__hole')) return 'cloze' as const;
+    if (document.querySelector('.hotspot__grid')) return 'hotspot' as const;
+    if (document.querySelector('.order__line')) return 'order' as const;
+    if (document.querySelector('.editor__area')) return 'editor' as const;
     if (document.querySelector('input[type="radio"][name="answer"]')) return 'radio' as const;
     if (document.querySelector('input#numeric-answer')) return 'number' as const;
     if (document.querySelector('textarea[aria-label="Your answer"]')) return 'textarea' as const;
@@ -108,6 +130,38 @@ export async function answerCard(page: Page, text = 'a lock with an expiry'): Pr
     await numeric.fill('42');
     return 'number';
   }
+
+  // ---- the block answer surfaces (T-086 → T-114, T-088)
+  //
+  // The dev topic carries one seeded item per kind (`pnpm seed:formats`), so
+  // any surface drawing from its due queue can serve one of these. None of
+  // them has a "Your answer" box, so without these branches the fallback below
+  // throws on a card that is rendering perfectly well.
+  //
+  // What is filled in is deliberately not the right answer: these helpers
+  // exist to get a verdict out of the server, and a spec that depended on
+  // being *correct* would break whenever the seeded answer changed.
+  const holes = page.locator('.cloze__hole');
+  if (await holes.count() > 0) {
+    for (let i = 0; i < (await holes.count()); i += 1) await holes.nth(i).fill('[]');
+    return 'cloze';
+  }
+
+  const hotspot = page.locator('.hotspot__line');
+  if (await hotspot.count() > 0) {
+    await hotspot.first().click();
+    return 'hotspot';
+  }
+
+  const editor = page.locator('.editor__area');
+  if (await editor.count() > 0) {
+    await editor.fill('function longest() { return 0; }');
+    return 'editor';
+  }
+
+  // `orderLines` arrives in an order already, so submitting it untouched is a
+  // real answer — usually a wrong one, which is fine.
+  if (await page.locator('.order__line').count() > 0) return 'order';
 
   const box = page.getByLabel('Your answer');
   await box.fill(text);
