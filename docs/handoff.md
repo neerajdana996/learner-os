@@ -1,17 +1,72 @@
-# Handoff — where things stand (2026-09-13)
+# Handoff — where things stand (2026-09-14)
 
 > Read this first in a new session, then `grep -n -A1 '^### T-16' docs/tasks.md` for the task
 > entries it cites. No secrets are recorded here, and none should ever be.
 
+## Start here — the one thing that is unfinished
+
+**T-166's enrichment pass is built, tested and unproven.** It has never run inside a real
+generation. Everything else below is finished and verified.
+
+```
+pnpm --filter learner-os-backend preflight          # env, db, redis, a live model round trip
+curl -s -X POST http://localhost:3001/topics \
+  -H 'Content-Type: application/json' -H 'x-user-id: <dev user id>' \
+  -d '{"title":"HashMap + prefix sums","language":"Python"}'
+```
+
+~7 minutes and ~$0.53. Then count what it produced:
+
+```sql
+select coalesce(answer_kind,'(plain)'), count(*) from items i
+join concepts c on c.id = i.concept_id where c.topic_id = '<id>' group by 1;
+```
+
+Expect blocks on roughly the `code` concepts, up to two each. **Record the per-kind counts in
+T-166** — that is the task's acceptance, and it is the number three previous attempts never got.
+Watch the logs for `itemBlocks: tolerated enrichment_failed`, which means the pass ran and gave up
+rather than that it never fired.
+
 ## Git
 
-- Working branch: `task/T-168-coolify-single-host`. `origin/main` is at `4cf036f`.
-- The five pending commits were pushed on 2026-09-13 (founder OK), together with `4cf036f`
-  "Connect to Postgres over TLS only when the server offers it". The backend redeployed from
-  `4cf036f` and is healthy; the frontend did not redeploy (no watch path matched) and is healthy.
-- Local `main` is stale (18 behind); the branch is what gets pushed to `main`.
+- Working branch: `task/T-168-coolify-single-host`. `origin/main` is at `a030034`.
+- **Four commits are local and unpushed.** Pushing deploys — the frontend on any `frontend/**` or
+  `packages/**` change, the backend on `backend/**`:
+  - `24d8596` cloze graded by marker order
+  - `e660131` the popup's format subset spec
+  - `241b771` T-169 — `/due` counts a card as due only if the surface can serve it
+  - `baab832` T-166 — the enrichment pass
+- Local `main` is stale; the branch is what gets pushed to `main`.
+- The last deploy was the brand rename + legal pages; the live site is unaffected by anything above.
 
-## Done this session
+## Done 2026-09-14
+
+- **T-169 fixed** (moved to `tasks-done.md`): `/due` spent its LIMIT on due *cards* and filtered
+  *items* afterwards, so one ineligible card consumed the popup's `limit=1` and the learner was
+  told "nothing due" while their queue was full. Both regression tests were confirmed to fail
+  against the old code before being kept.
+- **Cloze grading fixed**: the grader indexed answers by `holes` order, the renderer by `{{n}}`
+  marker order, and nothing made them agree — a correct answer could be marked wrong, silently.
+  One shared `clozeHoleOrder()` now serves both.
+- **Three card-rendering bugs fixed**, all found by screenshotting every format for the first
+  time: ClozeCode rendered overlapping lines, `orderLines` text was invisible, and a five-node
+  `diagram` was clipped.
+- **Four e2e failures fixed**, none of them regressions: a duplicate `<h1>` on the landing page
+  (a real accessibility bug), and session specs that never handled an `example_first` opening.
+- **E2E-008 both halves landed**: `e2e/web/formats.spec.ts` and `e2e/extension/formats.spec.ts`.
+  `pnpm e2e:report` is now a contact sheet of every question surface the product can show.
+- **Privacy, terms and contact pages**, plus a real footer — the site had none, while asking for
+  an email address. Live.
+- **The product is called Cold Recall everywhere a person can see it** — site, emails, extension.
+
+## Known flake
+
+The backend suite fails intermittently on a *different* DB-touching test each run (seen on
+`diagnostic` and `topics`, ~1 in 3 runs, 667/668 passing). It passes clean on a re-run. Not
+investigated; suspect shared-database state between files rather than anything in the code under
+test. Worth a task if it gets worse.
+
+## Done 2026-09-13
 
 - **Generation pipeline:** T-164 (rule severities + repair retry), T-165 (held-out concepts can't
   be prerequisites of taught ones), T-167 (teach blocks only where a domain fragment allows) —
@@ -40,8 +95,9 @@ the reviewed resource counts — keep doing that.
 
 ## Coolify — live
 
-- Version 4.3.19. Dashboard: `https://deploy.coldrecall.info` (Let's Encrypt cert still pending —
-  see open item 5). Private access through the tunnel:
+- Version 4.3.19. Dashboard: `https://deploy.coldrecall.info` — valid Let's Encrypt cert, as have
+  apex, `www` and `api`; Traefik issued them all without the proxy restart that was expected.
+  Private access through the tunnel (**it expires — reopen it in a new session**):
   `aws ssm start-session --profile terraform --region ap-south-1 --target i-0b2c0c0c89d40b0ee --document-name AWS-StartPortForwardingSession --parameters portNumber=8000,localPortNumber=18000`
   then `http://localhost:18000`. API calls go through this tunnel.
 - Admin account exists. API token `claude-setup` (**root**) saved in `~/.coolify-token`.
@@ -52,8 +108,8 @@ the reviewed resource counts — keep doing that.
 | --- | --- | --- |
 | Postgres 16 | `qqxf9wijvbdolcisry9orj5j` | healthy, public 5432, SCRAM password verified |
 | Redis 7 | `gqdbqpw0gche1bbvxfefbdoq` | healthy, public 6379, NOAUTH verified |
-| backend | `l2am3wo5nncpsmnb4w1fwpdu` | deployed from `d61e9bb`, `/health` → `{"ok":true}` inside the container |
-| frontend | `od9tnhrewhudjbj48dcdzfak` | deployed from `d61e9bb`; rolling update healthy but app status then read `running:unhealthy` |
+| backend | `l2am3wo5nncpsmnb4w1fwpdu` | healthy; TLS to Postgres enforced (`sslmode=require`), `pre_deployment_command` cleared |
+| frontend | `od9tnhrewhudjbj48dcdzfak` | healthy; serving Cold Recall branding and the legal pages |
 
 - Both apps auto-deploy on push to `main`, with watch paths (`backend/**`, `packages/shared/**`,
   lockfile / `frontend/**`, `packages/**`, lockfile).
@@ -129,11 +185,25 @@ Applied plan was 2 add / 1 change / 0 destroy. Verified: MX still `1 smtp.google
    `set-secrets.py`, save the new token to `~/.coolify-token`.
 7. After 48 quiet hours on the new host: `terraform destroy` the legacy stack (`infra/*.tf`, account
    `353400076760`), remove the Vercel project.
-8. **Give the health check something that can fail.** `/health` returns a static `{ok:true}` and
+8. **Audit findings not yet acted on** (2026-09-14, from reading the code — none confirmed by
+   running it, and each says so):
+   - **`codeEditor` is graded wrong for 8 of 10 languages.** Only JS/TS run client-side; the rest
+     post `{"__source": "<code>"}` claiming the server judges it, and no server path reads
+     `__source` — so `grade.ts` substitutes `' '` and every case fails, every time. The same
+     shape as T-118. Not in the enrichment pass's path (its decision list offers only `clozeCode`
+     and `hotspotLine`), so it did not block that work.
+   - **`reveal`-slot blocks are shown on no surface at all** — stripped server-side
+     (`blocks.ts`'s public projection) and filtered client-side (`BlockList` renders only
+     `context`). They would be generated, stored and billed for nothing. The enrichment prompt
+     forbids them for this reason.
+   - **`short` is validated and never rendered**, and the popup is **300px**, not the 380px every
+     comment about it assumes. `hotspotLine` is the most exposed: 12 lines at a 44px tap target is
+     ~528px in a 300px popup, and its schema has no `short` variant.
+9. **Give the health check something that can fail.** `/health` returns a static `{ok:true}` and
    touches no database, so Coolify reported `running:healthy` through a total DB outage. A
    readiness endpoint that pings Postgres would have caught this in minutes. Keep it separate from
    the liveness path Coolify restarts on, so a DB blip can't cause a restart loop.
-9. Later: T-166 live generation to observe item blocks; OAuth callback URLs for
+10. Later: OAuth callback URLs for
    `https://api.coldrecall.info`; `EXTENSION_ORIGINS` once the extension has a fixed ID; the
    `@xyflow/react` vs `loop.md` §2 decision; delete `.pnpm-store/` (gitignored) if unwanted;
    migrate from `drizzle-kit push` to real migrations.
