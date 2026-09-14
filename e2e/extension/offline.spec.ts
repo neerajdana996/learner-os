@@ -35,7 +35,7 @@ test('an answer given offline is queued, shown as kept, and drains once back onl
   // network. This is the real sequence: a card is already on screen, and the
   // learner's connection drops while they're answering it.
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
 
   await context.setOffline(true);
@@ -111,7 +111,7 @@ test('a queued answer is not lost if the popup is closed before it drains', asyn
   await options.close();
 
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
 
   await context.setOffline(true);

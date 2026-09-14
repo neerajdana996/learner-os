@@ -36,7 +36,7 @@ test('dismissing a card sends no response, only dismissed: true', async ({ conte
     posted = route.request().postDataJSON() as Record<string, unknown>;
     route.continue();
   });
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
 
   await popup.getByRole('button', { name: /dismiss/i }).click();
@@ -69,7 +69,7 @@ test('"Later" (snooze) sends no response, only snoozed: true, and the card stays
     posted = route.request().postDataJSON() as Record<string, unknown>;
     route.continue();
   });
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
 
   await popup.getByRole('button', { name: 'Later' }).click();
@@ -109,7 +109,7 @@ test('a fieldset (the confidence tap) never shows the browser\'s raw default bor
   await options.close();
 
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
   await answerCard(popup);
   await popup.getByRole('button', { name: /send|check|answer/i }).first().click();
@@ -136,7 +136,7 @@ test('the mood tap appears once per local day, only after an answered card', asy
   await options.close();
 
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
   await answerCard(popup);
   await popup.getByRole('button', { name: /send|check|answer/i }).first().click();
@@ -149,7 +149,7 @@ test('the mood tap appears once per local day, only after an answered card', asy
   // A second answered card the same day does not ask again.
   await makeCardsDue(request, 1);
   const popup2 = await context.newPage();
-  await popup2.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup2.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup2.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
   await answerCard(popup2);
   await popup2.getByRole('button', { name: /send|check|answer/i }).first().click();

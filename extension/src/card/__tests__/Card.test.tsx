@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PublicItem } from '@learnos/shared';
 import { fakeBrowser } from 'wxt/testing';
-import { readQueue } from '../../../lib/queue';
+import { readQueue } from '../../lib/queue';
 import { Card } from '../Card';
 
 const posted: Record<string, unknown>[] = [];
@@ -35,7 +35,7 @@ let failNext: Error | null = null;
 /** What the server says the next sighting is. */
 let nextDue: string | null = null;
 
-vi.mock('../../../lib/api', () => ({
+vi.mock('../../lib/api', () => ({
   ApiError,
   postReview: (answer: Record<string, unknown>) => {
     if (failNext) {
@@ -75,7 +75,7 @@ let popState = { day: null, dailyCount: 0, lastShownAt: null, consecutiveDismiss
 let pulseDay: string | null = null;
 const pulsed: { day: string; mood: number }[] = [];
 
-vi.mock('../../../lib/storage', () => ({
+vi.mock('../../lib/storage', () => ({
   getPopState: () => Promise.resolve(popState),
   setPopState: (next: typeof popState) => {
     popState = next;

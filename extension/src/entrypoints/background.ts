@@ -169,6 +169,19 @@ async function tick(): Promise<void> {
 }
 
 export default defineBackground(() => {
+  /**
+   * The toolbar icon opens the side panel (T-170).
+   *
+   * Chrome only honours this when the action has **no** `default_popup`, which
+   * is why the card's components live in `src/card/` rather than an entrypoint
+   * directory named `popup` — WXT derives `default_popup` from that name alone,
+   * and a popup declared in the manifest wins over this setting silently.
+   *
+   * Guarded because `sidePanel` exists only in Chromium 114+, and a browser
+   * without it should lose the panel, not the alarm that schedules every card.
+   */
+  void browser.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch(() => {});
+
   browser.alarms.create(ALARM, { periodInMinutes: TICK_MINUTES });
 
   browser.alarms.onAlarm.addListener((alarm) => {
@@ -195,6 +208,14 @@ export default defineBackground(() => {
 
   browser.notifications.onClicked.addListener(() => {
     void browser.notifications.clear(NOTIFICATION_ID);
-    void browser.action.openPopup?.();
+    /**
+     * A notification click is a user gesture, which is what `sidePanel.open`
+     * requires — it cannot be called from a bare alarm. So the notification is
+     * still how a card announces itself; clicking it is what opens the panel.
+     */
+    void (async () => {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tab?.windowId !== undefined) await browser.sidePanel?.open?.({ windowId: tab.windowId });
+    })().catch(() => {});
   });
 });

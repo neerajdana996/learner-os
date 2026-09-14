@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { fakeBrowser } from 'wxt/testing';
 import { browser } from 'wxt/browser';
 import { Popup } from '../Popup';
-import { setToken } from '../../../lib/storage';
+import { setToken } from '../../lib/storage';
 
 const item = {
   itemId: '11111111-1111-4111-8111-111111111111',

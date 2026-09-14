@@ -266,7 +266,7 @@ test('each popup-eligible format draws its own answer surface in the popup', asy
     await leaveOnly(request, token, fixture, slug);
 
     const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+    await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
     // Opening the popup asks `/due` itself rather than rendering only what the
     // worker left behind (T-129), so this is the real queue — not a fixture
@@ -334,7 +334,7 @@ test('a due orderLines or codeEditor is refused, not merely unlucky', async ({
   await options.close();
 
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
   // "Nothing due right now" is the correct answer here, and it is the whole
   // assertion: the concept is not skipped, it waits for the next web session

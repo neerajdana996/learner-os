@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { record } from '../../lib/telemetry';
+import { record } from '../lib/telemetry';
 
 /**
  * A card that fails to render must not be a blank 380×300 rectangle (T-035).

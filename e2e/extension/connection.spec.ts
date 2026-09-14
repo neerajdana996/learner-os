@@ -38,7 +38,7 @@ test('a bad token is rejected, with nothing stored, and the popup still reads as
   expect((stored as Record<string, unknown>)['learnos.token']).toBeUndefined();
 
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.getByText(/not connected yet/i)).toBeVisible({ timeout: 15_000 });
 });
 
@@ -60,7 +60,7 @@ test('Disconnect clears the token, and the popup reverts to not-connected', asyn
   await expect(options.getByText(/paste the token/i)).toBeVisible({ timeout: 15_000 });
 
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.getByText(/not connected yet/i)).toBeVisible({ timeout: 15_000 });
 });
 
@@ -94,7 +94,7 @@ test('a revoked token never hangs or shows a raw error — it reads as connected
   // state — that would need an extra network round trip the popup
   // deliberately doesn't spend on every open.
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.getByText(/Nothing due right now/)).toBeVisible({ timeout: 15_000 });
   await expect(popup.getByText(/error|exception|undefined/i)).toHaveCount(0);
 });

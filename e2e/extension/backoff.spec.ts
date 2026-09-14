@@ -49,7 +49,7 @@ test('three dismissals in the real UI set a real backoff, and the popup reads it
   // a fixed delay guessing how long the writes take.
   for (let i = 1; i <= 3; i += 1) {
     const popup = await context.newPage();
-    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+    await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
     await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
     await popup.getByRole('button', { name: /dismiss/i }).click();
     await popup.waitForEvent('close', { timeout: 10_000 });
@@ -77,7 +77,7 @@ test('three dismissals in the real UI set a real backoff, and the popup reads it
   await popup.route('**/due*', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [] }) }),
   );
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
   // The exact copy from Popup.tsx, driven by state this test produced for
   // real and a due-response this test had to simulate for the reason above.
@@ -123,7 +123,7 @@ test('a card that was dismissed stays due — it is not silently resolved', asyn
   await options.close();
 
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await expect(popup.locator('.question__prompt')).toBeVisible({ timeout: 30_000 });
   await popup.getByRole('button', { name: /dismiss/i }).click();
   // Self-closes once its storage write lands (see the note in the test above).

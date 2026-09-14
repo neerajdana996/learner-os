@@ -22,7 +22,7 @@ import config from '../wxt.config';
 import { API_URL, apiFetch, flagItem, getMe, postReview } from './lib/api';
 import { drain, writeQueue } from './lib/queue';
 import { setPendingCard, setToken } from './lib/storage';
-import { Popup } from './entrypoints/popup/Popup';
+import { Popup } from './card/Popup';
 
 const fetchMock = vi.fn();
 

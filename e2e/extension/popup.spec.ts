@@ -39,7 +39,7 @@ test('connects with a pasted token, then answers a real card', async ({
 
   // ---- the popup
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
   // Opening the popup deliberately asks `/due` itself rather than rendering
   // only what the worker happened to leave behind (T-129) — and it ignores the
@@ -107,7 +107,7 @@ test('says "connect", not "nothing due", before a token exists', async ({
   // that — the failure this guards is an extension that silently never pops
   // and gives the learner nothing to act on.
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
   await expect(popup.getByText(/not connected yet/i)).toBeVisible({ timeout: 30_000 });
   await expect(popup.getByRole('button', { name: /connect/i })).toBeVisible();

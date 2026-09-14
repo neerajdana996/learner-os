@@ -10,9 +10,9 @@ import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { Button } from '@learnos/ui';
 import { DueItemsResponseSchema, PublicItemSchema, type PublicItem } from '@learnos/shared';
-import { apiFetch } from '../../lib/api';
-import { record } from '../../lib/telemetry';
-import { getPopState, getToken, takePendingCard } from '../../lib/storage';
+import { apiFetch } from '../lib/api';
+import { record } from '../lib/telemetry';
+import { getPopState, getToken, takePendingCard } from '../lib/storage';
 import { Boundary } from './Boundary';
 import { Card } from './Card';
 
