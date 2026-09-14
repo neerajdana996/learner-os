@@ -1,6 +1,13 @@
 import { gradeCode, gradeExplanation } from '../generator/grade.js';
 import { clozeHoleOrder, type ItemPayload } from '@learnos/shared';
 
+/**
+ * The most source the model judge will read (T-171). A `codeEditor` answer is
+ * one function — the starter itself is capped at 1,200 characters — so this is
+ * several times any honest answer, and bounds what one submit can cost.
+ */
+export const MAX_JUDGED_SOURCE = 6000;
+
 /** One wording for a code verdict, whichever side ran the code. `why` is the
  *  judge's one line on what went wrong, when there is one. */
 function codeVerdict(failed: string[], why?: string): Grade {
@@ -183,6 +190,17 @@ export async function grade(payload: ItemPayload, response: string | number): Pr
      * the extension's offline queue retry, and nobody gets a free pass.
      */
     if (typeof outputs.__source === 'string') {
+      // Checked before any model call: the answer field has no length limit,
+      // so without this a pasted file is a paid prompt on every submit.
+      if (outputs.__source.length > MAX_JUDGED_SOURCE) {
+        return {
+          correct: false,
+          feedback: `That is longer than ${MAX_JUDGED_SOURCE} characters — write just the function.`,
+        };
+      }
+      if (outputs.__source.trim() === '') {
+        return { correct: false, feedback: 'There is no code to check yet.' };
+      }
       const judged = await gradeCode({
         lang: answerBlock.lang,
         signature: answerBlock.signature,

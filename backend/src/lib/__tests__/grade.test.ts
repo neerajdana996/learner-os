@@ -7,7 +7,7 @@ vi.mock('../../generator/grade.js', () => ({
   gradeCode: (...a: unknown[]) => gradeCode(...a),
 }));
 
-const { grade, normalise } = await import('../grade.js');
+const { grade, normalise, MAX_JUDGED_SOURCE } = await import('../grade.js');
 
 const recall = (answer: string, accept?: string[]) => ({
   type: 'recall' as const,
@@ -561,6 +561,22 @@ describe('write the code, in a language the browser cannot run (T-171)', () => {
       cases: [{ name: 'two distinct', passed: true }, { name: 'made up', passed: true }],
     });
     expect((await grade(python, submitted)).correct).toBe(false);
+  });
+
+  /** The answer field has no length limit, so an unbounded paste would be an
+   *  unbounded prompt. Refused before the model is ever asked. */
+  it('refuses oversized source without calling the model', async () => {
+    const huge = JSON.stringify({ __source: 'x'.repeat(MAX_JUDGED_SOURCE + 1) });
+    const result = await grade(python, huge);
+    expect(result.correct).toBe(false);
+    expect(result.feedback).toMatch(/longer than/);
+    expect(gradeCode).not.toHaveBeenCalled();
+  });
+
+  it('does not pay for a blank submission', async () => {
+    const result = await grade(python, JSON.stringify({ __source: '   \n ' }));
+    expect(result.correct).toBe(false);
+    expect(gradeCode).not.toHaveBeenCalled();
   });
 
   /** No free pass: the error reaches `recordReview`, which lets the extension's

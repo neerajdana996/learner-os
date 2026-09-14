@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { PublicItem } from '@learnos/shared';
 import { fakeBrowser } from 'wxt/testing';
 import { readQueue } from '../../lib/queue';
+import { localDay } from '../../lib/schedule';
 import { Card } from '../Card';
 
 const posted: Record<string, unknown>[] = [];
@@ -496,7 +497,11 @@ describe('the daily mood tap (T-032)', () => {
 
   it('is not asked again the same day', async () => {
     const user = userEvent.setup();
-    pulseDay = new Date().toISOString().slice(0, 10);
+    // The card's own definition of "today", in the learner's local zone. This
+    // used `toISOString()`, a UTC date, which is a different day from the
+    // local one for hours every night east of UTC — in IST it failed every day
+    // between 00:00 and 05:30 while the card behaved correctly.
+    pulseDay = localDay(new Date(), null);
     render(<Card item={item} onClose={onClose} />);
 
     await user.click(screen.getByRole('radio', { name: /Run once/ }));

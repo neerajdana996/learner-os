@@ -75,6 +75,18 @@ export default function SessionPage() {
   const [response, setResponse] = useState<string | number | null>(null);
   const [confidence, setConfidence] = useState<Rating | null>(null);
   const [verdict, setVerdict] = useState<{ correct: boolean | null; feedback: string | null } | null>(null);
+  /**
+   * An answer on its way to the server (T-171).
+   *
+   * Grading a `codeEditor` or `explain` answer is a model call of a few
+   * seconds, and a web answer carries no idempotency key — so a second click
+   * while the first is pending recorded a second review event and scheduled
+   * the card twice. Both buttons wait for the first.
+   */
+  const [submitting, setSubmitting] = useState(false);
+  /** The last submit failed. Before this the rejection went nowhere: no
+   *  verdict, no message, and a learner could not tell whether it had worked. */
+  const [submitFailed, setSubmitFailed] = useState(false);
   const [taught, setTaught] = useState<string[]>([]);
   const [reviewed, setReviewed] = useState(0);
   const [done, setDone] = useState(false);
@@ -95,6 +107,8 @@ export default function SessionPage() {
     setResponse(null);
     setConfidence(null);
     setVerdict(null);
+    setSubmitting(false);
+    setSubmitFailed(false);
   }, [step?.key, teachMode]);
 
   if (isLoading) return <p className="u-muted">Loading…</p>;
@@ -216,6 +230,21 @@ export default function SessionPage() {
       latencyMs: Date.now() - shownAt.current,
       surface: 'web',
     }).unwrap();
+  }
+
+  /** Runs one submit at a time and turns a failure into a message the learner
+   *  can act on. The answer stays on screen, so trying again is one click. */
+  async function once(run: () => Promise<void>) {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitFailed(false);
+    try {
+      await run();
+    } catch {
+      setSubmitFailed(true);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -342,29 +371,39 @@ export default function SessionPage() {
             ) : (
               <>
                 <Button
-                  disabled={!canAnswer}
-                  onClick={async () => {
-                    const result = await answer(response, confidence);
-                    setVerdict({ correct: result.correct, feedback: result.feedback });
-                  }}
+                  disabled={!canAnswer || submitting}
+                  onClick={() =>
+                    void once(async () => {
+                      const result = await answer(response, confidence);
+                      setVerdict({ correct: result.correct, feedback: result.feedback });
+                    })
+                  }
                 >
-                  Check
+                  {submitting ? 'Checking…' : 'Check'}
                 </Button>
                 {/* Recorded, not silently dropped: a skipped retrieval is a
                     real data point (no answer, no scheduling) and pretending it
                     did not happen would bias the calibration numbers. */}
                 <Button
                   variant="quiet"
-                  onClick={async () => {
-                    await answer(null, null);
-                    advance();
-                  }}
+                  disabled={submitting}
+                  onClick={() =>
+                    void once(async () => {
+                      await answer(null, null);
+                      advance();
+                    })
+                  }
                 >
                   Skip this one
                 </Button>
               </>
             )}
           </div>
+          {submitFailed ? (
+            <p className="field__error" role="alert">
+              That didn’t reach us — your answer is still here. Try again in a moment.
+            </p>
+          ) : null}
           <p className="session-actions__left">~{minutesLeft(conceptsLeft, reviewsLeft)} min left</p>
         </div>
       ) : null}

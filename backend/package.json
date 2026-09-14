@@ -21,6 +21,7 @@
     "qa:apply": "tsx src/scripts/qa.ts apply",
     "qa:retire": "tsx src/scripts/qa.ts retire",
     "preflight": "tsx src/scripts/preflight.ts",
+    "eval:grade-code": "tsx src/scripts/evalGradeCode.ts",
     "seed:formats": "tsx src/scripts/seedFormats.ts",
     "seed:formats:showcase": "tsx src/scripts/seedFormatShowcase.ts",
     "seed:matrix": "tsx src/scripts/seedMatrix.ts",

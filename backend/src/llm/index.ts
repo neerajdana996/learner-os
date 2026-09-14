@@ -37,6 +37,15 @@ export interface PromptDef<Vars extends Record<string, string>, Out> {
    */
   jsonSchema?: { name: string; schema: Record<string, unknown> };
   /**
+   * Per-attempt HTTP timeout and SDK retry count, for prompts in a request path.
+   *
+   * The SDK defaults — ten minutes, two retries — suit a generation worker and
+   * are wrong for a learner waiting on a verdict: a stuck call would hold their
+   * answer for half an hour. Omitted, the SDK defaults apply (T-171).
+   */
+  timeoutMs?: number;
+  maxRetries?: number;
+  /**
    * Domain rules the schema cannot express — exact array lengths, string
    * limits, cross-item counts. Throw to reject the response.
    *
@@ -135,6 +144,8 @@ export async function runPrompt<Vars extends Record<string, string>, Out>(
       reasoningEffort,
       maxTokens: def.maxTokens,
       jsonSchema: def.jsonSchema,
+      ...(def.timeoutMs !== undefined ? { timeoutMs: def.timeoutMs } : {}),
+      ...(def.maxRetries !== undefined ? { maxRetries: def.maxRetries } : {}),
       ...(repair ? { repair } : {}),
     });
     let parsed: unknown;

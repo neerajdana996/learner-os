@@ -77,6 +77,31 @@ describe('runPrompt', () => {
     expect(call.system).toContain('test fixture'); // system.md loaded
   });
 
+  /**
+   * T-171. A grading prompt runs while a learner waits, and the SDK's defaults
+   * are a ten-minute timeout with two retries. The bound only exists if it
+   * actually reaches `complete`.
+   */
+  it('forwards a prompt’s timeout and retry count to the client', async () => {
+    const bounded = definePrompt({
+      name: '_smoke',
+      schema: z.object({ topic: z.string() }),
+      timeoutMs: 20_000,
+      maxRetries: 1,
+    });
+    complete.mockResolvedValueOnce('{"topic":"t"}');
+    await runPrompt(bounded, { topic: 't' });
+    expect(complete.mock.calls[0]![0]).toMatchObject({ timeoutMs: 20_000, maxRetries: 1 });
+  });
+
+  it('leaves the SDK defaults alone when a prompt sets no bound', async () => {
+    complete.mockResolvedValueOnce('{"topic":"t"}');
+    await runPrompt(smoke, { topic: 't' });
+    const call = complete.mock.calls[0]![0];
+    expect(call).not.toHaveProperty('timeoutMs');
+    expect(call).not.toHaveProperty('maxRetries');
+  });
+
   it('strips markdown fences before parsing', async () => {
     complete.mockResolvedValueOnce('```json\n{"topic":"x"}\n```');
     await expect(runPrompt(smoke, { topic: 'x' })).resolves.toEqual({ topic: 'x' });

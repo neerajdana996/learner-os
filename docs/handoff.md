@@ -186,8 +186,9 @@ Applied plan was 2 add / 1 change / 0 destroy. Verified: MX still `1 smtp.google
    running it, and each says so):
    - **Fixed in T-171** — confirmed, and TypeScript was broken too (the browser ran it as
      JavaScript). Only JavaScript runs client-side now; everything else is judged by the
-     `gradeCode` prompt on the server. **The model judge has never run against the live model** —
-     watch the first real non-JS answers. The original finding, for the record:
+     `gradeCode` prompt on the server. **Proven live 2026-09-15:** 46/46 labelled answers across
+     five languages, $0.00024 each, p90 2.7s — re-run `pnpm eval:grade-code` before changing the
+     prompt or its model. The original finding, for the record:
      ~~`codeEditor` is graded wrong for 8 of 10 languages.~~ Only JS/TS run client-side; the rest
      post `{"__source": "<code>"}` claiming the server judges it, and no server path reads
      `__source` — so `grade.ts` substitutes `' '` and every case fails, every time. The same

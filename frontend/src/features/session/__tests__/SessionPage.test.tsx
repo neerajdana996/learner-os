@@ -88,6 +88,72 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
 });
 
+/**
+ * T-171. Grading a `codeEditor` or `explain` answer is a model call of a few
+ * seconds that can fail. The Check button used to await it with no catch — a
+ * failure showed nothing at all — and stayed clickable, so an impatient second
+ * click recorded a second review (web answers carry no idempotency key).
+ */
+describe('while an answer is being checked', () => {
+  /** Like `server()`, but the caller decides how each POST /reviews resolves. */
+  function serverWithReviews(respond: () => Promise<Response>) {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/session')) return json({ completedToday: false, newConcepts: [], dueReviews: [review(1)] });
+      if (url.includes('/reviews')) {
+        posted.push(await bodyOf(input, init));
+        return respond();
+      }
+      return json({});
+    });
+  }
+
+  it('says a failed check did not reach the server, and a retry works', async () => {
+    const user = userEvent.setup();
+    let calls = 0;
+    serverWithReviews(() => {
+      calls += 1;
+      return calls === 1 ? json({ error: 'internal' }, 500) : json({ correct: true, feedback: 'Right.', conceptId: 'x' });
+    });
+    renderPage();
+
+    await user.type(await screen.findByLabelText('Your answer'), 'an answer');
+    await user.click(screen.getByText('Fairly sure'));
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/didn’t reach us/);
+    // The answer is still on screen, so trying again is one click.
+    expect(screen.getByLabelText('Your answer')).toHaveValue('an answer');
+
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByRole('button', { name: 'Next' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('records one review however many times Check is pressed while it is pending', async () => {
+    const user = userEvent.setup();
+    let release: (value: Response) => void = () => {};
+    serverWithReviews(() => new Promise<Response>((resolve) => { release = resolve; }));
+    renderPage();
+
+    await user.type(await screen.findByLabelText('Your answer'), 'an answer');
+    await user.click(screen.getByText('Fairly sure'));
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+
+    const pending = await screen.findByRole('button', { name: 'Checking…' });
+    expect(pending).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Skip this one' })).toBeDisabled();
+    await user.click(pending);
+
+    release(new Response(JSON.stringify({ correct: true, feedback: 'Right.', conceptId: 'x' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+    expect(await screen.findByRole('button', { name: 'Next' })).toBeInTheDocument();
+    expect(posted).toHaveLength(1);
+  });
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });

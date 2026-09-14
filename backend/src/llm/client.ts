@@ -58,6 +58,10 @@ export interface CompleteOpts {
    * one-field fix, on a call that costs the same as the re-roll it replaces.
    */
   repair?: { previous: string; problem: string };
+  /** Per-request overrides of the SDK's ten-minute timeout and two retries —
+   *  see `PromptDef.timeoutMs`. */
+  timeoutMs?: number;
+  maxRetries?: number;
 }
 
 /** One non-streaming completion. Returns the message content. */
@@ -105,7 +109,10 @@ export async function complete(opts: CompleteOpts): Promise<string> {
           },
         }
       : {}),
-  } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
+  } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming, {
+    ...(opts.timeoutMs !== undefined ? { timeout: opts.timeoutMs } : {}),
+    ...(opts.maxRetries !== undefined ? { maxRetries: opts.maxRetries } : {}),
+  });
 
   const usage = {
     prompt: completion.usage?.prompt_tokens ?? 0,
