@@ -362,19 +362,25 @@ async function main(): Promise<void> {
   const idBySlug = new Map(inserted.map((r) => [r.slug, r.id]));
 
   const now = new Date();
+  const itemIdBySlug = new Map<string, string>();
   for (const entry of entries) {
     const conceptId = idBySlug.get(entry.slug);
     if (!conceptId) throw new Error(`seedFormatShowcase: no concept for ${entry.slug}`);
     // The gate: what the worker is allowed to store is what gets stored here,
     // so a fixture cannot drift into a shape the generator could never produce.
     const payload: ItemPayload = ItemPayloadSchema.parse(entry.payload);
-    await db.insert(items).values({
-      conceptId,
-      type: entry.type,
-      payload,
-      answerKind: answerKindOf(payload.blocks ?? []),
-      isTransfer: false,
-    });
+    const [row] = await db
+      .insert(items)
+      .values({
+        conceptId,
+        type: entry.type,
+        payload,
+        answerKind: answerKindOf(payload.blocks ?? []),
+        isTransfer: false,
+      })
+      .returning({ id: items.id });
+    if (!row) throw new Error(`seedFormatShowcase: item insert returned no row for ${entry.slug}`);
+    itemIdBySlug.set(entry.slug, row.id);
   }
 
   // Taught four days ago and reviewed six days' worth of decay away, so every
@@ -399,6 +405,14 @@ async function main(): Promise<void> {
   // `cards` pairs each slug with the prompt that identifies it on screen: the
   // session never shows a concept slug, so a spec matching on the prompt is
   // how a screenshot gets named after the case it is showing.
+  //
+  // `itemId` is here for the extension half (`e2e/extension/formats.spec.ts`),
+  // which has to be able to answer a card *away* to control what the popup's
+  // `/due?limit=1` is left holding. Two of these items — `orderLines` and
+  // `codeEditor` — are excluded from `/due` by `popupEligible()` (T-089) and
+  // from every review queue by `reviewEligible()` (T-088), so there is no API
+  // a spec could discover their ids through; without this the only way to get
+  // them out of the way would be to reach into Postgres from the test.
   writeFileSync(
     OUT_FILE,
     JSON.stringify(
@@ -407,7 +421,11 @@ async function main(): Promise<void> {
         webSessionToken: session.token,
         topicId: topic.id,
         kinds,
-        cards: entries.map((e) => ({ slug: e.slug, prompt: (e.payload as { prompt: string }).prompt })),
+        cards: entries.map((e) => ({
+          slug: e.slug,
+          prompt: (e.payload as { prompt: string }).prompt,
+          itemId: itemIdBySlug.get(e.slug),
+        })),
       },
       null,
       2,
