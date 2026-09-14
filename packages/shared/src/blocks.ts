@@ -66,6 +66,26 @@ export const BlockSlotSchema = z.enum(['context', 'answer', 'reveal']);
 
 /** Kinds whose slot must be `answer`. Everything else is content. */
 export const ANSWER_BLOCK_KINDS = ['clozeCode', 'hotspotLine', 'orderLines', 'codeEditor', 'numeric'] as const;
+
+/**
+ * The hole ids in the order their `{{n}}` markers appear in `src` — which is
+ * reading order, and therefore the order a learner fills them in and the order
+ * their answers arrive in.
+ *
+ * **This exists because both sides were deciding it independently.** The
+ * renderer walked the markers in `src`; the grader walked the `holes` array and
+ * assumed the two matched. Nothing made them match: the rules below check that
+ * the marker ids and the hole ids are the same *set*, never the same sequence,
+ * and the generation schema never told the model to order `holes`. So a model
+ * emitting `holes: [{id: 2}, {id: 1}]` against `{{1}} … {{2}}` marked a
+ * correct answer wrong, silently, with no way for the learner to tell.
+ *
+ * One function, used by the renderer and the grader, so they cannot drift
+ * again. Order is taken from `src` because `src` is what the learner reads.
+ */
+export function clozeHoleOrder(src: string): number[] {
+  return [...src.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map((m) => Number(m[1]));
+}
 export type AnswerBlockKind = (typeof ANSWER_BLOCK_KINDS)[number];
 
 const MAX_SRC = 1200;
@@ -637,8 +657,18 @@ function blockRules(b: Record<string, unknown>, ctx: z.RefinementCtx): void {
   if (kind === 'clozeCode') {
     const src = b.src as string;
     const holes = (b.holes ?? []) as { id: number }[];
-    const markers = new Set([...src.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map((m) => Number(m[1])));
+    const order = clozeHoleOrder(src);
+    const markers = new Set(order);
     const ids = new Set(holes.map((h) => h.id));
+
+    /**
+     * One marker per hole. A repeated `{{1}}` passed every check below — the
+     * sets match — and then rendered two inputs against a single hole, so the
+     * learner filled in two blanks and only the first was ever compared.
+     */
+    if (order.length !== markers.size) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['src'], message: 'src repeats a {{n}} marker' });
+    }
     for (const id of markers) {
       if (!ids.has(id)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['src'], message: `src has a {{${id}}} marker with no matching hole` });

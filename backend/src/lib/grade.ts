@@ -1,5 +1,5 @@
 import { gradeExplanation } from '../generator/grade.js';
-import type { ItemPayload } from '@learnos/shared';
+import { clozeHoleOrder, type ItemPayload } from '@learnos/shared';
 
 export interface Grade {
   correct: boolean;
@@ -116,9 +116,18 @@ export async function grade(payload: ItemPayload, response: string | number): Pr
    */
   if (answerBlock?.kind === 'clozeCode') {
     const given = text.split('\n');
-    const correct = answerBlock.holes.every((hole, i) =>
-      matchesCode(given[i] ?? '', hole.answer, hole.accept),
-    );
+    /**
+     * Indexed by marker order, not by position in `holes` (T-086, fixed
+     * 2026-09-14). The renderer lays the inputs out in the order the `{{n}}`
+     * markers appear in `src`, so that is the order the answers arrive in —
+     * and this used to walk `holes` instead, which is only the same sequence
+     * by luck. `clozeHoleOrder` is the one definition both sides now read.
+     */
+    const byId = new Map(answerBlock.holes.map((hole) => [hole.id, hole]));
+    const correct = clozeHoleOrder(answerBlock.src).every((id, i) => {
+      const hole = byId.get(id);
+      return hole !== undefined && matchesCode(given[i] ?? '', hole.answer, hole.accept);
+    });
     return {
       correct,
       // `failure` names the concrete input where the likely wrong answer breaks

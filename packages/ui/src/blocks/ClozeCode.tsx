@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { PublicBlock } from '@learnos/shared';
+import { clozeHoleOrder, type PublicBlock } from '@learnos/shared';
 
 type Cloze = Extract<PublicBlock, { kind: 'clozeCode' }>;
 
@@ -46,8 +46,10 @@ export function ClozeCode({
   onChange: (value: string) => void;
 }) {
   const widths = new Map(block.holes.map((h) => [h.id, h.width]));
-  // Marker order is reading order, which is the order the values are stored in.
-  const order = [...block.src.matchAll(MARKER)].map((m) => Number(m[1]));
+  // Marker order is reading order, which is the order the values are stored
+  // in — and `clozeHoleOrder` is shared with the grader so the two cannot
+  // disagree about which blank is which.
+  const order = clozeHoleOrder(block.src);
   const values = splitCloze(value);
 
   const set = (index: number, next: string) => {

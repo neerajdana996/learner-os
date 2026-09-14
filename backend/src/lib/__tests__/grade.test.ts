@@ -229,7 +229,11 @@ describe('fill in the blank (T-086)', () => {
         kind: 'clozeCode' as const,
         slot: 'answer' as const,
         lang: 'javascript' as const,
-        src: 'while ({{1}}) {',
+        // A marker per hole. `src` used to be a fixed one-marker string even
+        // for a two-hole fixture, which `blockRules` would reject — a hole with
+        // no matching marker — and which the grader only tolerated while it
+        // walked `holes` instead of the listing.
+        src: `while (${holes.map((h) => `{{${h.id}}}`).join(' < ')}) {`,
         holes: holes.map((h) => ({ accept: [], width: 8, ...h })),
         failure: 'With `lo <= hi` the loop reads a[a.length] on the last step.',
       },
@@ -245,6 +249,41 @@ describe('fill in the blank (T-086)', () => {
   it('normalises whitespace — the question is the boundary, never the spacing', async () => {
     const item = cloze([{ id: 1, answer: 'lo < hi' }]);
     expect((await grade(item, '  lo   <   hi ')).correct).toBe(true);
+  });
+
+  /**
+   * The answers arrive in the order the learner filled the blanks in, which is
+   * the order the `{{n}}` markers appear in `src` — not the order the model
+   * happened to list `holes`. Nothing requires those to agree: the block rules
+   * check the marker ids and the hole ids are the same *set*, never the same
+   * sequence. Before this was fixed the grader walked `holes`, so a model that
+   * listed them backwards marked a correct answer wrong, silently.
+   */
+  it('reads the answers in marker order, even when holes are listed backwards', async () => {
+    const item = {
+      type: 'application' as const,
+      prompt: 'Complete the loop.',
+      answer: 'lo < hi',
+      blocks: [
+        {
+          kind: 'clozeCode' as const,
+          slot: 'answer' as const,
+          lang: 'javascript' as const,
+          src: 'while ({{1}}) {\n  mid = {{2}};',
+          // Deliberately reversed relative to the markers in `src`.
+          holes: [
+            { id: 2, answer: '(lo + hi) >> 1', accept: [], width: 14 },
+            { id: 1, answer: 'lo < hi', accept: [], width: 8 },
+          ],
+          failure: 'With `lo <= hi` the loop reads a[a.length] on the last step.',
+        },
+      ],
+    };
+
+    // Filled in reading order: the first blank, then the second.
+    expect((await grade(item, 'lo < hi\n(lo + hi) >> 1')).correct).toBe(true);
+    // The same two answers in the wrong blanks stay wrong.
+    expect((await grade(item, '(lo + hi) >> 1\nlo < hi')).correct).toBe(false);
   });
 
   it('surfaces the failure sentence rather than restating the token', async () => {
