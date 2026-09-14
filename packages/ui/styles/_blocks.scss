@@ -313,9 +313,14 @@
     min-height: $tap;
   }
 
+  /// The colour is not decoration. `&__row` paints `--surface`, but these rows
+  /// sit inside a dark retrieval card, so without an explicit colour the text
+  /// inherits the card's light ink and renders light-on-light — legible only by
+  /// selecting it. Every other block states its own colour for the same reason.
   &__line {
     font-family: $font-mono;
     font-size: $text-sm;
+    color: var(--ink);
     white-space: pre;
     overflow-x: auto;
   }

@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import type { PublicBlock } from '@learnos/shared';
 
 type Cloze = Extract<PublicBlock, { kind: 'clozeCode' }>;
@@ -68,7 +69,14 @@ export function ClozeCode({
             const parts = line.split(MARKER);
 
             return (
-              <div key={i} className="contents">
+              // A Fragment, not a wrapping <div className="contents">, for the
+              // reason CodeBlock records under T-146: `.code__grid` is a
+              // 2-column grid and no `.contents { display: contents }` rule
+              // exists, so a wrapper takes one cell and the listing renders as
+              // overlapping lines with a gutter that skips numbers. CodeBlock
+              // and TeachBlockView were fixed; this one was missed, and it is
+              // the only listing a learner actually types into.
+              <Fragment key={i}>
                 <span className="code__gutter" aria-hidden="true">
                   {i + 1}
                 </span>
@@ -100,7 +108,7 @@ export function ClozeCode({
                     );
                   })}
                 </code>
-              </div>
+              </Fragment>
             );
           })}
         </div>
