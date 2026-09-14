@@ -51,7 +51,7 @@ export default function LandingPage() {
     <div className="landing">
       <header className="landing__nav">
         <div className="landing__inner landing__nav-inner">
-          <span className="landing__brand">learnos</span>
+          <span className="landing__brand">Cold Recall</span>
           <nav className="landing__nav-links">
             <a href="#how">How it works</a>
             <a href="#why">Why it works</a>
@@ -73,7 +73,7 @@ export default function LandingPage() {
                 Learn it once. <em>Still know it</em> a month later.
               </h1>
               <p className="landing__lede">
-                You understood it in the video. By Friday it was gone. learnos maps your topic,
+                You understood it in the video. By Friday it was gone. Cold Recall maps your topic,
                 works out what you actually don&rsquo;t know, teaches only that — then keeps asking,
                 twenty seconds at a time, until it&rsquo;s yours.
               </p>
@@ -370,7 +370,7 @@ export default function LandingPage() {
 
       <footer className="landing__foot">
         <div className="landing__inner landing__foot-inner">
-          <span>learnos</span>
+          <span>Cold Recall</span>
           <Link to="/signin">Already signed up? Sign in</Link>
         </div>
       </footer>

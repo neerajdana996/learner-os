@@ -69,7 +69,7 @@ export function AppBar() {
     <header className="bar">
       <div className="bar__left">
         <Link className="bar__brand" to="/">
-          learnos
+          Cold Recall
         </Link>
 
         {!lean && context ? (
