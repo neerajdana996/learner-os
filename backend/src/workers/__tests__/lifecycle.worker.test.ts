@@ -44,7 +44,7 @@ describe('pilot lifecycle', () => {
     const send = vi.fn().mockResolvedValue(undefined);
     setMailTransport({ send });
     await processLifecycleJob(notifications[0]!.data);
-    expect(send.mock.calls[0]![0]).toMatchObject({ to: seed.user.email, subject: 'Your learnos recall check is ready' });
+    expect(send.mock.calls[0]![0]).toMatchObject({ to: seed.user.email, subject: 'Your Cold Recall check is ready' });
     let next = await nextTestItem(seed.user.id, testId);
     while (next.item) next = await answerTestItem(seed.user.id, testId, { itemId: next.item.itemId, response: 'yes', confidence: 'sure', latencyMs: 1 }, NOW);
     await completeTest(seed.user.id, testId);

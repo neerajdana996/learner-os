@@ -44,7 +44,7 @@ export async function requestMagicLink(email: string, now: Date = new Date()): P
   const link = `${env.API_URL}/auth/verify?token=${encodeURIComponent(raw)}`;
   await getMailTransport().send({
     to: email,
-    subject: 'Your learnos sign-in link',
+    subject: 'Your Cold Recall sign-in link',
     text: `Sign in: ${link}\n\nThis link works once and expires in ${env.AUTH_TOKEN_TTL_MIN} minutes.`,
   });
 }

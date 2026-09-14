@@ -65,7 +65,7 @@ export function Options() {
       <div className="ext__card">
         <div className="ext__brand">
           <span className="ext__mark" aria-hidden="true" />
-          <h1 className="ext__title">learnos</h1>
+          <h1 className="ext__title">Cold Recall</h1>
         </div>
 
         {state.kind === 'connected' ? (

@@ -38,7 +38,7 @@ export default defineConfig({
     },
   }),
   manifest: {
-    name: 'learnos',
+    name: 'Cold Recall',
     description: 'One retrieval question at a time. Never teaches — only helps you remember.',
     // storage: the token and T-028's per-day counters. alarms: the five-minute
     // "should I pop?" tick. idle: don't interrupt someone who isn't there.

@@ -62,7 +62,7 @@ const EnvSchema = z.object({
     .transform((s) => s.toLowerCase() !== 'false'),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
-  MAIL_FROM: z.string().default('learnos <no-reply@example.com>'),
+  MAIL_FROM: z.string().default('Cold Recall <no-reply@example.com>'),
   // OAuth (T-055). Empty client id disables that provider rather than failing
   // at boot, so a deployment can run with one, both, or neither configured.
   GITHUB_CLIENT_ID: z.string().default(''),

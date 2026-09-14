@@ -88,7 +88,7 @@ export default function ConnectExtensionPage() {
           <div>
             <p className="steps__title">Paste it in</p>
             <p className="steps__body">
-              Click the learnos icon in Chrome&rsquo;s toolbar, then <strong>Connect</strong>. Paste the
+              Click the Cold Recall icon in Chrome&rsquo;s toolbar, then <strong>Connect</strong>. Paste the
               token and you&rsquo;re done — questions will only appear during the hours you chose.
             </p>
           </div>

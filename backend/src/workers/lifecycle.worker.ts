@@ -43,7 +43,7 @@ export async function processLifecycleJob(data: LifecycleJob) {
   // Suppress a delayed ready message after the learner has already finished.
   if (data.event === 'ready' && TestScoresSchema.safeParse(test.scores).success) return;
   await getMailTransport().send({ to: row.email,
-    subject: data.event === 'ready' ? 'Your learnos recall check is ready' : 'Your learnos recall check is complete',
+    subject: data.event === 'ready' ? 'Your Cold Recall check is ready' : 'Your Cold Recall check is complete',
     text: data.event === 'ready'
       ? `Your recall check for ${row.title} is ready. Allow up to 20 minutes and answer without reviewing first.\n\n${env.APP_URL}/tests/${test.id}`
       : `Thanks for completing the recall check for ${row.title}. Your results are available here:\n\n${env.APP_URL}/tests/${test.id}`,

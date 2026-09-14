@@ -83,7 +83,7 @@ export function Popup() {
 
   return (
     <main className="ext ext--popup">
-      <h1 className="ext__title">learnos</h1>
+      <h1 className="ext__title">Cold Recall</h1>
       {connected === null ? null : connected ? (
         <p className="ext__muted">
           {restingUntilTomorrow
