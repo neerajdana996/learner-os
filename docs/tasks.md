@@ -232,6 +232,17 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **blocked on:** `gcloud` is not installed on the dev machine and `gcloud auth application-default login` is an interactive browser flow only the founder can complete. Also needs the GCP project id, region, and the chosen Gemini model.
 - **tests:** token minting mocked; a request builds the right Vertex URL from project+location; an expired cached token triggers a refresh rather than a 401.
 
+### T-FIX-007 · The e2e suite cannot be run twice inside fifteen minutes
+- **status:** todo
+- **severity:** medium — costs a real debugging session every time, and the failure blames the wrong thing
+- **depends_on:** —
+- **files:** `backend/src/modules/auth/auth.rateLimit.ts`, `e2e/global-setup.ts`, `backend/src/app.ts`
+- **description:** Found while fixing the e2e failures (2026-09-14). `limitMagicLink` keeps two in-memory buckets: `PER_EMAIL` 3 and **`PER_IP` 20, both over 15 minutes**. Every run makes several `POST /auth/magic` calls from localhost, and `webServer.reuseExistingServer` means one long-lived backend process serves every run — so the IP bucket accumulates *across runs*. Run the suite two or three times in a quarter of an hour and `signin.spec`'s two rate-limit tests fail.
+  - **The failure is maximally misleading.** It presents as "the UI leaks whether an address exists" and "the 4th request is not refused" — both read as security regressions, and neither is. They pass in isolation, which is exactly the behaviour that sends someone hunting in the wrong file. `e2e/auth.ts` already warns about the per-*email* bucket via `freshEmail()`; nothing accounts for the per-IP one, which `freshEmail` cannot help with.
+  - Workaround today: restart the backend (`docker restart ai-backend-1`) to clear the counters, or wait out the window.
+  - `resetAuthRateLimits()` already exists as a test seam but is unreachable from e2e, which runs in a different process. Options: expose it on the dev-only router (`isProd` guard, like `/auth/dev-login`) and have `global-setup` call it; or raise `PER_IP` when `NODE_ENV !== 'production'`. The first keeps production behaviour identical, which is the point of the limiter.
+- **tests:** the suite passes twice in a row with no wait in between — which is the actual acceptance, and is not something a unit test can show.
+
 ### T-FIX-006 · Generator context and prompt-level test coverage
 - **status:** todo
 - **sprint:** 2
