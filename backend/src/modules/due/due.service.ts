@@ -14,7 +14,7 @@ export async function getDueItems(
   now: Date = new Date(),
   surface: 'web' | 'extension' = 'web',
 ): Promise<DueItemsResponse> {
-  const dueCards = await findDueCards(userId, now, limit);
+  const dueCards = await findDueCards(userId, now, limit, surface === 'extension');
   if (dueCards.length === 0) return { items: [] };
 
   const conceptIds = dueCards.map((card) => card.conceptId);

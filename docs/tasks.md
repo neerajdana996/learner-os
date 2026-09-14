@@ -786,19 +786,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:** every inserted item passes `ItemPayloadSchema`; `toPublicItem` strips the answer key from each; `/due` serves them.
 
 
-### T-169 · `/due` can say "nothing due" while an answerable card is waiting
-- **status:** todo
-- **sprint:** 6
-- **depends_on:** —
-- **files:** `backend/src/modules/due/due.service.ts`, `backend/src/modules/due/due.repository.ts`, `e2e/extension/formats.spec.ts`
-- **description:** Found while writing E2E-008's extension half. `getDueItems` calls `findDueCards(userId, now, limit)` first and only then filters the *items* with `popupEligible()`/`reviewEligible()`. The LIMIT is therefore spent on **cards**, before anything knows whether those cards have an item the surface may serve — so a due card whose only item is ineligible consumes a row and drops out silently (`if (pool.length === 0) continue`).
-  - **The popup asks for exactly one.** `Popup.tsx`'s `fetchDue()` requests `/due?limit=1`. If the single earliest-due card belongs to a `codeEditor` or `orderLines` concept, the response is `{ items: [] }` and the learner is told *"Nothing due right now. We'll pop in when something is."* while every other card in the queue is due and answerable.
-  - **This is the exact failure `popupEligible()`'s own comment warns about** for `graphBuild`: the extension goes quiet and nobody notices, because "no card right now" is also what a quiet day looks like. T-089's promise is that the concept *waits for the next web session* — not that it silences the popup for everyone else.
-  - Reproduced from the outside, deterministically: with the `pnpm seed:formats:showcase` fixture (one card per concept, all overdue), `/due?limit=50` returns 12 items and `/due?limit=1` returns 0 whenever a `codeEditor`/`orderLines` card sorts first on the tie. `e2e/extension/formats.spec.ts` works around it by answering both ineligible cards away before each popup open, and says so in `leaveOnly()`'s comment — that workaround should be deleted with this fix.
-  - **Not asserted in the E2E suite**, deliberately: `findDueCards` orders by `due` and the showcase seeds every card at the same instant, so which card sorts first is Postgres's choice. There is no API that lets a spec give one card a strictly earlier `due` than another, so a test for it would pass or fail on the tie-break. The right home for this is a `due.service` unit test, where `now` and the rows are both controlled.
-- **acceptance:** `/due?limit=n` returns `min(n, eligible)` items — never fewer because ineligible cards were counted against the limit. Consider over-fetching due cards and trimming the payload to `limit` after the eligibility filter, rather than pushing the filter into `findDueCards` (the item pool per concept is what decides, and that is a second query today).
-- **tests:** a user whose earliest-due card's only item is a `codeEditor` still gets a card from `/due?limit=1`; `limit` continues to cap the response; a user with *only* ineligible cards due still gets `{ items: [] }` (that part is correct and must not regress).
-
 ### T-166 · The generator has never written a block, on any topic
 - **status:** in_progress
 - **sprint:** 6

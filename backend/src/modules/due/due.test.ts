@@ -283,6 +283,43 @@ describe('GET /due', () => {
     expect((await getDue(user.cookie)).body.items).toHaveLength(1);
   });
 
+  /**
+   * T-169. The LIMIT used to be spent on due *cards*, with eligibility applied
+   * afterwards to their *items* — so an ineligible card consumed a row and then
+   * dropped out, returning nothing.
+   *
+   * The popup asks for exactly one (`Popup.tsx`'s `fetchDue`), which makes this
+   * the quietest failure in the product: a learner whose earliest-due concept
+   * happens to hold a `codeEditor` is told "nothing due right now" while every
+   * other card is due and answerable, and the extension simply stops asking.
+   */
+  it('skips past an ineligible card rather than spending the limit on it', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    // Due first, and unservable on this surface.
+    await seedDueConcept(user.id, topic.id, { slug: 'blocked', order: 1, due: past(5), answerKind: 'codeEditor' });
+    // Due later, and perfectly answerable.
+    await seedDueConcept(user.id, topic.id, { slug: 'servable', order: 2, due: past(1), answerKind: null });
+
+    const { body } = await getDue(user.cookie, '?limit=1');
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].conceptTitle).toBe('servable');
+  });
+
+  /**
+   * The same failure one step subtler: `orderLines` is a perfectly good review
+   * on the web and refused only by the popup (T-089), so this one is invisible
+   * unless the surface is taken into account when the cards are chosen.
+   */
+  it('skips a card the popup cannot serve even when the web could', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, { slug: 'drag', order: 1, due: past(5), answerKind: 'orderLines' });
+    await seedDueConcept(user.id, topic.id, { slug: 'servable', order: 2, due: past(1), answerKind: 'hotspotLine' });
+
+    const { body } = await getDue(user.cookie, '?limit=1');
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].conceptTitle).toBe('servable');
+  });
+
   it('requires a user', async () => {
     expect((await request(app).get('/due')).status).toBe(401);
   });
