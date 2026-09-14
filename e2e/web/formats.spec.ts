@@ -3,35 +3,57 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Every answer format, rendered from real data (E2E-008).
+ * Every card the product can show, rendered from real data (E2E-008).
  *
- * **What this is for.** `clozeCode`, `hotspotLine`, `orderLines`, `numeric`
- * and `codeEditor` are all built and unit-tested, and until this spec none of
- * them had ever been rendered from a database row by anything — T-118 shipped
- * `numeric` half-built for exactly that reason. The seeded fixture
- * (`pnpm seed:formats:showcase`) puts **one format per concept**, because the
- * scheduler serves one item per due concept: all five on a single concept
- * shows whichever the queue picked, which is how this stayed unnoticed.
+ * **What this is for.** The five answer surfaces and the six content blocks
+ * are all built and unit-tested, and until this spec almost none of them had
+ * been rendered from a database row by anything — T-118 shipped `numeric`
+ * half-built for exactly that reason. The seeded fixture
+ * (`pnpm seed:formats:showcase`) puts **one card per concept**, because the
+ * scheduler serves one item per due concept: several on one concept shows
+ * whichever the queue picked, which is how this stayed unnoticed.
  *
- * Each format is screenshotted and attached to the HTML report, so
+ * **The same kind appears on different data on purpose.** A code listing is
+ * not broken by its kind, it is broken by its content — margin notes push the
+ * gutter, a dimmed range changes what is emphasised, a twelve-line listing is
+ * the one that overflows. `code-short`, `code-notes` and `code-dimmed` are the
+ * same block kind three ways, and `diagram-small`/`diagram-full` are the graph
+ * at its minimum and at the five-node cap.
+ *
+ * Every card is screenshotted and attached to the HTML report, so
  * `pnpm e2e:report` is a contact sheet of every question surface the product
  * can show. That is the deliverable as much as the assertions are.
  *
- * Grading each format — filling the hole, clicking the line, ordering the
- * lines, the numeric tolerance edges — is the rest of E2E-008 and is not here
- * yet. This proves each surface *renders*, which is the regression class that
- * actually shipped.
+ * Grading each answer format — filling the hole, clicking the line, the
+ * numeric tolerance edges — is the rest of E2E-008 and is not here yet. This
+ * proves each card *renders*, which is the regression class that shipped.
  */
 
-/** The dedicated surface each format must render. A format falling through to
- *  the generic text box is the T-118 bug, so these selectors are the assertion
- *  and not merely a way to find the element. */
-const SURFACE: Record<string, string> = {
+/**
+ * What each case must put on screen. An answer format falling through to the
+ * generic text box is the T-118 bug, and a content block that renders nothing
+ * would leave a card that still "passes" on its prompt alone — so every case
+ * names an element that only it produces.
+ */
+const REQUIRED: Record<string, string> = {
   clozeCode: '.cloze__hole',
   hotspotLine: '.hotspot__grid',
   orderLines: '.order__line',
   numeric: '#numeric-answer',
   codeEditor: '.editor__area',
+  prose: '.blocks__item',
+  'code-short': '.code__scroll',
+  'code-notes': '.code__scroll',
+  'code-dimmed': '.code__scroll',
+  codeDiff: '.code-diff',
+  terminal: '.terminal',
+  // The web app renders a diagram interactively through ReactFlow rather than
+  // placing the worker's flattened SVG (T-108, revised 2026-09-11), so this
+  // selector is also what proves the xyflow path is wired on this surface.
+  'diagram-small': '.react-flow',
+  'diagram-full': '.react-flow',
+  // A swimlane is not a node graph, so `sequence` keeps the static SVG.
+  sequence: '.drawing',
 };
 
 /** `codeEditor` is never a review (T-088), so `reviewEligible()` filters it out
@@ -41,23 +63,14 @@ const NOT_IN_A_SESSION = 'codeEditor';
 const ARTIFACTS = fileURLToPath(new URL('../.artifacts/formats', import.meta.url));
 
 interface FormatFixture {
-  userId: string;
   webSessionToken: string;
-  topicId: string;
   kinds: string[];
+  cards: { slug: string; prompt: string }[];
 }
 
 function loadFixture(): FormatFixture {
   const path = fileURLToPath(new URL('../format-user.json', import.meta.url));
   return JSON.parse(readFileSync(path, 'utf8')) as FormatFixture;
-}
-
-/** Which format is on screen, or null if this step is not a format card. */
-async function visibleFormat(page: Page): Promise<string | null> {
-  for (const [kind, selector] of Object.entries(SURFACE)) {
-    if (await page.locator(selector).first().isVisible().catch(() => false)) return kind;
-  }
-  return null;
 }
 
 /**
@@ -76,8 +89,8 @@ async function advance(page: Page): Promise<boolean> {
   return true;
 }
 
-test.describe('every answer format renders its own surface', () => {
-  test('walks the format showcase and captures each card', async ({ page }) => {
+test.describe('every card renders its own surface', () => {
+  test('walks the showcase and captures each card', async ({ page }) => {
     const fixture = loadFixture();
     mkdirSync(ARTIFACTS, { recursive: true });
 
@@ -88,27 +101,42 @@ test.describe('every answer format renders its own surface', () => {
     await page.goto('/session');
     await expect(page.locator('.question__prompt').first()).toBeVisible();
 
-    const seen = new Map<string, string>();
+    const seen = new Set<string>();
+    const missingSurface: string[] = [];
 
     // Bounded rather than `while (true)`: a session that stops advancing is a
     // bug worth failing on, not one worth hanging the suite for.
-    for (let step = 0; step < 20; step += 1) {
-      const kind = await visibleFormat(page);
+    for (let step = 0; step < 40; step += 1) {
+      // The last `advance()` can land on the session-complete screen, which has
+      // no prompt at all — that is the walk finishing, not a failure.
+      const promptEl = page.locator('.question__prompt').first();
+      if (!(await promptEl.isVisible().catch(() => false))) break;
 
-      if (kind && !seen.has(kind)) {
-        const file = `${ARTIFACTS}/${kind}.png`;
+      const prompt = await promptEl.textContent();
+      const card = fixture.cards.find((c) => prompt?.trim() === c.prompt);
+
+      if (card && !seen.has(card.slug)) {
+        seen.add(card.slug);
+
+        const selector = REQUIRED[card.slug];
+        if (selector && !(await page.locator(selector).first().isVisible().catch(() => false))) {
+          missingSurface.push(`${card.slug} (expected ${selector})`);
+        }
+
+        const file = `${ARTIFACTS}/${card.slug}.png`;
         await page.screenshot({ path: file, fullPage: true });
-        await test.info().attach(`format: ${kind}`, { path: file, contentType: 'image/png' });
-        seen.set(kind, file);
+        await test.info().attach(`card: ${card.slug}`, { path: file, contentType: 'image/png' });
       }
 
       if (!(await advance(page))) break;
       await page.waitForTimeout(200);
     }
 
-    // Every format the session is allowed to serve, and nothing else.
+    expect(missingSurface, 'cards that rendered without their own surface').toEqual([]);
+
+    // Every card the session is allowed to serve, and nothing else.
     const expected = fixture.kinds.filter((k) => k !== NOT_IN_A_SESSION);
-    expect([...seen.keys()].sort()).toEqual([...expected].sort());
+    expect([...seen].sort()).toEqual([...expected].sort());
     expect(seen.has(NOT_IN_A_SESSION), 'a codeEditor is never a review (T-088)').toBe(false);
   });
 });
