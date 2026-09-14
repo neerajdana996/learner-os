@@ -1,0 +1,18 @@
+@use "@learnos/ui/styles/variables" as *;
+
+/// The interactive `diagram` canvas (T-108).
+///
+/// `.drawing` itself lives in `@learnos/ui`, because the static SVG version is
+/// what the extension and every other surface render. This element is only
+/// ever produced by the web app's `FlowDiagram`, which is the one place
+/// ReactFlow exists — so it stays here rather than teaching the design system
+/// about a dependency only one app has.
+///
+/// The height is fixed and stated here rather than inline on the element:
+/// ReactFlow needs a sized container to measure before it can fit the graph
+/// into view, and a canvas that collapses to zero height fits nothing.
+/// Two rows need more room than one, which is what the taller value buys.
+.drawing__flow {
+  width: 100%;
+  height: 260px;
+}
