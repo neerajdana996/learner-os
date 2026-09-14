@@ -3,44 +3,43 @@
 > Read this first in a new session, then `grep -n -A1 '^### T-16' docs/tasks.md` for the task
 > entries it cites. No secrets are recorded here, and none should ever be.
 
-## Start here — the one thing that is unfinished
+## Start here
 
-**T-166's enrichment pass is built, tested and unproven.** It has never run inside a real
-generation. Everything else below is finished and verified.
+Nothing is mid-flight. The last session closed T-166 and T-169 and left the tree clean.
 
-```
-pnpm --filter learner-os-backend preflight          # env, db, redis, a live model round trip
-curl -s -X POST http://localhost:3001/topics \
-  -H 'Content-Type: application/json' -H 'x-user-id: <dev user id>' \
-  -d '{"title":"HashMap + prefix sums","language":"Python"}'
-```
+**T-166 is done and the number is in:** a live generation (topic `4964b32e`, *Sliding window and
+prefix sums*, Python) produced **5 items carrying a `clozeCode` block out of 94**, against **0 in
+every previous run**. The generator writes blocks now.
 
-~7 minutes and ~$0.53. Then count what it produced:
+**The half that is not solved, and is deliberately left open:** all five are `clozeCode`. No
+`hotspotLine`, `orderLines` or `codeEditor`. The decision list is *stop at the first yes* and its
+first entry is "a rule with a boundary", which nearly every code concept has — so entry 1 answers
+first almost every time. **Do not fix this with a quota or by reordering the list:** that produces
+a format chosen for its own sake, which is what the earn-it sentences exist to prevent. Whether a
+course of five cloze items is actually worse for a learner than a mixed one is a pilot measurement
+(T-045), not a prompt tweak. Full detail in `tasks-done.md` under T-166.
 
-```sql
-select coalesce(answer_kind,'(plain)'), count(*) from items i
-join concepts c on c.id = i.concept_id where c.topic_id = '<id>' group by 1;
-```
-
-Expect blocks on roughly the `code` concepts, up to two each. **Record the per-kind counts in
-T-166** — that is the task's acceptance, and it is the number three previous attempts never got.
-Watch the logs for `itemBlocks: tolerated enrichment_failed`, which means the pass ran and gave up
-rather than that it never fired.
+**The open decision:** the extension side panel is built and renders the same card as the popup,
+but the icon still opens the popup — WXT derives `action.default_popup` from the `popup`
+entrypoint's directory name, so making the panel the icon's target means renaming that entrypoint
+and 17 references to `popup.html` across 6 specs. That changes which surface is primary, so it was
+left to the founder rather than taken as a side effect. Mechanical once decided, and fully covered
+by the extension suite.
 
 ## Git
 
 - Working branch: `task/T-168-coolify-single-host`. `origin/main` is at `a030034`.
-- **Four commits are local and unpushed.** Pushing deploys — the frontend on any `frontend/**` or
-  `packages/**` change, the backend on `backend/**`:
-  - `24d8596` cloze graded by marker order
-  - `e660131` the popup's format subset spec
-  - `241b771` T-169 — `/due` counts a card as due only if the surface can serve it
-  - `baab832` T-166 — the enrichment pass
+- **Commits are local and unpushed.** Pushing deploys — the frontend on any `frontend/**` or
+  `packages/**` change, the backend on `backend/**`. The backend ones carry the enrichment pass,
+  which is now proven live, so pushing is no longer shipping something unverified.
 - Local `main` is stale; the branch is what gets pushed to `main`.
 - The last deploy was the brand rename + legal pages; the live site is unaffected by anything above.
 
 ## Done 2026-09-14
 
+- **T-166 closed** (moved to `tasks-done.md`): the two-phase enrichment pass, proven by a live
+  generation — 5 `clozeCode` items where every previous run produced none. Cost ~$0.02 and ~8
+  extra calls on a ~21-call topic.
 - **T-169 fixed** (moved to `tasks-done.md`): `/due` spent its LIMIT on due *cards* and filtered
   *items* afterwards, so one ineligible card consumed the popup's `limit=1` and the learner was
   told "nothing due" while their queue was full. Both regression tests were confirmed to fail
