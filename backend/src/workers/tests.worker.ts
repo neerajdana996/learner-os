@@ -5,7 +5,7 @@ import { db } from '../db/client.js';
 import { concepts, items, tests, topics } from '../db/schema.js';
 import { generateItems } from '../generator/items.js';
 import { env } from '../lib/env.js';
-import { isPopupEligible } from '../lib/popupEligible.js';
+import { isColdTestEligible } from '../lib/popupEligible.js';
 import { assembleTest, TestAssemblyError } from '../lib/testGen.js';
 import { existingTest, testCandidates, testConcepts } from '../modules/tests/tests.repository.js';
 import { readyTopic } from '../modules/tests/tests.service.js';
@@ -24,7 +24,7 @@ export async function processTestJob({ userId, topicId }: TestJobData, now = new
     if (candidates.some((i) => i.conceptId === concept.id && !i.isTransfer)) continue;
     const generated = await generateItems({ topic: topic.title, concept: concept.title,
       summary: concept.summary ?? '', domain: concept.domain ?? undefined, language: topic.language ?? undefined });
-    const chosen = generated.items.find((item) => !item.isTransfer && isPopupEligible(answerKindOf(item.payload.blocks)));
+    const chosen = generated.items.find((item) => !item.isTransfer && isColdTestEligible(answerKindOf(item.payload.blocks)));
     if (!chosen) throw new TestAssemblyError(`Generator returned no eligible control question for ${concept.id}`);
     await db.transaction(async (tx) => {
       await tx.select({ id: concepts.id }).from(concepts).where(eq(concepts.id, concept.id)).for('update');

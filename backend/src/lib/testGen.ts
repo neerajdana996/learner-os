@@ -1,5 +1,5 @@
 import type { Confidence, ItemType, TestScores } from '@learnos/shared';
-import { isPopupEligible } from './popupEligible.js';
+import { isColdTestEligible } from './popupEligible.js';
 
 export const TEST_SIZE = 25;
 export const MAX_TEST_SECONDS = 20 * 60;
@@ -23,7 +23,7 @@ export function assertTestAssembly(selected: TestItem[], concepts: TestConcept[]
   if (transfers < 3 || transfers > 5) throw new TestAssemblyError('A cold test needs 3–5 transfer items');
   if (concepts.some((c) => c.heldOut && !selected.some((i) => i.conceptId === c.id && !i.isTransfer)))
     throw new TestAssemblyError('Every held-out concept needs a question');
-  if (selected.some((i) => !isPopupEligible(i.answerKind))) throw new TestAssemblyError('Ineligible test format');
+  if (selected.some((i) => !isColdTestEligible(i.answerKind))) throw new TestAssemblyError('Ineligible test format');
   if (selected.filter((i) => i.answerKind === 'graphBuild').length > 1)
     throw new TestAssemblyError('At most one graphBuild per test');
   if (selected.reduce((sum, i) => sum + estimatedSeconds(i), 0) >= MAX_TEST_SECONDS)
@@ -38,7 +38,7 @@ export function assertTestAssembly(selected: TestItem[], concepts: TestConcept[]
 export function assembleTest(concepts: TestConcept[], candidates: TestItem[], rng = Math.random): TestItem[] {
   const shuffled = <T>(rows: T[]): T[] => rows.map((row) => ({ row, key: rng() }))
     .sort((a, b) => a.key - b.key).map(({ row }) => row);
-  const pool = shuffled(candidates.filter((i) => isPopupEligible(i.answerKind)));
+  const pool = shuffled(candidates.filter((i) => isColdTestEligible(i.answerKind)));
   const selected: TestItem[] = [];
   const usable = (i: TestItem) => !selected.some((s) => s.id === i.id)
     && (i.answerKind !== 'graphBuild' || !selected.some((s) => s.answerKind === 'graphBuild'))

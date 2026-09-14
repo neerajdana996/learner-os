@@ -47,12 +47,24 @@ const SURFACE: Record<string, string> = {
   clozeCode: '.cloze__hole',
   hotspotLine: '.hotspot__grid',
   numeric: '#numeric-answer',
+  // Allowed here since T-170. It was refused for being "a drag that needs a
+  // pointer and room to drop", and both halves stopped being true: the panel
+  // replaced a 380x300 popup, and `OrderLines` has never dragged — T-114 built
+  // it with up/down buttons, each clearing a 44px tap target, because HTML5
+  // drag does not fire on touch at all.
+  orderLines: '.order__line',
 };
 
-/** The two `popupEligible()` excludes (T-089). Their concepts are taught, not
- *  held out and overdue — every condition `findDueCards` asks for. They must
- *  simply never be offered here. */
-const NEVER_IN_A_POPUP = ['orderLines', 'codeEditor'] as const;
+/**
+ * What the panel still refuses (T-089, narrowed by T-170).
+ *
+ * `codeEditor` alone now, and it is excluded twice over: by the panel's own
+ * list and by `REVIEW_INELIGIBLE_KINDS`, which bars it from every review queue
+ * on any surface (T-088). Its concept is taught, not held out and overdue —
+ * every condition `findDueCards` asks for — so its absence is the rule working,
+ * not the fixture being thin.
+ */
+const NEVER_IN_A_PANEL = ['codeEditor'] as const;
 
 const ARTIFACTS = fileURLToPath(new URL('../.artifacts/formats-popup', import.meta.url));
 
@@ -222,7 +234,7 @@ test('the popup queue offers every format a popup can answer, and neither of the
     expect(kinds, `${kind} is popup-eligible and must be offered`).toContain(kind);
   }
 
-  for (const kind of NEVER_IN_A_POPUP) {
+  for (const kind of NEVER_IN_A_PANEL) {
     expect(kinds, `${kind} must never reach the popup (T-089)`).not.toContain(kind);
   }
 
@@ -234,7 +246,7 @@ test('the popup queue offers every format a popup can answer, and neither of the
 
   // One item per due concept (`getDueItems` picks one from each pool), so the
   // count is the number of eligible concepts: all fourteen bar the two above.
-  expect(offered.length).toBe(fixture.kinds.length - NEVER_IN_A_POPUP.length);
+  expect(offered.length).toBe(fixture.kinds.length - NEVER_IN_A_PANEL.length);
 });
 
 test('each popup-eligible format draws its own answer surface in the popup', async ({
@@ -310,7 +322,7 @@ test('each popup-eligible format draws its own answer surface in the popup', asy
   expect(overflowed, 'formats wider than the popup can show').toEqual([]);
 });
 
-test('a due orderLines or codeEditor is refused, not merely unlucky', async ({
+test('a due codeEditor is refused, not merely unlucky', async ({
   context,
   extensionId,
   request,
@@ -324,7 +336,7 @@ test('a due orderLines or codeEditor is refused, not merely unlucky', async ({
   // would have to show one of them — which turns a passive absence into a queue
   // where the bug, had it existed, is the only thing that could render.
   for (const card of fixture.cards) {
-    if ((NEVER_IN_A_POPUP as readonly string[]).includes(card.slug)) continue;
+    if ((NEVER_IN_A_PANEL as readonly string[]).includes(card.slug)) continue;
     await answerAway(request, token, card.itemId);
   }
   expect(await fetchDue(request, token, 50)).toEqual([]);
@@ -344,7 +356,7 @@ test('a due orderLines or codeEditor is refused, not merely unlucky', async ({
   await expect(popup.getByText(/nothing due right now/i)).toBeVisible({ timeout: 30_000 });
   await expect(popup.locator('.question__prompt')).toHaveCount(0);
 
-  for (const slug of NEVER_IN_A_POPUP) {
+  for (const slug of NEVER_IN_A_PANEL) {
     const card = fixture.cards.find((c) => c.slug === slug);
     await expect(popup.getByText(card?.prompt ?? slug)).toHaveCount(0);
   }

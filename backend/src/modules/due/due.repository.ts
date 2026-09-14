@@ -3,7 +3,7 @@ import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
 import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
 import { withinTeachingWindow } from '../../lib/courseWindow.js';
-import { popupEligible, reviewEligible } from '../../lib/popupEligible.js';
+import { panelEligible, reviewEligible } from '../../lib/popupEligible.js';
 
 export const RECENT_WINDOW = 3;
 
@@ -24,7 +24,7 @@ function servableItem(popupOnly: boolean) {
     reviewEligible(),
     // Asserted in SQL rather than filtered in the client (T-089): a caller
     // that forgets cannot serve a four-minute question to a popup.
-    ...(popupOnly ? [popupEligible()] : []),
+    ...(popupOnly ? [panelEligible()] : []),
   );
 }
 

@@ -306,18 +306,27 @@ describe('GET /due', () => {
   });
 
   /**
-   * The same failure one step subtler: `orderLines` is a perfectly good review
-   * on the web and refused only by the popup (T-089), so this one is invisible
-   * unless the surface is taken into account when the cards are chosen.
+   * `orderLines` reaches the panel now (T-170).
+   *
+   * It was refused for being "a drag that needs a pointer and room to drop",
+   * and both halves stopped being true: the side panel replaced a 380×300
+   * popup, and `OrderLines` has never dragged — it is up/down buttons, each
+   * clearing a 44px tap target, because HTML5 drag does not fire on touch.
+   *
+   * This replaces a test that asserted the opposite. Note what it means for
+   * T-169's surface-specific path: with `orderLines` allowed, the panel and
+   * review exclusions are both exactly `['codeEditor']`, so no format is
+   * refused by one and not the other, and the skip-past behaviour is covered
+   * only by the `codeEditor` case above. Add a case here if they ever diverge
+   * again.
    */
-  it('skips a card the popup cannot serve even when the web could', async () => {
+  it('serves an orderLines card to the panel, which used to be refused', async () => {
     const { user, topic } = await seedUserWithTopic();
     await seedDueConcept(user.id, topic.id, { slug: 'drag', order: 1, due: past(5), answerKind: 'orderLines' });
-    await seedDueConcept(user.id, topic.id, { slug: 'servable', order: 2, due: past(1), answerKind: 'hotspotLine' });
 
     const { body } = await getDue(user.cookie, '?limit=1');
     expect(body.items).toHaveLength(1);
-    expect(body.items[0].conceptTitle).toBe('servable');
+    expect(body.items[0].conceptTitle).toBe('drag');
   });
 
   it('requires a user', async () => {

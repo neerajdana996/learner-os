@@ -13,7 +13,7 @@ import { closeTestQueue, getTestQueue } from '../../workers/tests.queue.js';
 import { answerTestItem, completeTest, nextTestItem } from './tests.service.js';
 import { testCandidates } from './tests.repository.js';
 import { findCandidates } from '../due/due.repository.js';
-import { POPUP_INELIGIBLE_KINDS } from '../../lib/popupEligible.js';
+import { COLD_TEST_INELIGIBLE_KINDS } from '../../lib/popupEligible.js';
 import { DAY, NOW, seedColdTopic } from './tests.fixtures.js';
 
 const app = createApp();
@@ -21,15 +21,32 @@ beforeEach(async () => { await truncateAll(); await getTestQueue().obliterate({ 
 afterAll(closeTestQueue);
 
 describe('persisted cold tests', () => {
-  it('filters recent answers, retirement and exactly the same formats as the extension in SQL', async () => {
+  /**
+   * The cold test's format rule is its own, and stricter than the panel's
+   * (T-170). They were one list until `orderLines` returned to the extension:
+   * the panel asks one question a learner can close, while this is twenty-five
+   * in one sitting and someone who abandons it produces no Day-30 number at
+   * all. So this asserts the cold test's list directly rather than asserting it
+   * matches the extension, which is no longer true and must not quietly become
+   * true again.
+   */
+  it('filters recent answers, retirement and its own stricter format list in SQL', async () => {
     const seed = await seedColdTopic();
     const conceptId = seed.concepts[0]!.id;
-    const formats = [...POPUP_INELIGIBLE_KINDS, 'numeric', 'hotspotLine', 'clozeCode', 'graphBuild', 'future-format'];
+    const formats = [...COLD_TEST_INELIGIBLE_KINDS, 'numeric', 'hotspotLine', 'clozeCode', 'graphBuild', 'future-format'];
     const rows = await db.insert(items).values(formats.map((kind) => ({ conceptId, type: 'recall' as const,
       payload: { type: 'recall', prompt: kind, answer: 'yes' }, answerKind: kind }))).returning();
     const testRows = await testCandidates(seed.user.id, seed.topic.id, NOW);
-    const popupRows = await findCandidates([conceptId], true);
-    for (const row of rows) expect(testRows.some((r) => r.id === row.id)).toBe(popupRows.some((r) => r.id === row.id));
+    for (const row of rows) {
+      const kind = row.answerKind as string;
+      const allowed = !(COLD_TEST_INELIGIBLE_KINDS as readonly string[]).includes(kind);
+      expect(testRows.some((r) => r.id === row.id)).toBe(allowed);
+    }
+    // And the divergence is real: the panel now serves one the cold test won't.
+    const panelRows = await findCandidates([conceptId], true);
+    const orderLines = rows.find((r) => r.answerKind === 'orderLines')!;
+    expect(panelRows.some((r) => r.id === orderLines.id)).toBe(true);
+    expect(testRows.some((r) => r.id === orderLines.id)).toBe(false);
     const recent = seed.items[0]!, boundary = seed.items[1]!, old = seed.items[2]!, dismissed = seed.items[3]!;
     await db.insert(reviewEvents).values([
       { userId: seed.user.id, conceptId, itemId: recent.id, correct: true, surface: 'web', predictedRecall: 0, createdAt: new Date(NOW.getTime() - DAY) },
