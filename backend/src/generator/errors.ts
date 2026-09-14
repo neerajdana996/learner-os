@@ -8,6 +8,10 @@
  * re-export this, so existing imports keep working and the check is sound.
  */
 export type GenerationErrorReason =
+  /** The rich-format upgrade pass could not run (T-166). Never fatal: the
+   *  course is complete and answerable without it, so this exists only so
+   *  `recordWarning` can name what was skipped. */
+  | 'enrichment_failed'
   // shared with the LLM layer (LlmError reasons pass straight through)
   | 'invalid_json'
   | 'invalid_shape'

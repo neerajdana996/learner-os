@@ -11,6 +11,10 @@ import { REPAIRABLE_REASONS, isRepairable, failer, collectWarnings } from '../se
  * guaranteed to think about whether it should be able to end a course.
  */
 const CLASSIFIED: Record<GenerationErrorReason, 'integrity' | 'preference'> = {
+  // The rich-format upgrade pass (T-166). Preference by construction: it runs
+  // against a course that is already complete and answerable, and the only
+  // thing a failure costs is that two questions stay plain.
+  enrichment_failed: 'preference',
   // Transport and shape: nothing usable came back.
   invalid_json: 'integrity',
   invalid_shape: 'integrity',

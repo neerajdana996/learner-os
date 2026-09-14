@@ -33,6 +33,11 @@ export const MODELS = {
   /** Tightly constrained and fully validated, so the cheap tier carries it.
    *  A little reasoning still helps it vary six to eight questions properly. */
   items: { model: 'gpt-5.6-luna', reasoningEffort: 'low' },
+  /** One concept's items, upgraded (T-166). Same tier as `items` for the same
+   *  reason — tightly constrained, fully validated, and the reply is small by
+   *  design. The entry has to exist: without one this silently falls to
+   *  `DEFAULT_MODEL`, which is a different model than the pass it extends. */
+  itemBlocks: { model: 'gpt-5.6-luna', reasoningEffort: 'low' },
   /** In the request path — a learner is waiting on this one. Latency wins. */
   gradeExplanation: { model: 'gpt-5.6-luna', reasoningEffort: 'none' },
 } as const satisfies Record<string, { model: string; reasoningEffort: ReasoningEffort }>;

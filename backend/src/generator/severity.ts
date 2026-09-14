@@ -41,6 +41,17 @@ import { GenerationError, type GenerationErrorReason } from './errors.js';
  * rather than to ship a course with a rule quietly bent.
  */
 export const REPAIRABLE_REASONS: ReadonlySet<GenerationErrorReason> = new Set([
+  /**
+   * The rich-format upgrade pass could not run (T-166).
+   *
+   * Listed for completeness rather than because anything throws it:
+   * `enrichConceptItems` swallows its own failures and returns the original
+   * items, so this reason only ever reaches `recordWarning`. It belongs here
+   * anyway — if a later caller ever does throw it, the answer must be "tolerate
+   * it", because that pass runs against a course that is already complete and
+   * the worst it can cost is two questions staying plain.
+   */
+  'enrichment_failed',
   // ---- concept map: shape preferences ----
   /** Fewer than three independent starting points. A flatter map is easier to
    *  recover from after a missed day; a narrower one still teaches. */

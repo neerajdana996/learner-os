@@ -42,7 +42,11 @@ vi.mock('../generator/framing.js', () => ({
   formatSpine: (spine: { name: string }) => spine.name,
 }));
 
-vi.mock('../generator/items.js', () => ({
+vi.mock('../generator/items.js', async () => ({
+  // Spread first: `itemBlocks.ts` reads MAX_RICH_ITEMS and itemVariants from
+  // this module at import time, so a mock listing only the function fails
+  // at load rather than at the call it meant to fake.
+  ...(await vi.importActual<typeof import('../generator/items.js')>('../generator/items.js')),
   generateItemsBatch: vi.fn(async ({ topic, concepts }: { topic: string; concepts: { slug: string; title: string }[] }) => ({
     topic,
     bySlug: new Map(

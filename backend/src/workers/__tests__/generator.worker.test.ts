@@ -10,13 +10,14 @@ vi.mock('../../generator/framing.js', () => ({
   generateFraming: (...a: unknown[]) => generateFraming(...a),
   formatSpine: (spine: { name: string }) => spine.name,
 }));
+// Spread the real module rather than hand-listing what to re-export. The
+// worker reads `SPLITTABLE_BATCH_REASONS` to decide whether a failed batch is
+// worth splitting, and `itemBlocks.ts` reads `MAX_RICH_ITEMS` and
+// `itemVariants` at module load — a mock that omits any of them fails at
+// import with an error naming a file nobody changed.
 vi.mock('../../generator/items.js', async () => ({
+  ...(await vi.importActual<typeof import('../../generator/items.js')>('../../generator/items.js')),
   generateItemsBatch: (...a: unknown[]) => generateItemsBatch(...a),
-  // Re-exported from the real module: the worker reads it to decide whether a
-  // failed batch is worth splitting, and a mock that omits it makes every
-  // batch failure a TypeError instead.
-  SPLITTABLE_BATCH_REASONS: (await vi.importActual<typeof import('../../generator/items.js')>('../../generator/items.js'))
-    .SPLITTABLE_BATCH_REASONS,
 }));
 vi.mock('../../generator/teaching.js', () => ({ generateTeaching: (...a: unknown[]) => generateTeaching(...a) }));
 

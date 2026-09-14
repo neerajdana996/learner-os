@@ -15,6 +15,7 @@ import { teachModeFor } from '../lib/teachMode.js';
 import { env } from '../lib/env.js';
 import { collectUsage } from '../llm/usage.js';
 import { collectWarnings, recordWarning } from '../generator/severity.js';
+import { enrichConceptItems } from '../generator/itemBlocks.js';
 import { LlmError } from '../llm/errors.js';
 import { answerKindOf } from '@learnos/shared';
 
@@ -233,6 +234,50 @@ export async function processGenerationJob(
           take(await generateItemsBatch(itemsInput([concept])));
         }
       }
+    }
+
+    /**
+     * Then the rich answer formats, one concept at a time (T-166).
+     *
+     * **Before teaching, not after.** The teaching call is given this
+     * concept's items and written backwards from them (T-162) — so upgrading a
+     * prompt afterwards would leave the explanation designed against a question
+     * that no longer exists, which is the exact defect T-162 fixed.
+     *
+     * **One concept per call, which is the entire point.** The batch above
+     * writes the questions well and will not write a block: measured at zero in
+     * 187 items across two full generations, against four upgrades in four runs
+     * of this shape. A reply covering ~28 items over eleven block variants
+     * drops the optional field every time; a reply covering one concept does
+     * not. Three prompt fixes failed before that was understood.
+     *
+     * Held-out concepts are skipped for the reason the teaching loop skips
+     * them: they are the control arm, and a format the learner has never met
+     * once confounds the Day-30 comparison rather than enriching it.
+     */
+    for (const concept of ordered) {
+      if (concept.domain !== 'code' || concept.heldOut) continue;
+      const existing = itemsBySlug.get(concept.slug);
+      if (!existing || existing.length === 0) continue;
+
+      const { items: upgraded, warning } = await enrichConceptItems({
+        topic: topic.title,
+        level: framing.level,
+        spine,
+        concept: concept.title,
+        summary: concept.summary ?? '',
+        language: topic.language ?? undefined,
+        items: existing,
+      });
+
+      if (warning) {
+        // Never fatal. The course is complete and every item is answerable —
+        // the only thing lost is that two of them would have been nicer to
+        // answer, which is `severity.ts`'s preference side by definition.
+        recordWarning({ reason: 'enrichment_failed', prompt: 'itemBlocks', message: warning });
+        continue;
+      }
+      itemsBySlug.set(concept.slug, upgraded);
     }
 
     /**

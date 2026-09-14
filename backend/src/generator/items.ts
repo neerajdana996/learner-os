@@ -93,7 +93,7 @@ const RawItemsResponseSchema = z.object({
  * `isTransfer` is pulled out separately because it lives alongside `payload` on
  * the `items` row, not inside the jsonb payload itself.
  */
-function parseGeneratedItem(raw: unknown): GeneratedItem {
+export function parseGeneratedItem(raw: unknown): GeneratedItem {
   const resolved = parseGeneratedItemBlocks(raw);
 
   const result = ItemPayloadSchema.safeParse(resolved);
@@ -556,7 +556,12 @@ const textVariant = (type: 'recall' | 'application') => ({
   },
 });
 
-const itemVariants = {
+/**
+ * Exported for the enrichment pass (T-166), which replaces whole items rather
+ * than inventing a second item contract. One definition, so an upgraded item
+ * cannot be a shape the first pass could never have produced.
+ */
+export const itemVariants = {
   anyOf: [
     textVariant('recall'),
     textVariant('application'),
