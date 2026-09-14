@@ -86,9 +86,20 @@ test('a session teaches, asks, grades — and then runs the due reviews', async 
   // the fetch resolved — which is how a passing app produces a failing test.
   const tryFirst = page.getByText('Have a go first');
   const review = page.getByText('From an earlier day');
-  await expect(tryFirst.or(review).first()).toBeVisible({ timeout: 45_000 });
+  // `example_first` is the third way a session can open, and these specs
+  // assumed it could not happen. `pnpm seed` alternates the two teach modes, so
+  // whether the next new concept opens with an attempt or straight with the
+  // explanation depends on which concept is next — and on a run where that was
+  // an `example_first` concept, neither label below ever appears. The tests
+  // failed while the product worked correctly.
+  const exampleFirst = page.getByText('How to hold it');
+  await expect(tryFirst.or(exampleFirst).or(review).first()).toBeVisible({ timeout: 45_000 });
 
-  // ---- a new concept opens with an attempt, before any explanation (plan §3.5)
+  const onNewConcept = await tryFirst.or(exampleFirst).first().isVisible();
+
+  // ---- a try_first concept opens with an attempt, before any explanation
+  //      (plan §3.5). An example_first one opens with the explanation, which
+  //      is the same design decision seen from its other side.
   if (await tryFirst.isVisible()) {
     await expect(page.getByText(/^New concept ·/)).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('01-try-first.png'), fullPage: true });
@@ -98,8 +109,13 @@ test('a session teaches, asks, grades — and then runs the due reviews', async 
 
     await expect(page.getByText('How to hold it')).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('02-explanation.png'), fullPage: true });
+  }
 
-    // The retrieval that follows the teaching, on the same concept.
+  // ---- the retrieval that follows the teaching, on the same concept —
+  //      reached by answering the try-first prompt, or immediately on an
+  //      example_first concept.
+  if (onNewConcept) {
+    await expect(page.getByText(/^New concept ·/)).toBeVisible();
     const fp = await fingerprint(page, 'web session');
     expect(fp.prompt.length).toBeGreaterThan(0);
     expect(fp.answerKind).not.toBe('unknown');
@@ -187,7 +203,14 @@ test('"I don\'t know" on a new concept reveals the explanation without a filled 
   await page.goto('/session');
   const tryFirst = page.getByText('Have a go first');
   const review = page.getByText('From an earlier day');
-  await expect(tryFirst.or(review).first()).toBeVisible({ timeout: 45_000 });
+  // `example_first` is the third way a session can open, and these specs
+  // assumed it could not happen. `pnpm seed` alternates the two teach modes, so
+  // whether the next new concept opens with an attempt or straight with the
+  // explanation depends on which concept is next — and on a run where that was
+  // an `example_first` concept, neither label below ever appears. The tests
+  // failed while the product worked correctly.
+  const exampleFirst = page.getByText('How to hold it');
+  await expect(tryFirst.or(exampleFirst).or(review).first()).toBeVisible({ timeout: 45_000 });
   test.skip(!(await tryFirst.isVisible()), 'no try_first concept currently due in the dev topic');
 
   await page.getByRole('button', { name: /i.?don.t know/i }).click();
@@ -204,7 +227,14 @@ test('"Skip this one" on a review submits no answer, and still advances', async 
   await page.goto('/session');
   const review = page.getByText('From an earlier day');
   const tryFirst = page.getByText('Have a go first');
-  await expect(tryFirst.or(review).first()).toBeVisible({ timeout: 45_000 });
+  // `example_first` is the third way a session can open, and these specs
+  // assumed it could not happen. `pnpm seed` alternates the two teach modes, so
+  // whether the next new concept opens with an attempt or straight with the
+  // explanation depends on which concept is next — and on a run where that was
+  // an `example_first` concept, neither label below ever appears. The tests
+  // failed while the product worked correctly.
+  const exampleFirst = page.getByText('How to hold it');
+  await expect(tryFirst.or(exampleFirst).or(review).first()).toBeVisible({ timeout: 45_000 });
 
   while (!(await review.isVisible())) {
     await skipCurrentStep(page);

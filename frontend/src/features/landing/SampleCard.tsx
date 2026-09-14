@@ -72,6 +72,8 @@ export function SampleCard() {
           value={value}
           onChange={setValue}
           renderDiagram={renderFlowDiagram}
+          // The hero is this page's h1; a demo card must not add a second.
+          headingLevel={2}
         />
 
         {needsCheck && !checked ? (

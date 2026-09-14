@@ -18,6 +18,16 @@ export interface QuestionCardProps {
   onSkeleton?: () => Promise<string>;
   /** Forwarded to `BlockList` — see its own doc comment. */
   renderDiagram?: BlockListProps['renderDiagram'];
+  /**
+   * The prompt's heading level. `1` because on every real surface — the
+   * session, the diagnostic, the day-30 test, the popup — the question *is*
+   * the page.
+   *
+   * The exception is a card embedded in a page that already has a heading:
+   * the landing page's sample card sat a second `<h1>` beside the hero, which
+   * is wrong for a screen reader and for anything counting headings.
+   */
+  headingLevel?: 1 | 2;
 }
 
 /**
@@ -29,7 +39,16 @@ export interface QuestionCardProps {
  * the prompt and the answer surface, and an item that does not renders exactly
  * as it did before, which is every item generated so far.
  */
-export function QuestionCard({ item, value, onChange, onAssisted, onSkeleton, renderDiagram }: QuestionCardProps) {
+export function QuestionCard({
+  item,
+  value,
+  onChange,
+  onAssisted,
+  onSkeleton,
+  renderDiagram,
+  headingLevel = 1,
+}: QuestionCardProps) {
+  const Prompt = headingLevel === 1 ? 'h1' : 'h2';
   /**
    * An answer block replaces the default surface, whatever the item's `type`
    * (T-108). `numeric` is the one implemented; the four code answer surfaces
@@ -40,7 +59,7 @@ export function QuestionCard({ item, value, onChange, onAssisted, onSkeleton, re
 
   return (
     <div>
-      <h1 className="question__prompt">{item.prompt}</h1>
+      <Prompt className="question__prompt">{item.prompt}</Prompt>
 
       {item.blocks ? <BlockList blocks={item.blocks} renderDiagram={renderDiagram} /> : null}
 
