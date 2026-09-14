@@ -17,13 +17,11 @@ import '../base.scss';
  * `popup`*. Leaving it there kept the icon opening a popup no matter what the
  * manifest said.
  *
- * What the panel changes is only *room and persistence*. What it does not
- * change is what may be asked: `popupEligible()` still excludes `codeEditor`
- * and `orderLines`, because that rule is about **time** as much as space — the
- * promise on the card is twenty seconds, a `codeEditor` is two to four minutes
- * by design, and the same predicate decides the Day-30 test (T-093). Widening
- * it now that there is room to drop is a real question, but it is a product
- * decision with a measurement attached, not a side effect of adding a surface.
+ * **Every answer format may be asked here** — `orderLines` since T-170 and
+ * `codeEditor` since T-171 (founder decision 2026-09-14). A `codeEditor` runs
+ * through `sandbox.html`, because this page's CSP forbids the eval the web
+ * runner relies on. The Day-30 test keeps its own stricter list
+ * (`COLD_TEST_INELIGIBLE_KINDS`).
  */
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

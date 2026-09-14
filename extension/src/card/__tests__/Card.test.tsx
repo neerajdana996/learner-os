@@ -55,6 +55,7 @@ vi.mock('../../lib/api', () => ({
     flagged.push(id);
     return Promise.resolve({ retired: false });
   },
+  getSkeleton: () => Promise.resolve('function longest(s, k) {\n  let left = 0;\n}'),
   postPulse: (pulse: { day: string; mood: number }) => {
     pulsed.push(pulse);
     return Promise.resolve({ ok: true as const });
@@ -88,6 +89,33 @@ vi.mock('../../lib/storage', () => ({
   },
 }));
 
+/** The sandbox page cannot load under happy-dom; what matters here is that the
+ *  card hands the editor this runner and posts what it produced. */
+const sandboxRuns: { source: string }[] = [];
+vi.mock('../../lib/runInSandbox', () => ({
+  runInSandbox: (source: string) => {
+    sandboxRuns.push({ source });
+    return Promise.resolve({ ok: true, outputs: { 'two distinct': '3' } });
+  },
+}));
+
+const editorItem: PublicItem = {
+  itemId: '33333333-3333-4333-8333-333333333333',
+  conceptId: '22222222-2222-4222-8222-222222222222',
+  type: 'application',
+  prompt: 'Write longest.',
+  blocks: [
+    {
+      kind: 'codeEditor',
+      slot: 'answer',
+      lang: 'javascript',
+      signature: 'longest(s, k)',
+      starter: 'function longest(s, k) {\n}',
+      cases: [{ name: 'two distinct', call: 'longest("eceba", 2)' }],
+    },
+  ],
+};
+
 const item: PublicItem = {
   itemId: '11111111-1111-4111-8111-111111111111',
   conceptId: '22222222-2222-4222-8222-222222222222',
@@ -104,8 +132,45 @@ beforeEach(() => {
   pulseDay = null;
   pulsed.length = 0;
   popState = { day: null, dailyCount: 0, lastShownAt: null, consecutiveDismissals: 0, backoffUntil: null };
+  sandboxRuns.length = 0;
   fakeBrowser.reset();
   onClose.mockReset();
+});
+
+/** T-171: a `codeEditor` is answerable in the side panel. */
+describe('a codeEditor card', () => {
+  it('runs through the sandbox page and sends what the code produced', async () => {
+    const user = userEvent.setup();
+    render(<Card item={editorItem} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: 'Run the cases' }));
+    expect(sandboxRuns).toEqual([{ source: 'function longest(s, k) {\n}' }]);
+
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    await waitFor(() => expect(posted).toHaveLength(1));
+    expect(posted[0]).toMatchObject({
+      itemId: editorItem.itemId,
+      response: JSON.stringify({ 'two distinct': '3' }),
+      surface: 'extension',
+    });
+    expect(posted[0]).not.toHaveProperty('assisted');
+  });
+
+  /** Taking the shape counts against the learner, so it must reach the server. */
+  it('offers the skeleton and marks the answer assisted once it is taken', async () => {
+    const user = userEvent.setup();
+    render(<Card item={editorItem} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: /show me the shape/i }));
+    expect(await screen.findByRole('textbox', { name: 'Your code' })).toHaveValue(
+      'function longest(s, k) {\n  let left = 0;\n}',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Run the cases' }));
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    await waitFor(() => expect(posted).toHaveLength(1));
+    expect(posted[0]).toMatchObject({ assisted: true });
+  });
 });
 
 describe('the twenty-second card', () => {

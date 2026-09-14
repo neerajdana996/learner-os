@@ -5,6 +5,9 @@ import { HotspotLine } from './blocks/HotspotLine.js';
 import { OrderLines } from './blocks/OrderLines.js';
 import { CodeEditor } from './blocks/CodeEditor.js';
 import { Choice } from './Choice.js';
+import type { ComponentProps } from 'react';
+
+type CodeEditorProps = ComponentProps<typeof CodeEditor>;
 
 export interface QuestionCardProps {
   item: PublicItem;
@@ -16,6 +19,9 @@ export interface QuestionCardProps {
   /** `codeEditor` only: fetches the skeleton, which is never in the payload.
    *  Omitted, the hint is not offered. */
   onSkeleton?: () => Promise<string>;
+  /** `codeEditor` only: runs JavaScript against the cases. Omitted, the web
+   *  runner is used; the extension passes its sandbox-page runner (T-171). */
+  runCode?: CodeEditorProps['runCode'];
   /** Forwarded to `BlockList` — see its own doc comment. */
   renderDiagram?: BlockListProps['renderDiagram'];
   /**
@@ -45,6 +51,7 @@ export function QuestionCard({
   onChange,
   onAssisted,
   onSkeleton,
+  runCode,
   renderDiagram,
   headingLevel = 1,
 }: QuestionCardProps) {
@@ -82,6 +89,7 @@ export function QuestionCard({
           onChange={onChange}
           onAssisted={onAssisted}
           onSkeleton={onSkeleton}
+          runCode={runCode}
         />
       ) : answerBlock?.kind === 'orderLines' ? (
         <OrderLines

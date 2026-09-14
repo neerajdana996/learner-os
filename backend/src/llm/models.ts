@@ -40,6 +40,10 @@ export const MODELS = {
   itemBlocks: { model: 'gpt-5.6-luna', reasoningEffort: 'low' },
   /** In the request path — a learner is waiting on this one. Latency wins. */
   gradeExplanation: { model: 'gpt-5.6-luna', reasoningEffort: 'none' },
+  /** Also in the request path (T-171), but tracing code through two to four
+   *  cases is real reasoning, and `none` would guess — a wrong verdict on the
+   *  hardest question a learner answers all day. `low` is the floor. */
+  gradeCode: { model: 'gpt-5.6-luna', reasoningEffort: 'low' },
 } as const satisfies Record<string, { model: string; reasoningEffort: ReasoningEffort }>;
 
 /** What the gpt-5.6 family actually accepts. `minimal` and `max` appear in the

@@ -340,4 +340,36 @@ describe('write the code (T-088)', () => {
     expect(area.value).not.toBe(before);
     expect(area.value).toContain('  ');
   });
+
+  /** The extension cannot use the web's srcdoc runner — its CSP forbids inline
+   *  script — so the runner is injectable, and it must be the one used (T-171). */
+  it('runs JavaScript through the runner it is given, and reports what it produced', async () => {
+    const user = userEvent.setup();
+    const runCode = vi.fn().mockResolvedValue({ ok: true, outputs: { 'returns a function': 'function' } });
+    const onChange = vi.fn();
+    render(<QuestionCard item={editor} value="" onChange={onChange} runCode={runCode} />);
+
+    await user.click(screen.getByRole('button', { name: 'Run the cases' }));
+
+    expect(runCode).toHaveBeenCalledWith(editor.blocks[0].starter, editor.blocks[0].cases);
+    expect(onChange).toHaveBeenCalledWith(JSON.stringify({ 'returns a function': 'function' }));
+  });
+
+  /**
+   * T-171. TypeScript used to run in the browser as JavaScript, so its first
+   * annotation was a syntax error and a correct answer "did not run". It
+   * submits its source for the server to judge, like every other language.
+   */
+  it('submits TypeScript source for the server to judge instead of running it', async () => {
+    const user = userEvent.setup();
+    const runCode = vi.fn();
+    const onChange = vi.fn();
+    const ts = { ...editor, blocks: [{ ...editor.blocks[0], lang: 'typescript' as const }] };
+    render(<QuestionCard item={ts} value="" onChange={onChange} runCode={runCode} />);
+
+    await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(runCode).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith(JSON.stringify({ __source: editor.blocks[0].starter }));
+  });
 });

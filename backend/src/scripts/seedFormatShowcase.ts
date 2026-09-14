@@ -13,11 +13,9 @@
  * The payloads themselves are imported, not copied — `FORMAT_SEEDS` is the one
  * source, so this arrangement cannot drift from the other one.
  *
- * **`codeEditor` is seeded but will not appear in a session, by design.**
- * `reviewEligible()` excludes it because a `codeEditor` is never a review
- * (T-088), so its card is due and its item is filtered out. It is written here
- * anyway so the row exists for any surface that does show it, and so the
- * absence is something a spec can assert rather than a gap nobody notices.
+ * **`codeEditor` appears in a session and in the panel since T-171.** It was
+ * excluded as never a review (T-088); that list is empty now, and only the
+ * Day-30 test still refuses it.
  *
  * Idempotent — keyed by a fixed email, wiped and recreated every run.
  */
@@ -408,11 +406,10 @@ async function main(): Promise<void> {
   //
   // `itemId` is here for the extension half (`e2e/extension/formats.spec.ts`),
   // which has to be able to answer a card *away* to control what the popup's
-  // `/due?limit=1` is left holding. Two of these items — `orderLines` and
-  // `codeEditor` — are excluded from `/due` by `popupEligible()` (T-089) and
-  // from every review queue by `reviewEligible()` (T-088), so there is no API
-  // a spec could discover their ids through; without this the only way to get
-  // them out of the way would be to reach into Postgres from the test.
+  // `/due?limit=1` is left holding. When this was written `orderLines` and
+  // `codeEditor` were excluded from `/due` (T-089, T-088), so no API exposed
+  // their ids; since T-170/T-171 both are served, and the ids here keep the
+  // walk exact without depending on which item a request happens to pick.
   writeFileSync(
     OUT_FILE,
     JSON.stringify(

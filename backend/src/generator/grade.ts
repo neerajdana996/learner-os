@@ -32,4 +32,48 @@ export async function gradeExplanation(rubric: string, response: string): Promis
   return runPrompt(gradeExplanationPrompt, { rubric, response });
 }
 
+/**
+ * A `codeEditor` answer the browser did not run (T-171).
+ *
+ * `feedback` is capped short and told never to quote an expected output: it is
+ * shown to the learner, and the expectations are the answer key (T-080).
+ */
+export const CodeGradeSchema = z.object({
+  cases: z.array(z.object({ name: z.string(), passed: z.boolean() })),
+  feedback: z.string().max(200).optional(),
+});
+
+export type CodeGrade = z.infer<typeof CodeGradeSchema>;
+
+export const gradeCodePrompt = definePrompt({
+  name: 'gradeCode',
+  schema: CodeGradeSchema,
+  maxTokens: 1024,
+});
+
+export interface CodeToGrade {
+  lang: string;
+  signature: string;
+  source: string;
+  cases: { name: string; call: string; expect: string }[];
+}
+
+/**
+ * Judges, case by case, what the learner's code would produce.
+ *
+ * The source is untrusted text going into a prompt, the same exposure as
+ * `gradeExplanation` and handled the same way: wrapped in a tag `render()`
+ * escapes, with the system prompt treating it as data. Nothing is executed —
+ * running learner code on the host that holds the production database was the
+ * rejected alternative.
+ */
+export async function gradeCode(input: CodeToGrade): Promise<CodeGrade> {
+  return runPrompt(gradeCodePrompt, {
+    lang: input.lang,
+    signature: input.signature,
+    source: input.source,
+    cases: JSON.stringify(input.cases, null, 2),
+  });
+}
+
 export { LlmError };

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ANSWER_BLOCK_KINDS } from '@learnos/shared';
 import {
+  coldTestEligible,
+  panelEligible,
+  reviewEligible,
   isColdTestEligible,
   isPanelEligible,
   isReviewEligible,
@@ -16,8 +19,16 @@ describe('isPanelEligible', () => {
     expect(isPanelEligible(null)).toBe(true);
   });
 
-  it('refuses the format that cannot be answered in twenty seconds', () => {
-    expect(isPanelEligible('codeEditor')).toBe(false); // two to four minutes
+  /**
+   * T-171 (founder decision 2026-09-14). This test used to assert the opposite.
+   * The panel stays open while the learner writes, the extension runs the code
+   * through a sandbox page, and non-JavaScript answers are judged on the server
+   * — so the reasons for refusing it are gone.
+   */
+  it('allows codeEditor, now that the panel can run and grade it', () => {
+    expect(isPanelEligible('codeEditor')).toBe(true);
+    // The cold test is a different promise, and still refuses it.
+    expect(isColdTestEligible('codeEditor')).toBe(false);
   });
 
   /**
@@ -59,10 +70,10 @@ describe('isReviewEligible', () => {
     expect(isReviewEligible(null)).toBe(true);
   });
 
-  it('refuses a code editor on every surface', () => {
-    // Four minutes is worth paying once, when writing the thing is the point.
-    // Paying it again for an answer already given is how a queue gets abandoned.
-    expect(isReviewEligible('codeEditor')).toBe(false);
+  /** T-171: used to assert the opposite. Reviews on both surfaces now; the
+   *  cost is bounded by `rationItems` and by the cold test's own list. */
+  it('lets a code editor be a review, on every surface', () => {
+    expect(isReviewEligible('codeEditor')).toBe(true);
   });
 
   it('leaves the cheap code formats reviewable', () => {
@@ -83,5 +94,20 @@ describe('isReviewEligible', () => {
 
   it('makes a newly added format reviewable by default', () => {
     expect(isReviewEligible('somethingAddedLater')).toBe(true);
+  });
+});
+
+describe('the SQL form', () => {
+  /** An empty exclusion list must be *no* condition, never `NOT IN ()` — which
+   *  is a syntax error in Postgres and would take `/due` down with it. */
+  it('adds no condition when nothing is excluded', () => {
+    expect(PANEL_INELIGIBLE_KINDS).toHaveLength(0);
+    expect(REVIEW_INELIGIBLE_KINDS).toHaveLength(0);
+    expect(panelEligible()).toBeUndefined();
+    expect(reviewEligible()).toBeUndefined();
+  });
+
+  it('still filters the cold test, whose list is not empty', () => {
+    expect(coldTestEligible()).toBeDefined();
   });
 });

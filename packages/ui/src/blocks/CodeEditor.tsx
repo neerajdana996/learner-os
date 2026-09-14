@@ -1,12 +1,19 @@
 import { useState, type KeyboardEvent } from 'react';
 import type { PublicBlock } from '@learnos/shared';
-import { runCases, type RunOutcome } from './runCases.js';
+import { runCases, type RunCase, type RunOutcome } from './runCases.js';
 
 type Editor = Extract<PublicBlock, { kind: 'codeEditor' }>;
 
-/** Languages that run in the browser. Everything else submits and is judged
- *  server-side on the identical screen — the learner cannot tell which. */
-const RUNS_HERE = new Set(['javascript', 'typescript']);
+/**
+ * Languages that run in the browser. Everything else submits and is judged
+ * server-side on the identical screen — the learner cannot tell which.
+ *
+ * **`typescript` was here and could never have worked (T-171).** The runner
+ * evaluates the source as JavaScript, so the first type annotation is a syntax
+ * error and a correct answer came back as "did not run". It is judged on the
+ * server now, like every other language.
+ */
+const RUNS_HERE = new Set(['javascript']);
 
 const INDENT = '  ';
 
@@ -33,6 +40,7 @@ export function CodeEditor({
   onChange,
   onAssisted,
   onSkeleton,
+  runCode = runCases,
 }: {
   block: Editor;
   value: string;
@@ -43,6 +51,13 @@ export function CodeEditor({
    *  hint is not offered, which is what a surface with no way to fetch it
    *  should do rather than showing a button that cannot work. */
   onSkeleton?: () => Promise<string>;
+  /**
+   * Runs JavaScript against the cases. Defaults to `runCases`, a sandboxed
+   * `srcdoc` iframe — which an extension page cannot use, because its CSP
+   * forbids inline script and a `srcdoc` frame inherits it. The extension
+   * passes a runner backed by its manifest sandbox page instead (T-171).
+   */
+  runCode?: (source: string, cases: RunCase[]) => Promise<RunOutcome>;
 }) {
   const [source, setSource] = useState(block.starter);
   const [outcome, setOutcome] = useState<RunOutcome | null>(null);
@@ -85,7 +100,7 @@ export function CodeEditor({
   async function run() {
     setRunning(true);
     const result = runsHere
-      ? await runCases(source, block.cases)
+      ? await runCode(source, block.cases)
       : // Not run here: the outputs are the source itself, and the server judges
         // it. The screen is identical on purpose, so a learner cannot tell a
         // JavaScript item from a Python one until the verdict comes back.

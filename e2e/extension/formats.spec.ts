@@ -5,7 +5,13 @@ import { API } from '../api.js';
 import { expect, test } from './fixtures.js';
 
 /**
- * The formats a popup is allowed to ask, and the two it is not (E2E-008).
+ * The formats the side panel may ask — all of them, since T-171 (E2E-008).
+ *
+ * **Most of what follows was written when the panel refused `codeEditor` and
+ * `orderLines`.** T-170 let `orderLines` in and T-171 (founder decision
+ * 2026-09-14) let `codeEditor` in, so `NEVER_IN_A_PANEL` is empty and the
+ * absence checks below pass trivially. They are kept so a format refused
+ * again has one place to be listed.
  *
  * `e2e/web/formats.spec.ts` is the other half of this task: it walks a session
  * and proves every card renders its own answer surface. This file asks the
@@ -53,18 +59,16 @@ const SURFACE: Record<string, string> = {
   // it with up/down buttons, each clearing a 44px tap target, because HTML5
   // drag does not fire on touch at all.
   orderLines: '.order__line',
+  // Allowed since T-171: the panel runs it through its sandbox page and the
+  // server judges every language the browser does not run.
+  codeEditor: '.editor__area',
 };
 
 /**
- * What the panel still refuses (T-089, narrowed by T-170).
- *
- * `codeEditor` alone now, and it is excluded twice over: by the panel's own
- * list and by `REVIEW_INELIGIBLE_KINDS`, which bars it from every review queue
- * on any surface (T-088). Its concept is taught, not held out and overdue —
- * every condition `findDueCards` asks for — so its absence is the rule working,
- * not the fixture being thin.
+ * What the panel still refuses (T-089, narrowed by T-170, emptied by T-171).
+ * Nothing — see the header.
  */
-const NEVER_IN_A_PANEL = ['codeEditor'] as const;
+const NEVER_IN_A_PANEL = [] as readonly string[];
 
 const ARTIFACTS = fileURLToPath(new URL('../.artifacts/formats-popup', import.meta.url));
 
@@ -170,6 +174,9 @@ async function answerAway(request: APIRequestContext, token: string, itemId: str
  * concepts, so *which* card a popup opens on is otherwise whatever Postgres
  * felt like returning that second.
  *
+ * (Since T-171 `/due` lists every format, so the paragraph below is history;
+ * reading ids from the seed file still works and keeps the walk exact.)
+ *
  * **Why it clears `orderLines` and `codeEditor` too, which `/due` never
  * lists.** `getDueItems` applies the LIMIT to the due *cards* and only then
  * filters the *items* by `popupEligible()`, so a due card whose only item is
@@ -213,7 +220,7 @@ async function connect(page: Page, extensionId: string, token: string): Promise<
   await expect(page.getByText('e2e-formats@learnos.local')).toBeVisible({ timeout: 30_000 });
 }
 
-test('the popup queue offers every format a popup can answer, and neither of the two it cannot', async ({
+test('the panel queue offers every answer format', async ({
   request,
 }) => {
   const fixture = loadFixture();
@@ -322,47 +329,41 @@ test('each popup-eligible format draws its own answer surface in the popup', asy
   expect(overflowed, 'formats wider than the popup can show').toEqual([]);
 });
 
-test('a due codeEditor is refused, not merely unlucky', async ({
+/**
+ * T-171. This test used to prove a due `codeEditor` was refused. Now it proves
+ * the opposite end to end: the panel opens on it, the editor is there, and
+ * submitting produces an answer the card will send.
+ *
+ * It stops short of pressing Answer. The showcase item is TypeScript, which the
+ * server judges with a model call (`grade.ts`), and an e2e run must not depend
+ * on the network — the grading path is covered by `grade.test.ts`.
+ */
+test('a due codeEditor opens in the panel and can be submitted', async ({
   context,
   extensionId,
   request,
 }) => {
   const fixture = loadFixture();
   const token = await showcaseToken(request, fixture);
-  await dueNow(request, token);
-
-  // Answer away everything *except* the two excluded formats. If the filter
-  // were ever dropped, the popup would have nothing else left to open on and
-  // would have to show one of them — which turns a passive absence into a queue
-  // where the bug, had it existed, is the only thing that could render.
-  for (const card of fixture.cards) {
-    if ((NEVER_IN_A_PANEL as readonly string[]).includes(card.slug)) continue;
-    await answerAway(request, token, card.itemId);
-  }
-  expect(await fetchDue(request, token, 50)).toEqual([]);
+  await leaveOnly(request, token, fixture, 'codeEditor');
 
   const options = await context.newPage();
   await connect(options, extensionId, token);
   await options.close();
 
-  const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+  const panel = await context.newPage();
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
-  // "Nothing due right now" is the correct answer here, and it is the whole
-  // assertion: the concept is not skipped, it waits for the next web session
-  // instead (`due.service.ts`) — this rule decides *where* a question is asked,
-  // never whether. (It is also the one arrangement in which that sentence is
-  // honest; T-169 is about the popup saying it when eligible cards *are* due.)
-  await expect(popup.getByText(/nothing due right now/i)).toBeVisible({ timeout: 30_000 });
-  await expect(popup.locator('.question__prompt')).toHaveCount(0);
+  await expect(panel.locator('.editor__area')).toBeVisible({ timeout: 30_000 });
+  const answer = panel.getByRole('button', { name: 'Answer' });
+  await expect(answer).toBeDisabled();
 
-  for (const slug of NEVER_IN_A_PANEL) {
-    const card = fixture.cards.find((c) => c.slug === slug);
-    await expect(popup.getByText(card?.prompt ?? slug)).toHaveCount(0);
-  }
+  await panel.locator('.editor__area').fill('function longest(s, k) {\n  return 3;\n}');
+  await panel.getByRole('button', { name: /^(submit|run the cases)$/i }).click();
+  await expect(answer).toBeEnabled();
 
-  await test.info().attach('popup: nothing a popup can answer', {
-    body: await popup.screenshot(),
+  await test.info().attach('panel: codeEditor', {
+    body: await panel.locator('.card').screenshot(),
     contentType: 'image/png',
   });
 });

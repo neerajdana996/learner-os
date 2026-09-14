@@ -6,6 +6,7 @@ import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
 import { seedUser, truncateAll } from '../../test/db.js';
 import { toPublicItem } from '../../lib/publicItem.js';
+import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
 
 const app = createApp();
 
@@ -54,6 +55,8 @@ async function seedDueConcept(
     /** Normally derived by the worker via `answerKindOf` (T-080). Set directly
      *  here so a test can seed a format the popup must refuse. */
     answerKind?: string | null;
+    /** At `RETIRED_FLAG_THRESHOLD` the item is retired and never served. */
+    flaggedBad?: number;
   },
 ) {
   const [concept] = await db
@@ -70,6 +73,7 @@ async function seedDueConcept(
         type: (payload as { type: 'recall' }).type,
         payload,
         answerKind: opts.answerKind ?? null,
+        flaggedBad: opts.flaggedBad ?? 0,
       })),
     )
     .returning({ id: items.id });
@@ -253,17 +257,16 @@ describe('GET /due', () => {
   });
 
   /**
-   * T-089. The popup is 380×300 and the card promises twenty seconds. A
-   * `codeEditor` is two to four minutes — served there it is not a worse card,
-   * it is a dismissed one, and three dismissals in a row stop the extension for
-   * the day (`lib/schedule.ts`). One bad pick costs the rest of the day's
-   * retrieval, which is the thing being measured.
+   * T-171 (founder decision 2026-09-14). This used to assert that a
+   * `codeEditor` is never served here (T-089). The side panel stays open while
+   * the learner writes, runs the code through its sandbox page, and non-JS
+   * answers are judged on the server — so it is a review on this surface now.
    */
-  it('never serves an answer format the popup cannot hold', async () => {
+  it('serves a codeEditor card to the panel, which used to be refused', async () => {
     const { user, topic } = await seedUserWithTopic();
     await seedDueConcept(user.id, topic.id, { slug: 'a', order: 1, answerKind: 'codeEditor' });
 
-    expect((await getDue(user.cookie)).body.items).toEqual([]);
+    expect((await getDue(user.cookie)).body.items).toHaveLength(1);
   });
 
   it('still serves the cheap answer formats', async () => {
@@ -290,13 +293,18 @@ describe('GET /due', () => {
    *
    * The popup asks for exactly one (`Popup.tsx`'s `fetchDue`), which makes this
    * the quietest failure in the product: a learner whose earliest-due concept
-   * happens to hold a `codeEditor` is told "nothing due right now" while every
-   * other card is due and answerable, and the extension simply stops asking.
+   * happens to hold an unservable item is told "nothing due right now" while
+   * every other card is due and answerable, and the extension simply stops
+   * asking.
+   *
+   * The blocked card was a `codeEditor` until T-171 made every format servable
+   * here. A retired item goes through the same `servableItem()` condition, so
+   * it keeps this regression covered without depending on a format rule.
    */
   it('skips past an ineligible card rather than spending the limit on it', async () => {
     const { user, topic } = await seedUserWithTopic();
-    // Due first, and unservable on this surface.
-    await seedDueConcept(user.id, topic.id, { slug: 'blocked', order: 1, due: past(5), answerKind: 'codeEditor' });
+    // Due first, and unservable: its only item has been retired.
+    await seedDueConcept(user.id, topic.id, { slug: 'blocked', order: 1, due: past(5), flaggedBad: RETIRED_FLAG_THRESHOLD });
     // Due later, and perfectly answerable.
     await seedDueConcept(user.id, topic.id, { slug: 'servable', order: 2, due: past(1), answerKind: null });
 
@@ -313,12 +321,10 @@ describe('GET /due', () => {
    * popup, and `OrderLines` has never dragged — it is up/down buttons, each
    * clearing a 44px tap target, because HTML5 drag does not fire on touch.
    *
-   * This replaces a test that asserted the opposite. Note what it means for
-   * T-169's surface-specific path: with `orderLines` allowed, the panel and
-   * review exclusions are both exactly `['codeEditor']`, so no format is
-   * refused by one and not the other, and the skip-past behaviour is covered
-   * only by the `codeEditor` case above. Add a case here if they ever diverge
-   * again.
+   * This replaces a test that asserted the opposite. Since T-171 both the
+   * panel and review exclusion lists are empty, so the skip-past behaviour is
+   * covered by the retired-item case above. Add a format case here if a
+   * format is ever refused by one surface again.
    */
   it('serves an orderLines card to the panel, which used to be refused', async () => {
     const { user, topic } = await seedUserWithTopic();

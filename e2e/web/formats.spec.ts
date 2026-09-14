@@ -56,10 +56,6 @@ const REQUIRED: Record<string, string> = {
   sequence: '.drawing',
 };
 
-/** `codeEditor` is never a review (T-088), so `reviewEligible()` filters it out
- *  of every queue a session draws from. Its row exists; it must not appear. */
-const NOT_IN_A_SESSION = 'codeEditor';
-
 const ARTIFACTS = fileURLToPath(new URL('../.artifacts/formats', import.meta.url));
 
 interface FormatFixture {
@@ -134,9 +130,9 @@ test.describe('every card renders its own surface', () => {
 
     expect(missingSurface, 'cards that rendered without their own surface').toEqual([]);
 
-    // Every card the session is allowed to serve, and nothing else.
-    const expected = fixture.kinds.filter((k) => k !== NOT_IN_A_SESSION);
-    expect([...seen].sort()).toEqual([...expected].sort());
-    expect(seen.has(NOT_IN_A_SESSION), 'a codeEditor is never a review (T-088)').toBe(false);
+    // Every card, and nothing else. `codeEditor` used to be excluded here as
+    // never a review (T-088); since T-171 it is a review on both surfaces.
+    expect([...seen].sort()).toEqual([...fixture.kinds].sort());
+    expect(seen.has('codeEditor'), 'a codeEditor is a review since T-171').toBe(true);
   });
 });

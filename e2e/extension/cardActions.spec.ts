@@ -174,7 +174,13 @@ test('a held-out or untaught concept can never reach the popup queue', async ({ 
   for (const item of body.items) expect(item.conceptTitle).toBeTruthy();
 });
 
-test('a codeEditor item never appears in the popup queue, even when genuinely due', async ({ request }) => {
+/**
+ * T-171. This test asserted a `codeEditor` never reached the panel queue. It
+ * does now, which moves the guarantee worth checking: whenever one is served,
+ * it must carry neither the cases' expected outputs nor the skeleton — both are
+ * the answer (T-080, T-088), and the extension is a new place for them to leak.
+ */
+test('a codeEditor served to the panel queue carries no answer key', async ({ request }) => {
   // Seeds 5 format items — including one codeEditor — onto dev's first
   // non-held-out concept, replacing whatever was there (T-140). No real
   // generation, no model calls.
@@ -184,18 +190,18 @@ test('a codeEditor item never appears in the popup queue, even when genuinely du
   const token = await mintExtensionToken(request);
   await makeCardsDue(request, 10);
 
-  // `popupEligible()` (backend/src/lib/popupEligible.ts) is applied per
-  // request, not per item, so which of the concept's 5 format items comes up
-  // can vary — polling a few times gives codeEditor a real chance to have
-  // been picked and excluded, rather than asserting on a single lucky draw.
+  // Which of the concept's five items is picked varies per request, so this
+  // polls rather than asserting on one draw.
   for (let i = 0; i < 5; i += 1) {
     const res = await request.get(`${API}/due?limit=10`, { headers: { Authorization: `Bearer ${token}` } });
     const body = (await res.json()) as {
-      items: Array<{ blocks?: Array<{ slot: string; kind: string }> }>;
+      items: Array<{ blocks?: Array<Record<string, unknown> & { slot: string; kind: string }> }>;
     };
-    const hasCodeEditor = body.items.some((item) =>
-      item.blocks?.some((b) => b.slot === 'answer' && b.kind === 'codeEditor'),
-    );
-    expect(hasCodeEditor).toBe(false);
+    for (const item of body.items) {
+      const editor = item.blocks?.find((b) => b.slot === 'answer' && b.kind === 'codeEditor');
+      if (!editor) continue;
+      expect(editor).not.toHaveProperty('skeleton');
+      for (const c of editor.cases as Record<string, unknown>[]) expect(c).not.toHaveProperty('expect');
+    }
   }
 });

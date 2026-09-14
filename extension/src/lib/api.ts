@@ -159,6 +159,16 @@ export function postPulse(pulse: PulseCreate): Promise<{ ok: true }> {
 }
 
 /**
+ * The "show me the shape" skeleton for a `codeEditor` item (T-088, T-171).
+ * Never in the payload — it is most of the answer — so it is fetched only when
+ * the learner takes it, and the card then sends `assisted: true`.
+ */
+export async function getSkeleton(itemId: string): Promise<string> {
+  const { skeleton } = await apiJson(z.object({ skeleton: z.string() }), `/items/${itemId}/skeleton`);
+  return skeleton;
+}
+
+/**
  * A batch of client events (T-035). Sent by the worker on its alarm, never by
  * the popup — see `lib/telemetry.ts` for why that distinction is the whole
  * design.

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { PublicItem } from '@learnos/shared';
 import type { Mood } from '@learnos/shared';
 import { Button, ConfidenceTap, MoodTap, QuestionCard } from '@learnos/ui';
-import { ApiError, flagItem, postPulse, postReview, type ReviewResult } from '../lib/api';
+import { ApiError, flagItem, getSkeleton, postPulse, postReview, type ReviewResult } from '../lib/api';
+import { runInSandbox } from '../lib/runInSandbox';
 import { enqueue } from '../lib/queue';
 import { getPopState, getPulseDay, setPopState, setPulseDay } from '../lib/storage';
 import { clearCardOpen, markCardOpen } from '../lib/telemetry';
@@ -45,6 +46,9 @@ export function Card({ item, onClose }: CardProps) {
   const [queued, setQueued] = useState(false);
   const [flagged, setFlagged] = useState(false);
   const [backedOff, setBackedOff] = useState(false);
+  /** The learner took a `codeEditor`'s skeleton (T-088). Carried on the answer
+   *  and on the confidence update, so the scheduler treats a pass as a lapse. */
+  const [assisted, setAssisted] = useState(false);
   /** Whether today's mood tap is still owed. Decided once, when the card opens,
    *  so answering cannot make it appear and disappear mid-read. */
   const [askMood, setAskMood] = useState(false);
@@ -118,6 +122,7 @@ export function Card({ item, onClose }: CardProps) {
       latencyMs: Date.now() - openedAt.current,
       surface: 'extension',
       idempotencyKey: idempotencyKey.current,
+      ...(assisted ? { assisted: true } : {}),
     });
     await clearCardOpen();
     // An answer breaks a run of refusals whether it was right, wrong, or still
@@ -140,6 +145,7 @@ export function Card({ item, onClose }: CardProps) {
       latencyMs: Date.now() - openedAt.current,
       surface: 'extension',
       idempotencyKey: idempotencyKey.current,
+      ...(assisted ? { assisted: true } : {}),
     });
     onClose();
   }
@@ -228,7 +234,17 @@ export function Card({ item, onClose }: CardProps) {
       </header>
 
       <div className="card__body">
-        <QuestionCard item={item} value={value} onChange={setValue} />
+        {/* The three `codeEditor` hooks (T-171). The runner is the sandbox
+            page, because the web's srcdoc runner cannot execute under an
+            extension page's CSP; the skeleton is fetched only when taken. */}
+        <QuestionCard
+          item={item}
+          value={value}
+          onChange={setValue}
+          runCode={runInSandbox}
+          onSkeleton={() => getSkeleton(item.itemId)}
+          onAssisted={() => setAssisted(true)}
+        />
 
         {result ? (
           <div className="card__result" aria-live="polite">

@@ -29,14 +29,17 @@ import { items } from '../db/schema.js';
  * What it costs is time — 25–45s against a ~20s promise — which is a real
  * trade and a founder's call, not a technical bar.
  *
- * **`codeEditor` stays**, and is excluded twice over: `REVIEW_INELIGIBLE_KINDS`
- * below bars it from every review queue on any surface (T-088), so removing it
- * from this list alone would change nothing. It is two to four minutes.
+ * **`codeEditor` left too (T-171, founder decision 2026-09-14)**: the panel
+ * stays open while the learner writes, which a popup never did, and the two
+ * blockers that kept it out are fixed — it now runs in the extension through a
+ * sandbox page, and every language other than JavaScript is judged on the
+ * server (`grade.ts`) instead of being marked wrong unseen. It is still two to
+ * four minutes; that is now a trade the product has chosen to make.
  *
- * `clozeCode` and `hotspotLine` were never here: 15–30s and 8–15s, one tap or
- * one short blank, which is exactly what a card is for.
+ * The list is empty rather than deleted, so a format that genuinely cannot
+ * work in the panel has one obvious place to go.
  */
-export const PANEL_INELIGIBLE_KINDS = ['codeEditor'] as const satisfies readonly AnswerBlockKind[];
+export const PANEL_INELIGIBLE_KINDS = [] as const satisfies readonly AnswerBlockKind[];
 
 /**
  * The Day-30 cold test keeps the stricter list (T-093).
@@ -80,14 +83,24 @@ export function isColdTestEligible(answerKind: string | null): boolean {
   return !(COLD_TEST_INELIGIBLE_KINDS as readonly string[]).includes(answerKind);
 }
 
+/**
+ * `answer_kind` is null or not in `excluded`. An empty list is no condition at
+ * all — `undefined`, which `and()` drops — rather than `NOT IN ()`, which is
+ * either a syntax error or a driver-specific constant depending on the version.
+ */
+function notOneOf(excluded: readonly string[]): SQL | undefined {
+  if (excluded.length === 0) return undefined;
+  return or(isNull(items.answerKind), not(inArray(items.answerKind, [...excluded])));
+}
+
 /** SQL: the same rule, for the query that picks a due item. */
 export function panelEligible(): SQL | undefined {
-  return or(isNull(items.answerKind), not(inArray(items.answerKind, [...PANEL_INELIGIBLE_KINDS])));
+  return notOneOf(PANEL_INELIGIBLE_KINDS);
 }
 
 /** SQL: the cold test's stricter list. */
 export function coldTestEligible(): SQL | undefined {
-  return or(isNull(items.answerKind), not(inArray(items.answerKind, [...COLD_TEST_INELIGIBLE_KINDS])));
+  return notOneOf(COLD_TEST_INELIGIBLE_KINDS);
 }
 
 /**
@@ -99,12 +112,14 @@ export function coldTestEligible(): SQL | undefined {
  * against a ten-minute daily budget — which is how a review queue becomes a
  * thing people stop opening.
  *
- * This also satisfies T-088's other acceptance line — "the same concept's next
- * review is a `clozeCode`, not this" — without the item picker needing to
- * remember what it served last: if the format can never be a review, the next
- * review is necessarily something else.
+ * **Empty since T-171 (founder decision 2026-09-14): `codeEditor` is a review on
+ * both surfaces now.** The paragraph above is still the cost, and it is being
+ * paid on purpose — writing the function again is the strongest retrieval the
+ * product can ask for. What still bounds it: `rationItems` allows one
+ * `codeEditor` per session for newly taught concepts, and the Day-30 test keeps
+ * refusing it (`COLD_TEST_INELIGIBLE_KINDS`).
  */
-export const REVIEW_INELIGIBLE_KINDS = ['codeEditor'] as const satisfies readonly AnswerBlockKind[];
+export const REVIEW_INELIGIBLE_KINDS = [] as const satisfies readonly AnswerBlockKind[];
 
 /** For a row already loaded. Null is a plain prompt and always eligible. */
 export function isReviewEligible(answerKind: string | null): boolean {
@@ -114,5 +129,5 @@ export function isReviewEligible(answerKind: string | null): boolean {
 
 /** SQL: the same rule, for the query that picks a due item. */
 export function reviewEligible(): SQL | undefined {
-  return or(isNull(items.answerKind), not(inArray(items.answerKind, [...REVIEW_INELIGIBLE_KINDS])));
+  return notOneOf(REVIEW_INELIGIBLE_KINDS);
 }

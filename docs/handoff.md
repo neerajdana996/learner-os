@@ -19,12 +19,10 @@ a format chosen for its own sake, which is what the earn-it sentences exist to p
 course of five cloze items is actually worse for a learner than a mixed one is a pilot measurement
 (T-045), not a prompt tweak. Full detail in `tasks-done.md` under T-166.
 
-**The open decision:** the extension side panel is built and renders the same card as the popup,
-but the icon still opens the popup — WXT derives `action.default_popup` from the `popup`
-entrypoint's directory name, so making the panel the icon's target means renaming that entrypoint
-and 17 references to `popup.html` across 6 specs. That changes which surface is primary, so it was
-left to the founder rather than taken as a side effect. Mechanical once decided, and fully covered
-by the extension suite.
+**Decided and shipped (2026-09-14):** the extension opens as a **side panel**, not a popup
+(`e1dca53`), and the panel asks **every** answer format — `orderLines` (`e4c38b5`) and
+`codeEditor` (T-171). `codeEditor` is also a review in the web session now. Only the Day-30 test
+still refuses both. See T-171 in `tasks-done.md`.
 
 ## Git
 
@@ -186,7 +184,11 @@ Applied plan was 2 add / 1 change / 0 destroy. Verified: MX still `1 smtp.google
    `353400076760`), remove the Vercel project.
 8. **Audit findings not yet acted on** (2026-09-14, from reading the code — none confirmed by
    running it, and each says so):
-   - **`codeEditor` is graded wrong for 8 of 10 languages.** Only JS/TS run client-side; the rest
+   - **Fixed in T-171** — confirmed, and TypeScript was broken too (the browser ran it as
+     JavaScript). Only JavaScript runs client-side now; everything else is judged by the
+     `gradeCode` prompt on the server. **The model judge has never run against the live model** —
+     watch the first real non-JS answers. The original finding, for the record:
+     ~~`codeEditor` is graded wrong for 8 of 10 languages.~~ Only JS/TS run client-side; the rest
      post `{"__source": "<code>"}` claiming the server judges it, and no server path reads
      `__source` — so `grade.ts` substitutes `' '` and every case fails, every time. The same
      shape as T-118. Not in the enrichment pass's path (its decision list offers only `clozeCode`

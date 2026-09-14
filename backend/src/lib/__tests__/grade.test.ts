@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const gradeExplanation = vi.fn();
+const gradeCode = vi.fn();
 vi.mock('../../generator/grade.js', () => ({
   gradeExplanation: (...a: unknown[]) => gradeExplanation(...a),
+  gradeCode: (...a: unknown[]) => gradeCode(...a),
 }));
 
 const { grade, normalise } = await import('../grade.js');
@@ -22,7 +24,10 @@ const recognition = {
   distractorSource: 'Someone who picked the first plausible-looking option.',
 };
 
-beforeEach(() => gradeExplanation.mockReset());
+beforeEach(() => {
+  gradeExplanation.mockReset();
+  gradeCode.mockReset();
+});
 
 describe('normalise', () => {
   it('trims, lowercases, strips punctuation and collapses whitespace', () => {
@@ -473,5 +478,95 @@ describe('write the code (T-088)', () => {
     const result = await grade(editor, 'not json at all');
     expect(result.correct).toBe(false);
     expect(result.feedback).toMatch(/did not run/i);
+  });
+
+  it('treats valid JSON that is not an object as nothing ran, rather than throwing', async () => {
+    expect((await grade(editor, 'null')).feedback).toMatch(/did not run/i);
+    expect((await grade(editor, '3')).correct).toBe(false);
+  });
+
+  it('never asks the model about output the browser already produced', async () => {
+    await grade(editor, JSON.stringify({ 'returns a function': 'function', delays: 'false' }));
+    expect(gradeCode).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * T-171. Only JavaScript runs in the browser; everything else posts its source.
+ * Before this, nothing read `__source`, so every case compared against nothing
+ * and a correct Python answer was marked wrong every single time.
+ */
+describe('write the code, in a language the browser cannot run (T-171)', () => {
+  const pythonCases = [
+    { name: 'two distinct', call: 'longest("eceba", 2)', expect: '3' },
+    { name: 'k too big', call: 'longest("aa", 5)', expect: '2' },
+  ];
+  const python = {
+    type: 'application' as const,
+    prompt: 'Write longest.',
+    answer: 'a sliding window',
+    blocks: [
+      {
+        kind: 'codeEditor' as const,
+        slot: 'answer' as const,
+        lang: 'python' as const,
+        signature: 'longest(s, k)',
+        starter: 'def longest(s, k):\n    pass',
+        skeleton: 'def longest(s, k):\n    left = 0',
+        whyWhole: 'The shrink condition is the whole idea.',
+        cases: [
+          { name: 'two distinct', call: 'longest("eceba", 2)', expect: '3' },
+          { name: 'k too big', call: 'longest("aa", 5)', expect: '2' },
+        ],
+      },
+    ],
+  };
+  const source = 'def longest(s, k):\n    return 3';
+  const submitted = JSON.stringify({ __source: source });
+
+  it('hands the judge the source, the language and the cases with their expectations', async () => {
+    gradeCode.mockResolvedValue({ cases: [{ name: 'two distinct', passed: true }, { name: 'k too big', passed: true }] });
+    await grade(python, submitted);
+    expect(gradeCode).toHaveBeenCalledWith({
+      lang: 'python',
+      signature: 'longest(s, k)',
+      source,
+      cases: pythonCases,
+    });
+  });
+
+  it('is correct when the judge passes every case', async () => {
+    gradeCode.mockResolvedValue({ cases: [{ name: 'two distinct', passed: true }, { name: 'k too big', passed: true }] });
+    expect(await grade(python, submitted)).toEqual({ correct: true, feedback: 'Correct — every case passed.' });
+  });
+
+  it('names the failing cases and carries the judge’s one line', async () => {
+    gradeCode.mockResolvedValue({
+      cases: [{ name: 'two distinct', passed: true }, { name: 'k too big', passed: false }],
+      feedback: 'It ignores k entirely.',
+    });
+    const result = await grade(python, submitted);
+    expect(result.correct).toBe(false);
+    expect(result.feedback).toBe('Not yet — k too big still fails. It ignores k entirely.');
+  });
+
+  /** A judge that skipped a case has not passed it. */
+  it('fails a case the judge did not report', async () => {
+    gradeCode.mockResolvedValue({ cases: [{ name: 'two distinct', passed: true }] });
+    expect((await grade(python, submitted)).correct).toBe(false);
+  });
+
+  it('ignores a passing verdict for a case that does not exist', async () => {
+    gradeCode.mockResolvedValue({
+      cases: [{ name: 'two distinct', passed: true }, { name: 'made up', passed: true }],
+    });
+    expect((await grade(python, submitted)).correct).toBe(false);
+  });
+
+  /** No free pass: the error reaches `recordReview`, which lets the extension's
+   *  offline queue retry, exactly as `explain` grading does. */
+  it('propagates a judge failure rather than marking it either way', async () => {
+    gradeCode.mockRejectedValue(new Error('model down'));
+    await expect(grade(python, submitted)).rejects.toThrow('model down');
   });
 });

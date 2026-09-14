@@ -1,5 +1,13 @@
-import { gradeExplanation } from '../generator/grade.js';
+import { gradeCode, gradeExplanation } from '../generator/grade.js';
 import { clozeHoleOrder, type ItemPayload } from '@learnos/shared';
+
+/** One wording for a code verdict, whichever side ran the code. `why` is the
+ *  judge's one line on what went wrong, when there is one. */
+function codeVerdict(failed: string[], why?: string): Grade {
+  if (failed.length === 0) return { correct: true, feedback: 'Correct — every case passed.' };
+  const which = `Not yet — ${failed.join(', ')} still ${failed.length === 1 ? 'fails' : 'fail'}.`;
+  return { correct: false, feedback: why ? `${which} ${why}` : which };
+}
 
 export interface Grade {
   correct: boolean;
@@ -150,23 +158,48 @@ export async function grade(payload: ItemPayload, response: string | number): Pr
    * not passed case three.
    */
   if (answerBlock?.kind === 'codeEditor') {
-    let produced: Record<string, string>;
+    let produced: unknown;
     try {
-      produced = JSON.parse(text) as Record<string, string>;
+      produced = JSON.parse(text);
     } catch {
+      produced = null;
+    }
+    if (typeof produced !== 'object' || produced === null) {
       return { correct: false, feedback: 'That did not run. Check the function returns something.' };
+    }
+    const outputs = produced as Record<string, unknown>;
+
+    /**
+     * Code the browser did not run (T-171).
+     *
+     * Only JavaScript runs client-side. Every other language — TypeScript
+     * included, whose annotations the browser runner cannot parse — posts
+     * `{"__source": "<code>"}`, and until T-171 nothing read it: every case
+     * compared against nothing and a correct answer was marked wrong, every
+     * time. The model now judges each case against the expected outputs, which
+     * never leave the server. Nothing executes on the host.
+     *
+     * A model failure propagates, exactly like `explain` grading: a 500 makes
+     * the extension's offline queue retry, and nobody gets a free pass.
+     */
+    if (typeof outputs.__source === 'string') {
+      const judged = await gradeCode({
+        lang: answerBlock.lang,
+        signature: answerBlock.signature,
+        source: outputs.__source,
+        cases: answerBlock.cases,
+      });
+      const passed = new Set(judged.cases.filter((c) => c.passed).map((c) => c.name));
+      // A case the model did not report is a failure, for the same reason a
+      // case the browser runner did not report is.
+      const failed = answerBlock.cases.filter((c) => !passed.has(c.name));
+      return codeVerdict(failed.map((c) => c.name), judged.feedback);
     }
 
     const failed = answerBlock.cases.filter(
-      (c) => normaliseCode(produced[c.name] ?? '\u0000') !== normaliseCode(c.expect),
+      (c) => normaliseCode(String(outputs[c.name] ?? '\u0000')) !== normaliseCode(c.expect),
     );
-    return {
-      correct: failed.length === 0,
-      feedback:
-        failed.length === 0
-          ? 'Correct — every case passed.'
-          : `Not yet — ${failed.map((c) => c.name).join(', ')} still ${failed.length === 1 ? 'fails' : 'fail'}.`,
-    };
+    return codeVerdict(failed.map((c) => c.name));
   }
 
   /**

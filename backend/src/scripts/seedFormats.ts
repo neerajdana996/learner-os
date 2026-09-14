@@ -130,8 +130,8 @@ export const FORMAT_SEEDS: Seed[] = [
     },
   },
 
-  // ---- codeEditor: write the code (T-088). Barred from the extension (T-089)
-  //      and from the day-30 test (T-093) — which is itself worth asserting.
+  // ---- codeEditor: write the code (T-088). Served in the panel and as a
+  //      review since T-171; still barred from the day-30 test (T-093).
   {
     type: 'application',
     payload: {
