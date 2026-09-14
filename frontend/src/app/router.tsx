@@ -26,6 +26,12 @@ const ConnectExtensionPage = lazy(() => import('../features/extension/pages/Conn
  *  API and the page says so. Client-side hiding is a courtesy, never a control. */
 const AdminPage = lazy(() => import('../features/admin/pages/AdminPage'));
 const ResultsPage = lazy(() => import('../features/results/pages/ResultsPage'));
+/** Public and deliberately outside `RequireAuth`: a privacy policy behind a
+ *  login is not a privacy policy, and a reviewer checking the domain has no
+ *  account (T-046). */
+const PrivacyPage = lazy(() => import('../features/legal/pages/PrivacyPage'));
+const TermsPage = lazy(() => import('../features/legal/pages/TermsPage'));
+const ContactPage = lazy(() => import('../features/legal/pages/ContactPage'));
 
 export function AppRoutes() {
   return (
@@ -43,6 +49,31 @@ export function AppRoutes() {
         element={
           <Suspense fallback={<RouteFallback />}>
             <LoginPage />
+          </Suspense>
+        }
+      />
+
+      <Route
+        path="/privacy"
+        element={
+          <Suspense fallback={<RouteFallback />}>
+            <PrivacyPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/terms"
+        element={
+          <Suspense fallback={<RouteFallback />}>
+            <TermsPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/contact"
+        element={
+          <Suspense fallback={<RouteFallback />}>
+            <ContactPage />
           </Suspense>
         }
       />

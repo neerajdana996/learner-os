@@ -1,0 +1,73 @@
+@use "@learnos/ui/styles/variables" as *;
+
+/// Privacy, terms and contact (T-046).
+///
+/// These reuse the landing page's shell — same nav, same inner width, same
+/// footer — because they are the same public site, and a legal page styled
+/// like a different product reads as one bolted on by a template.
+///
+/// The only thing this partial adds is a readable measure for long prose. The
+/// landing page is a marketing layout with its own rhythm; a policy is read
+/// top to bottom, so it wants a column and generous leading instead.
+.legal {
+  &__body {
+    max-width: 68ch;
+  }
+
+  &__title {
+    margin-bottom: $s-2;
+  }
+
+  &__updated {
+    margin-top: 0;
+    margin-bottom: $s-6;
+    font-size: $text-sm;
+    color: var(--muted);
+  }
+
+  /// The one line on the contact page that is the point of the page.
+  &__lede {
+    font-size: $text-lg;
+  }
+
+  h2 {
+    margin-top: $s-7;
+    margin-bottom: $s-3;
+    font-size: $text-md;
+  }
+
+  p,
+  li {
+    line-height: 1.65;
+    color: var(--ink-2);
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: $s-3;
+    padding-left: $s-5;
+  }
+
+  /// `code` inside prose, not a listing — the block styles in `@learnos/ui`
+  /// are for code the learner reads or edits, and would paint a whole card
+  /// around a single word here.
+  code {
+    font-family: $font-mono;
+    font-size: 0.9em;
+  }
+}
+
+.site-foot {
+  &__brand {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  &__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $s-2 $s-4;
+    align-items: flex-start;
+  }
+}

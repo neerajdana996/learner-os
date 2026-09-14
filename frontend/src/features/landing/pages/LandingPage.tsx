@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { SampleCard } from '../SampleCard';
+import { SiteFooter } from '../../legal/SiteFooter';
 import { useReveal } from '../useReveal';
 
 /**
@@ -368,12 +369,7 @@ export default function LandingPage() {
         </div>
       </Section>
 
-      <footer className="landing__foot">
-        <div className="landing__inner landing__foot-inner">
-          <span>Cold Recall</span>
-          <Link to="/signin">Already signed up? Sign in</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
