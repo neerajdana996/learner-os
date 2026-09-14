@@ -1,8 +1,16 @@
 # AWS Activate application — answers
 
 > Kept here because the form has several fields and they should tell one
-> consistent story. Public URL: `http://www.coldrecall.info/`
-> (HTTPS pending certificate issuance; repo `neerajdana996/learner-os`).
+> consistent story. Public URL: `https://coldrecall.info/`
+> (repo `neerajdana996/learner-os`).
+>
+> **Updated 2026-09-14.** The first application was rejected asking us to
+> "confirm your website is functional", which was fair at the time: the apex
+> was still served by Vercel over plain HTTP and this file advertised an
+> `http://` URL with certificates pending. Since the cutover, apex, `www` and
+> `api` all resolve to the single host and serve valid Let's Encrypt
+> certificates. Give the form `https://coldrecall.info` and the business domain
+> `coldrecall.info`.
 >
 > **Framing note.** This is a business disclosure, not marketing copy, so the
 > closed beta is a strength here — evidence of a real launch plan — where on a
