@@ -132,6 +132,10 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **files:** `docs/privacy.md`, `backend/src/routes/users.ts`
 - **description:** Plain-language note shown at onboarding: what we log, why, that it's a pilot. `DELETE /me` wipes the user (cascade). Export `GET /me/export` (JSON of all their data).
 - **tests:** Delete cascades to all tables; export contains review_events count.
+- **notes:** (2026-09-14) **The public half landed; the API half has not.** `/privacy`, `/terms` and `/contact` exist as public routes outside `RequireAuth`, with a shared footer carrying the operator, location and a contact address — the site previously had no legal page, no contact route and no email address anywhere, which is a gap for a product that asks for an email address before it does anything.
+  - Prompted by an AWS Activate rejection ("inconsistencies between your Activate application and your AWS account"), but the gap was real regardless of that.
+  - The privacy page is written against `schema.ts`, the processor list and the extension manifest rather than from a template — including that the extension has no content scripts and no `tabs` permission, so "it cannot read the pages you visit" is a property of the build.
+  - **It deliberately does not claim self-serve export or deletion**, because `DELETE /me` and `GET /me/export` are still unbuilt; it says to email and a person does it, which is true today. When those routes land, that paragraph has to change with them — a policy describing a button that does not exist is the one kind of error a reader is entitled to rely on.
 
 ### T-047 · Error monitoring + health
 - **status:** todo
