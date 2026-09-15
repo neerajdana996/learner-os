@@ -11,14 +11,17 @@ import { LegalPage } from '../LegalPage';
  * the product does not do is worse than none, because it is the one document
  * a reader is entitled to rely on.
  *
- * Two things it deliberately does **not** claim: that you can delete or export
- * your data yourself, and that we have a DPO. Neither is true yet — the
- * self-serve routes are the rest of T-046 — so the page says to email instead,
- * which is what actually happens today.
+ * Self-serve export and deletion are real since T-046 (`GET /me/export`,
+ * `DELETE /me`, both in the account menu), so the page now says so — and names
+ * what the export leaves out, because a copy that silently omits things is the
+ * kind of claim a reader is entitled to rely on. It still does not claim a DPO.
+ *
+ * The extension's permission list tracks `extension/wxt.config.ts`; `sidePanel`
+ * joined it with T-170.
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy" updated="14 September 2026">
+    <LegalPage title="Privacy" updated="15 September 2026">
       <p>
         Cold Recall is run by Neeraj Dana in Rajasthan, India. This page explains what the product
         stores about you, why it stores it, and how to get it back or have it deleted. For anything
@@ -62,8 +65,8 @@ export default function PrivacyPage() {
         <strong>cannot read the pages you visit</strong> — and that is a property of how it is
         built, not a promise. It ships with no content scripts and without the{' '}
         <code>tabs</code> permission, so the browser never grants it access to your tabs. The
-        permissions it does request are storage, alarms, notifications and idle, plus permission to
-        talk to our own API.
+        permissions it does request are storage, alarms, notifications, idle and the side panel it
+        opens in, plus permission to talk to our own API.
       </p>
 
       <h2>Why we process it</h2>
@@ -71,7 +74,7 @@ export default function PrivacyPage() {
         To sign you in, to generate and teach your topics, to schedule reviews, to run the recall
         check weeks later, to email you about your own account, and to keep the service working and
         secure. You give consent by creating an account, and you can withdraw it at any time by
-        asking us to delete it — see below.
+        deleting your account — see below.
       </p>
 
       <h2>Who else processes it</h2>
@@ -101,17 +104,28 @@ export default function PrivacyPage() {
       <h2>How long we keep it</h2>
       <p>
         For as long as your account exists. The whole point of the product is to ask you something
-        weeks after you learned it, so learning data is not short-lived by nature. When you ask us
-        to delete your account we remove it and everything attached to it. Ordinary server logs age
-        out on their own.
+        weeks after you learned it, so learning data is not short-lived by nature. When you delete
+        your account we remove it and everything attached to it, straight away. Ordinary server logs
+        age out on their own.
       </p>
 
       <h2>Your rights</h2>
       <p>
-        You can ask for a copy of your data, ask us to correct it, ask us to delete it, or withdraw
-        your consent entirely. Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and a
-        person — currently me — will do it. Self-service buttons for export and deletion are being
-        built; until they exist, this is how it works, and saying otherwise would be a fiction.
+        Once signed in, open the account menu (the circle with your initial, top right) to{' '}
+        <strong>download a copy of your data</strong> or <strong>delete your account</strong>.
+        Deleting is immediate and cannot be undone: your account, topics, answers and schedule are
+        all removed, and the Chrome extension is signed out.
+      </p>
+      <p>
+        The copy leaves out two things on purpose: the answer keys to the questions, and the names
+        of the concepts deliberately never taught to you. Cold Recall checks weeks later what you
+        still remember, and seeing either beforehand would change the answer. Sign-in secrets are
+        left out too.
+      </p>
+      <p>
+        To correct something, or if you cannot sign in, email{' '}
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and a person — currently me — will
+        do it.
       </p>
       <p>
         If you are unhappy with how we have handled a request, say so in reply and it will be

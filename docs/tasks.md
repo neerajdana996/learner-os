@@ -131,18 +131,6 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **description:** Generate both pilot topics, run QA export, review, apply edits. Record time taken and error rate found (this is a metric too).
 - **tests:** none.
 
-### T-046 · Privacy & data handling
-- **status:** todo
-- **sprint:** 4
-- **depends_on:** T-013
-- **files:** `docs/privacy.md`, `backend/src/routes/users.ts`
-- **description:** Plain-language note shown at onboarding: what we log, why, that it's a pilot. `DELETE /me` wipes the user (cascade). Export `GET /me/export` (JSON of all their data).
-- **tests:** Delete cascades to all tables; export contains review_events count.
-- **notes:** (2026-09-14) **The public half landed; the API half has not.** `/privacy`, `/terms` and `/contact` exist as public routes outside `RequireAuth`, with a shared footer carrying the operator, location and a contact address — the site previously had no legal page, no contact route and no email address anywhere, which is a gap for a product that asks for an email address before it does anything.
-  - Prompted by an AWS Activate rejection ("inconsistencies between your Activate application and your AWS account"), but the gap was real regardless of that.
-  - The privacy page is written against `schema.ts`, the processor list and the extension manifest rather than from a template — including that the extension has no content scripts and no `tabs` permission, so "it cannot read the pages you visit" is a property of the build.
-  - **It deliberately does not claim self-serve export or deletion**, because `DELETE /me` and `GET /me/export` are still unbuilt; it says to email and a person does it, which is true today. When those routes land, that paragraph has to change with them — a policy describing a button that does not exist is the one kind of error a reader is entitled to rely on.
-
 ### T-047 · Error monitoring + health
 - **status:** todo
 - **sprint:** 4
@@ -252,7 +240,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Workaround today: restart the backend (`docker restart ai-backend-1`) to clear the counters, or wait out the window.
   - `resetAuthRateLimits()` already exists as a test seam but is unreachable from e2e, which runs in a different process. Options: expose it on the dev-only router (`isProd` guard, like `/auth/dev-login`) and have `global-setup` call it; or raise `PER_IP` when `NODE_ENV !== 'production'`. The first keeps production behaviour identical, which is the point of the limiter.
 - **tests:** the suite passes twice in a row with no wait in between — which is the actual acceptance, and is not something a unit test can show.
-
 ### T-FIX-006 · Generator context and prompt-level test coverage
 - **status:** todo
 - **sprint:** 2
@@ -382,6 +369,18 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **tests:**
   - The hint is offered on a `codeEditor` in the session and fetches the skeleton when taken.
   - An answer after taking it posts `assisted: true`; one without does not send the key.
+
+### T-174 · Onboarding promises the old 30-day course and a Day-45 test
+- **status:** todo
+- **sprint:** 6
+- **severity:** high for the pilot — it is the consent screen, and it describes a different study
+- **depends_on:** —
+- **files:** `frontend/src/features/onboarding/pages/OnboardingPage.tsx`, `frontend/src/features/onboarding/__tests__/OnboardingPage.test.tsx`
+- **description:** Found while adding T-046's privacy note (2026-09-15). The last onboarding step, "Here's exactly what happens next", still describes the plan from before the founder's 2026-09-06 decision: **"DAY 1–29" of daily sessions**, a Day-30 test, **"31–44 nothing at all"**, and **"DAY 45 — one more test"**. `plan.md §2` and `sprint.md` say seven days of teaching, twenty-three days of silence, and one cold test on day 30, with the day-45 test dropped.
+  - It is the screen a learner reads the moment they commit, directly above "Build my map". A participant told to expect twenty-nine days of sessions and a second test, who gets seven and one, has been told something untrue about the study they joined — the failure T-101 and T-132 exist to prevent, since a participant who feels misled drops out.
+  - Check `docs/copy.md` for the approved wording rather than writing new copy, and coordinate with T-132, which moves the disclosures into this flow.
+- **acceptance:** The protocol rows match `plan.md §2`: today's diagnostic, days 1–7 of sessions and cards, days 8–29 of silence, and the day-30 test. No row mentions day 45.
+- **tests:** the step renders the day-1–7, silence and day-30 rows; no text on it matches `/45/`.
 
 ## Sprint 5 — Question formats (design done, not yet sequenced)
 

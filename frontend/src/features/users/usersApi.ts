@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { MeResponse, UserUpdate } from '@learnos/shared';
+import type { DeleteMe, MeExport, MeResponse, UserUpdate } from '@learnos/shared';
 
 export const usersApi = api.injectEndpoints({
   endpoints: (build) => ({
@@ -16,7 +16,21 @@ export const usersApi = api.injectEndpoints({
         dispatch(usersApi.util.upsertQueryData('me', undefined, data));
       },
     }),
+    /**
+     * Everything held about the learner (T-046). Not cached: it is fetched on a
+     * click to be saved as a file, and a cached copy would hand back yesterday's
+     * data to someone asking for what is held today.
+     */
+    exportMe: build.query<MeExport, void>({
+      query: () => '/me/export',
+      keepUnusedDataFor: 0,
+    }),
+    /** Deletes the account (T-046). The caller resets the whole API state after,
+     *  since every cached query now describes a person who does not exist. */
+    deleteMe: build.mutation<{ deleted: true }, DeleteMe>({
+      query: (body) => ({ url: '/me', method: 'DELETE', body }),
+    }),
   }),
 });
 
-export const { useMeQuery, useUpdateMeMutation } = usersApi;
+export const { useMeQuery, useUpdateMeMutation, useLazyExportMeQuery, useDeleteMeMutation } = usersApi;

@@ -270,4 +270,30 @@
   &__inset {
     padding: 2px 18px 10px;
   }
+
+  /// Deleting the account (T-046). Clay ink rather than a new red: the palette
+  /// already has one colour that means "this matters", and the confirmation
+  /// below is what actually stops a stray click, not the colour.
+  &__item--danger {
+    color: var(--clay-ink);
+  }
+
+  &__confirm {
+    display: grid;
+    gap: $s-3;
+  }
+
+  &__warning {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-2);
+  }
+
+  &__error {
+    margin: 0;
+    padding: 4px 18px 8px;
+    font-size: 13px;
+    color: var(--clay-ink);
+  }
 }

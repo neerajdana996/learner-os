@@ -20,6 +20,16 @@ vi.mock('../../generator/items.js', async () => ({
   generateItemsBatch: (...a: unknown[]) => generateItemsBatch(...a),
 }));
 vi.mock('../../generator/teaching.js', () => ({ generateTeaching: (...a: unknown[]) => generateTeaching(...a) }));
+// T-FIX-013. The enrichment pass (T-166) is a real model call. Unmocked, every
+// generation test here ran it: the fetch guard in vitest.setup.ts refused the
+// request, the OpenAI SDK retried that refusal twice with backoff, and
+// `enrichConceptItems` swallowed the error as `enrichment_failed` — seconds of
+// dead time per concept, enough to push tests past their timeout. A
+// pass-through keeps these tests about the worker.
+vi.mock('../../generator/itemBlocks.js', async () => ({
+  ...(await vi.importActual<typeof import('../../generator/itemBlocks.js')>('../../generator/itemBlocks.js')),
+  enrichConceptItems: async (input: { items: unknown[] }) => ({ items: input.items }),
+}));
 
 const fakeFraming = () => ({
   topic: 'React Hooks',

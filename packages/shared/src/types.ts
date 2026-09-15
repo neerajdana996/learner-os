@@ -47,6 +47,8 @@ import type {
   UserUpdateSchema,
   UserProfileSchema,
   MeResponseSchema,
+  DeleteMeSchema,
+  MeExportSchema,
   MagicLinkSchema,
   VerifyQuerySchema,
   MagicLinkResponseSchema,
@@ -119,6 +121,8 @@ export type ActiveWindows = z.infer<typeof ActiveWindowsSchema>;
 export type UserUpdate = z.infer<typeof UserUpdateSchema>;
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 export type MeResponse = z.infer<typeof MeResponseSchema>;
+export type DeleteMe = z.infer<typeof DeleteMeSchema>;
+export type MeExport = z.infer<typeof MeExportSchema>;
 
 export type MagicLink = z.infer<typeof MagicLinkSchema>;
 export type VerifyQuery = z.infer<typeof VerifyQuerySchema>;

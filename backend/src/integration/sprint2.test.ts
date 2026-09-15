@@ -95,6 +95,14 @@ vi.mock('../generator/teaching.js', () => ({
   })),
 }));
 
+// T-FIX-013. The enrichment pass (T-166) is a real model call; without this the
+// generation below runs it, and the SDK retries the fetch guard's refusal with
+// backoff on every concept.
+vi.mock('../generator/itemBlocks.js', async () => ({
+  ...(await vi.importActual<typeof import('../generator/itemBlocks.js')>('../generator/itemBlocks.js')),
+  enrichConceptItems: async (input: { items: unknown[] }) => ({ items: input.items }),
+}));
+
 /**
  * The grader's model call, stubbed at the same boundary the unit tests use.
  * Application and explain items are the ones T-FIX-005 routes through a model,

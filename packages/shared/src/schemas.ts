@@ -477,6 +477,98 @@ export const MeResponseSchema = z.object({
   hasExtensionToken: z.boolean(),
 });
 
+/**
+ * `DELETE /me` (T-046). The learner types their own email to confirm, because
+ * the deletion is immediate and cannot be undone — a stray click on a menu
+ * item must not be enough to erase thirty days of learning.
+ */
+export const DeleteMeSchema = z.object({
+  confirmEmail: z.string().trim().toLowerCase().email().max(320),
+});
+
+const Iso = z.string();
+
+/**
+ * `GET /me/export` (T-046): everything Cold Recall holds about one learner.
+ *
+ * **Two things are left out on purpose.** Item payloads, because they carry
+ * the answer keys to questions the Day-30 test will ask; and the titles of
+ * held-out concepts, which are the untaught control arm (plan.md §6). Handing
+ * either to a learner before the cold test would change the measurement the
+ * whole pilot exists to take. Credential hashes (sessions, sign-in links) are
+ * left out too: they are secrets, not data about the person.
+ */
+export const MeExportSchema = z.object({
+  exportedAt: Iso,
+  account: z.object({
+    id: z.string().uuid(),
+    email: z.string(),
+    name: z.string().nullable(),
+    timezone: z.string().nullable(),
+    activeWindows: z.unknown(),
+    profile: z.unknown(),
+    createdAt: Iso,
+  }),
+  signIns: z.object({
+    providers: z.array(z.object({ provider: z.string(), email: z.string().nullable(), linkedAt: Iso })),
+    sessions: z.array(
+      z.object({ kind: z.string(), createdAt: Iso, expiresAt: Iso, revokedAt: Iso.nullable() }),
+    ),
+    signInLinks: z.array(z.object({ createdAt: Iso, expiresAt: Iso, consumedAt: Iso.nullable() })),
+  }),
+  topics: z.array(
+    z.object({
+      id: z.string().uuid(),
+      title: z.string(),
+      why: z.string().nullable(),
+      language: z.string().nullable(),
+      status: z.string(),
+      startsAt: Iso.nullable(),
+      endsAt: Iso.nullable(),
+      dailyBudgetMin: z.number().nullable(),
+      createdAt: Iso,
+    }),
+  ),
+  /** Taught and teachable concepts only — never the held-out ones. */
+  concepts: z.array(z.object({ id: z.string().uuid(), topicId: z.string().uuid(), title: z.string() })),
+  cards: z.array(
+    z.object({
+      conceptId: z.string().uuid(),
+      due: Iso,
+      stability: z.number(),
+      difficulty: z.number(),
+      reps: z.number(),
+      lapses: z.number(),
+      state: z.number(),
+      lastReview: Iso.nullable(),
+      taughtAt: Iso.nullable(),
+      createdAt: Iso,
+    }),
+  ),
+  reviewEvents: z.array(
+    z.object({
+      conceptId: z.string().uuid(),
+      itemId: z.string().uuid().nullable(),
+      surface: z.string(),
+      correct: z.boolean().nullable(),
+      confidence: z.string().nullable(),
+      latencyMs: z.number().nullable(),
+      snoozed: z.boolean(),
+      dismissed: z.boolean(),
+      assisted: z.boolean(),
+      predictedRecall: z.number(),
+      gapDaysSinceLast: z.number().nullable(),
+      createdAt: Iso,
+    }),
+  ),
+  tests: z.array(z.object({ topicId: z.string().uuid(), kind: z.string(), scores: z.unknown(), createdAt: Iso })),
+  dailyPulse: z.array(z.object({ date: Iso, mood: z.number().nullable() })),
+  sessionDays: z.array(z.object({ topicId: z.string().uuid(), day: z.string(), completedAt: Iso })),
+  productEvents: z.array(z.object({ event: z.string(), meta: z.unknown(), at: Iso })),
+  /** How many rows of each, so a learner can see at a glance what is held. */
+  counts: z.record(z.string(), z.number().int().nonnegative()),
+});
+
 // ---------- Auth (T-013) ----------
 export const MagicLinkSchema = z.object({
   // trim/lowercase run before the format check, not after: a pasted address

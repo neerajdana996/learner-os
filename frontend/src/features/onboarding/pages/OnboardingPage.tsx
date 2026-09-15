@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Button, Choice, Field } from '@learnos/ui';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { ActiveWindowsSchema } from '@learnos/shared';
@@ -490,6 +490,12 @@ export default function OnboardingPage() {
               </span>
             </div>
           </div>
+          {/* The plain-language note T-046 asks for, where a learner commits. */}
+          <p className="u-muted">
+            This is a pilot, so every answer is recorded — what you said, how sure you were and how long
+            it took. That record is the result. You can download it or delete your account at any time;
+            the <Link to="/privacy">privacy page</Link> says exactly what is kept.
+          </p>
         </Step>
       ) : null}
     </>
