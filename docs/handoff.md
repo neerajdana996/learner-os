@@ -186,7 +186,7 @@ Applied plan was 2 add / 1 change / 0 destroy. Verified: MX still `1 smtp.google
    `learnos-key` and the local `.pem`. `infra/versions.tf` now pins `allowed_account_ids` to
    `353400076760`. Verified after: nothing left in that account but the undeletable default SG;
    the current host in `719312763365` untouched and healthy. **Still open: remove the Vercel
-   project.** `infra/deploy-backend.sh` targets the destroyed host and is dead.
+   project.** `infra/deploy-backend.sh`, which targeted the destroyed host, was deleted.
 8. **Audit findings not yet acted on** (2026-09-14, from reading the code — none confirmed by
    running it, and each says so):
    - **Fixed in T-171** — confirmed, and TypeScript was broken too (the browser ran it as

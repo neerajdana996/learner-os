@@ -98,8 +98,8 @@ resolving to the host.
 **7. Retire the old setup** — **done for AWS on 2026-09-15.** The legacy
 t3.micro stack in this folder was destroyed (account `353400076760`, which
 `versions.tf` now pins). Its state file stays as a record and holds no
-resources. Still to do: remove the Vercel project. `deploy-backend.sh` deployed
-to that host and no longer works.
+resources. Still to do: remove the Vercel project. `deploy-backend.sh`, which
+deployed to that host, has been deleted.
 
 ## Day to day
 
