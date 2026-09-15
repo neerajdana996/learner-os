@@ -23,4 +23,8 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  # The legacy account only (T-168). The current stack lives in 719312763365
+  # under the `terraform` profile; pinned so a shell holding those credentials
+  # can never plan or destroy into it from this directory.
+  allowed_account_ids = ["353400076760"]
 }

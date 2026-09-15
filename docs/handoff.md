@@ -180,8 +180,13 @@ Applied plan was 2 add / 1 change / 0 destroy. Verified: MX still `1 smtp.google
 6. **Rotate secrets exposed in chat:** OpenAI key, Mailgun SMTP password, GitHub and Google OAuth
    client secrets, and the Coolify `claude-setup` root token. Update `backend/.env`, re-run
    `set-secrets.py`, save the new token to `~/.coolify-token`.
-7. After 48 quiet hours on the new host: `terraform destroy` the legacy stack (`infra/*.tf`, account
-   `353400076760`), remove the Vercel project.
+7. ~~`terraform destroy` the legacy stack~~ **Destroyed 2026-09-15 ~00:25 IST**, at the founder's
+   request ~14h before the 48-hour window closed. Saved plan, exactly 0/0/6: instance
+   `i-09317eaacfb23fa32` (its root volume went with it), EIP `13.200.206.246`, `learnos-sg`,
+   `learnos-key` and the local `.pem`. `infra/versions.tf` now pins `allowed_account_ids` to
+   `353400076760`. Verified after: nothing left in that account but the undeletable default SG;
+   the current host in `719312763365` untouched and healthy. **Still open: remove the Vercel
+   project.** `infra/deploy-backend.sh` targets the destroyed host and is dead.
 8. **Audit findings not yet acted on** (2026-09-14, from reading the code — none confirmed by
    running it, and each says so):
    - **Fixed in T-171** — confirmed, and TypeScript was broken too (the browser ran it as

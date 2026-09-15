@@ -95,9 +95,11 @@ that has never been restored is not yet a backup.
 `terraform apply`. Coolify issues HTTPS certificates as the names start
 resolving to the host.
 
-**7. Retire the old setup** after 48 quiet hours: `terraform destroy` in this
-folder (the legacy t3.micro stack, with its local state), then remove the
-Vercel project.
+**7. Retire the old setup** — **done for AWS on 2026-09-15.** The legacy
+t3.micro stack in this folder was destroyed (account `353400076760`, which
+`versions.tf` now pins). Its state file stays as a record and holds no
+resources. Still to do: remove the Vercel project. `deploy-backend.sh` deployed
+to that host and no longer works.
 
 ## Day to day
 
