@@ -15,6 +15,7 @@ import { env } from '../lib/env.js';
 import { LlmError } from './errors.js';
 import { DEFAULT_MODEL, DEFAULT_REASONING_EFFORT, type ReasoningEffort } from './models.js';
 import { estimateUsd, LOG_EVERY_CALL, recordUsage } from './usage.js';
+import { log } from '../lib/log.js';
 
 export { DEFAULT_MODEL } from './models.js';
 
@@ -112,6 +113,12 @@ export async function complete(opts: CompleteOpts): Promise<string> {
   } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming, {
     ...(opts.timeoutMs !== undefined ? { timeout: opts.timeoutMs } : {}),
     ...(opts.maxRetries !== undefined ? { maxRetries: opts.maxRetries } : {}),
+  }).catch((error: unknown) => {
+    // One line per failed model call, naming the prompt (T-047). Without it a
+    // provider outage shows up only as a scatter of 500s on routes whose own
+    // logs never say "gradeCode" or "itemBlocks".
+    log.error('llm_call_failed', { prompt: opts.name ?? 'unnamed', model, ms: Date.now() - startedAt, error });
+    throw error;
   });
 
   const usage = {

@@ -4,6 +4,7 @@ import { TestScoresSchema } from '@learnos/shared';
 import { db } from '../db/client.js';
 import { topics, users } from '../db/schema.js';
 import { env } from '../lib/env.js';
+import { log } from '../lib/log.js';
 import { getMailTransport } from '../lib/mail.js';
 import { testIsDue } from '../lib/testLifecycle.js';
 import { existingTest } from '../modules/tests/tests.repository.js';
@@ -55,9 +56,19 @@ export async function startLifecycle() {
   });
   const worker = new Worker<LifecycleJob>(LIFECYCLE_QUEUE, (job) => processLifecycleJob(job.data), { connection: { url: env.REDIS_URL } });
   // Log the error, not `.message`: drizzle wraps failures in DrizzleQueryError,
-  // whose message is only the SQL — the driver's real error is in `cause`.
-  worker.on('failed', (job, error) => console.error(`Lifecycle ${job?.id} failed:`, error));
-  worker.on('error', (error) => console.error('Lifecycle worker error:', error));
+  // whose message is only the SQL — the driver's real error is in `cause`, which
+  // `log` serialises (T-047).
+  worker.on('failed', (job, error) =>
+    log.error('job_failed', {
+      queue: LIFECYCLE_QUEUE,
+      jobId: job?.id,
+      jobName: job?.name,
+      attemptsMade: job?.attemptsMade,
+      data: job?.data,
+      error,
+    }),
+  );
+  worker.on('error', (error) => log.error('worker_error', { queue: LIFECYCLE_QUEUE, error }));
   return worker;
 }
 export async function closeLifecycleQueue() { await queue?.close(); queue = undefined; }

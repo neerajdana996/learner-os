@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { ErrorBoundary } from './ErrorBoundary';
 import { LandingRoute } from './LandingRoute';
 import { RequireAuth } from './RequireAuth';
 import { RouteFallback } from './RouteFallback';
@@ -33,8 +34,19 @@ const PrivacyPage = lazy(() => import('../features/legal/pages/PrivacyPage'));
 const TermsPage = lazy(() => import('../features/legal/pages/TermsPage'));
 const ContactPage = lazy(() => import('../features/legal/pages/ContactPage'));
 
+/**
+ * The whole route tree sits inside an outermost error boundary (T-047).
+ *
+ * `AppShell` has its own boundary around the routed screen, which keeps the bar
+ * alive when a screen throws — but the bar, the landing page and the sign-in
+ * form sit outside that one. A malformed response reaching the bar (a session
+ * object with no `newConcepts`) would otherwise still unmount everything to a
+ * blank page. Keyed on the path, like the inner one.
+ */
 export function AppRoutes() {
+  const { pathname } = useLocation();
   return (
+    <ErrorBoundary resetKey={pathname}>
     <Routes>
       {/* Signed out this is the landing page; signed in it forwards to
           whichever screen this learner is actually up to (T-101, T-071). */}
@@ -158,5 +170,6 @@ export function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ErrorBoundary>
   );
 }

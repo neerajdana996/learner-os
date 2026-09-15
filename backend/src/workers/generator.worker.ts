@@ -16,6 +16,7 @@ import { env } from '../lib/env.js';
 import { collectUsage } from '../llm/usage.js';
 import { collectWarnings, recordWarning } from '../generator/severity.js';
 import { enrichConceptItems } from '../generator/itemBlocks.js';
+import { log } from '../lib/log.js';
 import { LlmError } from '../llm/errors.js';
 import { answerKindOf } from '@learnos/shared';
 
@@ -428,9 +429,8 @@ export async function processGenerationJob(
     // generic "response did not match schema" — the raw model output that
     // would actually explain the failure was thrown away, so a real generation
     // failure was undiagnosable without paying to reproduce it.
-    console.error(`generation ${topicId} failed:`, error);
     const raw = error instanceof LlmError || error instanceof GenerationError ? error.raw : undefined;
-    if (raw) console.error(`generation ${topicId} raw model response:\n${raw}`);
+    log.error('generation_failed', { topicId, error, ...(raw ? { rawModelResponse: raw } : {}) });
     // Outside the transaction on purpose — inside, this update would roll back
     // along with everything else and the topic would be stuck on `generating`.
     await db.update(topics).set({ status: 'failed', error: reason }).where(eq(topics.id, topicId));
@@ -550,9 +550,23 @@ export { seededRng };
  * here would open a Redis connection in every test that imports this module.
  */
 export function createGenerationWorker(): Worker<GenerationJobData> {
-  return new Worker<GenerationJobData>(
+  const worker = new Worker<GenerationJobData>(
     GENERATION_QUEUE,
     async (job) => processGenerationJob(job.data, Math.random, (progress) => job.updateProgress(progress)),
     { connection: { url: env.REDIS_URL } },
   );
+  // T-047. The generation worker had no failure handler at all; the job's own
+  // `generation_failed` line has the detail, this one has the queue's view.
+  worker.on('failed', (job, error) =>
+    log.error('job_failed', {
+      queue: GENERATION_QUEUE,
+      jobId: job?.id,
+      jobName: job?.name,
+      attemptsMade: job?.attemptsMade,
+      data: job?.data,
+      error,
+    }),
+  );
+  worker.on('error', (error) => log.error('worker_error', { queue: GENERATION_QUEUE, error }));
+  return worker;
 }

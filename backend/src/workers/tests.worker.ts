@@ -5,6 +5,7 @@ import { db } from '../db/client.js';
 import { concepts, items, tests, topics } from '../db/schema.js';
 import { generateItems } from '../generator/items.js';
 import { env } from '../lib/env.js';
+import { log } from '../lib/log.js';
 import { isColdTestEligible } from '../lib/popupEligible.js';
 import { assembleTest, TestAssemblyError } from '../lib/testGen.js';
 import { existingTest, testCandidates, testConcepts } from '../modules/tests/tests.repository.js';
@@ -52,7 +53,17 @@ export function createTestWorker() {
   const worker = new Worker<TestJobData>(TEST_QUEUE, (job) => processTestJob(job.data), {
     connection: { url: env.REDIS_URL }, concurrency: 2,
   });
-  worker.on('failed', (job, error) => console.error(`Cold test ${job?.id} failed:`, error));
-  worker.on('error', (error) => console.error('Cold test worker error:', error));
+  // Structured, with the job's data (T-047): which learner's which topic.
+  worker.on('failed', (job, error) =>
+    log.error('job_failed', {
+      queue: TEST_QUEUE,
+      jobId: job?.id,
+      jobName: job?.name,
+      attemptsMade: job?.attemptsMade,
+      data: job?.data,
+      error,
+    }),
+  );
+  worker.on('error', (error) => log.error('worker_error', { queue: TEST_QUEUE, error }));
   return worker;
 }

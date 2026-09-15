@@ -131,19 +131,6 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **description:** Generate both pilot topics, run QA export, review, apply edits. Record time taken and error rate found (this is a metric too).
 - **tests:** none.
 
-### T-047 · Error monitoring + health
-- **status:** todo
-- **sprint:** 4
-- **depends_on:** T-001
-- **files:** `backend/src/index.ts`, `backend/src/lib/log.ts`, `frontend/src/app/ErrorBoundary.tsx`
-- **description:** Structured JSON logging with request id; `/health` checks Postgres and Redis; worker failures logged with job data; optional Sentry DSN.
-  - **The web app has no error boundary anywhere.** Found while testing T-071: a `GET /session` response missing `newConcepts` makes `DashboardPage` throw on `.length`, React unmounts the whole tree, and the learner gets a blank white page with the error only in the console. That is the worst possible failure for a pilot participant — nothing to report but "it stopped working" — and every screen has the same exposure. One boundary around the routed area, showing what broke and a way back, plus (once a DSN exists) reporting it.
-  - `/health` currently returns `{ok:true}` without touching Postgres or Redis, so it answered 200 the whole time the database was down during this session's walkthrough.
-- **tests:**
-  - `/health` returns 503 if Redis is down (mock), and 503 if Postgres is unreachable.
-  - A screen that throws renders the boundary, not a blank page, and the rest of the shell survives.
-- **notes:** (2026-09-15) **Split liveness from readiness.** Coolify restarts the container on its health check, so if `/health` starts checking Postgres a database blip becomes a restart loop. Keep `/health` as a cheap liveness probe for Coolify and add a readiness endpoint that checks Postgres and Redis. This is not hypothetical: on 2026-09-13 Coolify reported `running:healthy` through a total database outage (handoff). Also log grader failures (`gradeExplanation`, `gradeCode`, now bounded at 20s by T-171) with the prompt name, so a model outage is visible as one line rather than a scatter of 500s.
-
 ### T-048 · Deployment
 - **status:** todo
 - **sprint:** 4

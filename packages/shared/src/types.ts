@@ -60,6 +60,7 @@ import type {
   WsClientMessageSchema,
   WsServerMessageSchema,
   HealthResponseSchema,
+  ReadinessResponseSchema,
 } from './schemas.js';
 
 export type Confidence = z.infer<typeof ConfidenceSchema>;
@@ -136,3 +137,4 @@ export type ExtensionTokenResponse = z.infer<typeof ExtensionTokenResponseSchema
 export type WsClientMessage = z.infer<typeof WsClientMessageSchema>;
 export type WsServerMessage = z.infer<typeof WsServerMessageSchema>;
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
+export type ReadinessResponse = z.infer<typeof ReadinessResponseSchema>;

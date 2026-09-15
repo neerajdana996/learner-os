@@ -627,6 +627,19 @@ export const ExtensionTokenResponseSchema = z.object({
 // ---------- Health ----------
 export const HealthResponseSchema = z.object({ ok: z.literal(true) });
 
+/**
+ * `GET /health/ready` (T-047): whether Postgres and Redis actually answer.
+ * 200 when both are `ok`, 503 otherwise. Names the dependency and nothing more
+ * — the underlying error goes to the log, never into this response.
+ */
+export const ReadinessResponseSchema = z.object({
+  ok: z.boolean(),
+  checks: z.object({
+    postgres: z.enum(['ok', 'down']),
+    redis: z.enum(['ok', 'down']),
+  }),
+});
+
 // ---------- Daily pulse (T-032) ----------
 
 /** `PulseCreateSchema` (above) is the request. This is all the answer needs to

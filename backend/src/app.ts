@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import { env, isProd } from './lib/env.js';
+import { log, requestLogging, type Logger } from './lib/log.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
@@ -79,6 +80,9 @@ export function createApp(): Express {
    *    it there.
    */
   app.disable('etag');
+  // First, so every request — a CORS refusal and a 404 included — gets an id
+  // and a log line (T-047).
+  app.use(requestLogging());
   app.use((_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     next();
@@ -111,15 +115,26 @@ export function createApp(): Express {
     res.status(404).json({ error: 'not_found' });
   });
 
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    const message = err instanceof Error ? err.message : 'unknown';
-    // Always logged server-side — only the client-facing response withholds
-    // the message in production. The previous `if (!isProd)` guard on this
-    // line meant a real production failure logged nothing at all, anywhere,
-    // making every 500 a total black box (T-154).
-    console.error(err);
-    res.status(500).json({ error: 'internal', message: isProd ? undefined : message });
-  });
+  app.use(errorHandler());
 
   return app;
+}
+
+/**
+ * The last handler: anything thrown by a route becomes a 500.
+ *
+ * Always logged server-side — only the client-facing response withholds the
+ * message in production. A previous `if (!isProd)` guard meant a real
+ * production failure logged nothing at all, making every 500 a black box
+ * (T-154). Since T-047 the line is structured and carries the request id, and
+ * the id is in the response too, so a learner reporting "it broke" can hand
+ * over the one string that finds the line.
+ */
+export function errorHandler(logger: Logger = log) {
+  return (err: unknown, req: Request, res: Response, _next: NextFunction) => {
+    const message = err instanceof Error ? err.message : 'unknown';
+    const requestId = res.locals.requestId as string | undefined;
+    logger.error('request_failed', { requestId, method: req.method, path: req.path, error: err });
+    res.status(500).json({ error: 'internal', requestId, message: isProd ? undefined : message });
+  };
 }
