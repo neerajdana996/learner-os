@@ -2456,3 +2456,40 @@
     - Confirmed safe, no change needed: the extension's confidence tap re-posts the same idempotency key, and `recordReview` returns the stored event before grading, so it never re-grades or flips a verdict.
     - **A test that failed every night, fixed:** `Card.test.tsx`'s "mood tap is not asked again the same day" built "today" with `toISOString()` (a UTC date) while the card uses `localDay()` (local), so in IST it failed every day from 00:00 to 05:30 with the card behaving correctly. Found because the full suite ran at 00:02. The test now uses `localDay()`.
     - **Full suites after hardening:** lint 7/7; backend 683/683 (64 files, DB included); frontend 84; extension 126; `@learnos/ui` 48; `@learnos/shared` 54.
+
+### T-134 · The E2E harness
+- **status:** done
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `playwright.config.ts`, `e2e/global-setup.ts`, `e2e/api.ts`, `e2e/card.ts`, `e2e/extension/fixtures.ts`, `e2e/README.md`
+- **description:** Playwright at the repo root (not a sixth workspace package — the specs need no dependencies of their own). Two projects: `web`, and `extension`, which must build its own persistent context because `--load-extension` is a profile-level flag and MV3 cannot load into a plain browser context. `workers: 1` and `fullyParallel: false`: there is one seeded learner with real scheduler state, so parallel tests would race over the same review queue.
+- **acceptance:** `pnpm e2e` seeds a known dataset, starts (or reuses) the backend and frontend, runs both projects, and writes an HTML report carrying a video, screenshots and a trace for every test.
+- **tests:** the harness is proved by the suites below running on it.
+- **notes:** (2026-09-15, closed in a task review) **Built long ago and never marked done.** `playwright.config.ts`, the seeding `global-setup.ts` and both projects exist and are exercised daily; the full run on 2026-09-14 was 56 passed and 1 conditional skip across `web` and `extension`, with the HTML report in `e2e/report`. The detailed work was tracked in `docs/e2e-tasks.md` (E2E-001…E2E-015), which is why this block went stale. Known limitation: T-FIX-007 (the suite cannot run twice inside fifteen minutes).
+
+### T-136 · E2E — the extension in a real browser
+- **status:** done
+- **sprint:** 6
+- **depends_on:** T-134
+- **files:** `e2e/extension/*.spec.ts`
+- **description:** Loads the unpacked build into Chromium and drives the popup and options page. Nothing else in the repo does this: `flow.test.ts` simulates a day against `fakeBrowser`, which cannot tell you the popup renders at all.
+- **tests:**
+  - A fresh profile's popup says "not connected" and offers the button that fixes it — not "nothing due", which would look like an extension that silently never pops.
+  - The options page verifies a pasted token against `GET /me` **before** storing it, and shows the account.
+  - A mis-pasted token is refused with an actionable message and nothing is stored.
+  - The popup renders a due card and the answer reaches the server (T-129: opening the popup deliberately asks `/due` itself).
+  - The daily mood tap appears once (T-032).
+- **notes:** Headed, not headless — Chromium's headless mode cannot run MV3 extensions. On CI that needs `xvfb-run` (T-139).
+  - (2026-09-15, closed in a task review) **Every listed test exists and passes**, as E2E-006 in `docs/e2e-tasks.md` (`connection`, `popup`, `cardActions`, `backoff`, `offline` specs). **"Popup" now means the side panel:** T-170 replaced the popup, and the specs drive `sidepanel.html`. The extension project passed 18 on 2026-09-14, including every answer format rendering in the panel.
+
+### T-140 · No generated item has ever carried a block
+- **status:** done
+- **sprint:** 6
+- **depends_on:** —
+- **files:** `backend/src/scripts/seedFormats.ts`, `backend/fixtures/*`
+- **description:** Found while planning T-138. The dev database holds **1,357 items across four types** — `application` 404, `recognition` 381, `explain` 314, `recall` 258 — and **zero with a `blocks` array**. So every Sprint 5 answer surface (`clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`, `numeric`) is built, unit-tested, and **has never been rendered from real data by anything**.
+  - **This is not yet evidence the generator is broken.** The seed reads `backend/fixtures`, which predate Sprint 5, so a fixture-seeded database could not contain blocks whatever the generator does. What it does mean is that nobody has confirmed the other direction either, and T-099 (reveal blocks are written and never seen) is the same smell from the other end.
+  - Two things, and the order matters. **(a)** A dev script that inserts one item per block kind for the seeded topic, using the real `ItemPayloadSchema` so it cannot drift from what the worker writes — this unblocks T-138 without a $0.46, nine-minute generation per run. **(b)** Confirm against a **live** generation that the model actually emits blocks for a code topic, and if it does not, that is a generator defect and gets its own task.
+- **acceptance:** `pnpm seed:formats` produces one answerable item per block kind; a live code-topic generation is inspected and the result recorded here either way.
+- **tests:** every inserted item passes `ItemPayloadSchema`; `toPublicItem` strips the answer key from each; `/due` serves them.
+- **notes:** (2026-09-15, closed in a task review) **Both halves are done.** (a) `seedFormats.ts` inserts one item per block kind through `ItemPayloadSchema`, and `seedFormatShowcase.ts` spreads them one per concept so every format is reachable; the e2e format specs render all of them on both surfaces. (b) The live check happened under T-166: topic `4964b32e` (*Sliding window and prefix sums*, Python) produced **5 `clozeCode` items out of 94**, against 0 before — so the generator does emit blocks. That all five are `clozeCode` is recorded under T-166 and left to the pilot measurement (T-045) on purpose.

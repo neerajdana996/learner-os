@@ -116,6 +116,12 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **files:** `docs/dryrun.md`
 - **description:** Founder runs 5 days on a real topic. Log every friction point as a `T-FIX-xxx` task with a severity. Fix all `high` before pilot.
 - **tests:** none.
+- **notes:** (2026-09-15) **The product this dry run exercises changed a lot since the task was written.** The checklist in `docs/dryrun.md` must cover:
+  - The extension is a **side panel**, not a popup (T-170) — it stays open while you think, and opens from the toolbar icon or by clicking a card notification.
+  - The panel asks **every** answer format, `orderLines` and `codeEditor` included (T-171), and `codeEditor` is now a **review** in the web session too. Note how two to four minutes of it lands inside a 10–15 minute day — nothing caps it yet (T-172).
+  - Code answers in anything but JavaScript are **graded by the model** (`gradeCode`, T-171). Record any verdict that looks wrong, with the item and your code — that is the evidence the eval cannot supply.
+  - "Show me the shape" exists in the panel but not the web session (T-173).
+  - The web session's Check button now shows "Checking…" and an error if grading fails; note whether either ever appears.
 
 ### T-045 · Pilot content generation + QA for two topics
 - **status:** todo
@@ -148,14 +154,17 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 - **tests:**
   - `/health` returns 503 if Redis is down (mock), and 503 if Postgres is unreachable.
   - A screen that throws renders the boundary, not a blank page, and the rest of the shell survives.
+- **notes:** (2026-09-15) **Split liveness from readiness.** Coolify restarts the container on its health check, so if `/health` starts checking Postgres a database blip becomes a restart loop. Keep `/health` as a cheap liveness probe for Coolify and add a readiness endpoint that checks Postgres and Redis. This is not hypothetical: on 2026-09-13 Coolify reported `running:healthy` through a total database outage (handoff). Also log grader failures (`gradeExplanation`, `gradeCode`, now bounded at 20s by T-171) with the prompt name, so a model outage is visible as one line rather than a scatter of 500s.
 
 ### T-048 · Deployment
 - **status:** todo
 - **sprint:** 4
 - **depends_on:** T-047
-- **files:** `backend/Dockerfile` (already exists — harden), `fly.toml` or `render.yaml`, `docs/deploy.md`
-- **description:** Backend container runs api+worker; managed Postgres + Redis; web on static hosting; extension zip. Env vars documented. One-command deploy.
-- **tests:** Container builds; `/health` OK in the deployed environment (manual).
+- **files:** `docs/deploy.md`, `infra/coolify/*`, `extension/wxt.config.ts`
+- **description:** *(Rewritten 2026-09-15 — the original named Fly or Render, managed Postgres and static web hosting.)* **The hosting half is done by T-168:** one Coolify host on AWS runs the backend (api + worker), Postgres, Redis and the frontend, and deploys on every push to `main`. The legacy EC2 stack and the Vercel project are both gone. What remains:
+  - **`docs/deploy.md`** — how a push becomes a deploy (watch paths per app), where env vars live (Coolify; secrets set by the founder with `infra/coolify/set-secrets.py`), how to roll back a bad deploy, and how to read logs. Today this knowledge lives only in `docs/handoff.md`.
+  - **The extension release** — a production zip built with `WXT_API_URL=https://api.coldrecall.info`, published (Chrome Web Store, unlisted is enough for ten people), and `EXTENSION_ORIGINS` set once the published extension has a fixed ID.
+- **tests:** A reader following `docs/deploy.md` alone can deploy and roll back; the published extension connects to production and answers a card.
 
 ---
 
@@ -179,6 +188,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Crossing the threshold flags the concept's items for QA.
   - A leeched concept still appears on the map, marked, rather than vanishing.
   - Day-30/45 tests still include it (T-038) — setting it aside affects *practice*, never *measurement*.
+- **notes:** (2026-09-15) **More urgent since T-171.** `codeEditor` is now a review on both surfaces, and one takes two to four minutes. A leeched concept whose served item is a `codeEditor` costs up to a quarter of the daily budget every time it returns, and in the side panel it is the card most likely to be dismissed — three dismissals end the extension's day.
 
 ### T-060 · Decide desired retention deliberately, rather than inheriting 0.9
 - **status:** todo
@@ -344,6 +354,34 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Score seven days ago is computed over concepts taught by then, not all of them.
   - A learner in their first week gets no delta rather than a misleading one.
   - `TrendUp` / `TrendDown` are chosen by sign, and a zero delta renders neither.
+
+### T-172 · `codeEditor` reviews have no daily cap
+- **status:** todo
+- **sprint:** 6
+- **severity:** medium — a direct threat to the 10–15 minute day and to the extension's dismissal backoff
+- **depends_on:** T-171
+- **files:** `backend/src/modules/due/due.repository.ts`, `backend/src/modules/due/due.service.ts`, `backend/src/modules/session/session.service.ts`, `backend/src/lib/rationItems.ts`, tests alongside
+- **description:** Found closing T-171 (2026-09-15). The founder made `codeEditor` a review on both surfaces. `rationItems` caps it at one per session **for newly taught concepts only**; nothing caps it as a review. A learner with three code concepts whose served item happens to be a `codeEditor` gets six to twelve minutes of editors in one day, on top of teaching — and in the side panel, three long cards in a row are the likeliest route to three dismissals, which stops the extension for the day.
+  - The concept must never be skipped: a capped `codeEditor` review should be served as **another item of the same concept**, the way T-088 originally intended ("the next review is a `clozeCode`, not this").
+  - The right cap is a measurement, not a guess — take it from the dry run (T-044).
+- **acceptance:** At most N `codeEditor` reviews per learner per learner-local day, counted across the web session and the extension; a concept over the cap is served another of its items; a concept with only `codeEditor` items is still served.
+- **tests:**
+  - A second due `codeEditor` concept on the same day is served a different item of that concept.
+  - The cap counts a `codeEditor` answered in the extension against the web session, and the reverse.
+  - A concept whose only items are `codeEditor` is still served past the cap.
+  - The count resets at the learner's local midnight, not UTC.
+
+### T-173 · The web session never offers "Show me the shape"
+- **status:** todo
+- **sprint:** 6
+- **severity:** low — inconsistent rather than broken
+- **depends_on:** T-088
+- **files:** `frontend/src/features/session/pages/SessionPage.tsx`, `frontend/src/features/reviews/reviewsApi.ts`, tests alongside
+- **description:** Found closing T-171. `QuestionCard` only offers the skeleton hint when given `onSkeleton`. The extension side panel passes it and sends `assisted` (T-171); the web session passes neither, so the same `codeEditor` item offers help in the panel and none on the web, and a web answer can never be recorded as assisted. `GET /items/:id/skeleton` already exists.
+- **acceptance:** A `codeEditor` in the web session offers the hint, fetches the skeleton through RTK Query (never `fetch` in the component, per `loop.md §2`), and an answer given after taking it carries `assisted: true`.
+- **tests:**
+  - The hint is offered on a `codeEditor` in the session and fetches the skeleton when taken.
+  - An answer after taking it posts `assisted: true`; one without does not send the key.
 
 ## Sprint 5 — Question formats (design done, not yet sequenced)
 
@@ -527,7 +565,7 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The public item for the same question still contains no reveal block (regression on T-080's projection).
   - A reveal block on an item the user has not answered is not returned.
   - The renderer shows reveal blocks only once feedback is present.
-- **notes:**
+- **notes:** (2026-09-15) **Two surfaces now, not one.** The extension side panel (T-170) draws its own result area in `extension/src/card/Card.tsx`, not the web session's, so reveal blocks must be rendered there too. And `ReviewResultSchema` in `extension/src/lib/api.ts` parses the response, so a new `revealBlocks` key must be added there or Zod silently strips it. Since T-171 `codeEditor` reaches the panel and the review queue, and the reveal diff is most of what its four minutes buy — on both surfaces.
 
 ### T-100 · Slow DB tests blow the 5s default timeout and truncate tables under still-running work
 - **status:** todo
@@ -708,17 +746,8 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 > for uninteresting reasons. `extension/src/__tests__/flow.test.ts` (T-037)
 > already does the simulated day properly.
 
-### T-134 · The E2E harness
-- **status:** todo
-- **sprint:** 6
-- **depends_on:** —
-- **files:** `playwright.config.ts`, `e2e/global-setup.ts`, `e2e/api.ts`, `e2e/card.ts`, `e2e/extension/fixtures.ts`, `e2e/README.md`
-- **description:** Playwright at the repo root (not a sixth workspace package — the specs need no dependencies of their own). Two projects: `web`, and `extension`, which must build its own persistent context because `--load-extension` is a profile-level flag and MV3 cannot load into a plain browser context. `workers: 1` and `fullyParallel: false`: there is one seeded learner with real scheduler state, so parallel tests would race over the same review queue.
-- **acceptance:** `pnpm e2e` seeds a known dataset, starts (or reuses) the backend and frontend, runs both projects, and writes an HTML report carrying a video, screenshots and a trace for every test.
-- **tests:** the harness is proved by the suites below running on it.
-
 ### T-135 · E2E — the learner's path through the web app
-- **status:** todo
+- **status:** in_progress
 - **sprint:** 6
 - **depends_on:** T-134
 - **files:** `e2e/web/*.spec.ts`
@@ -731,40 +760,28 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - The map renders and never names a held-out concept (T-017; the control arm is what the result rests on).
   - The day-30 cold test opens, accepts answers and submits (T-112).
   - `/connect` mints an extension token on an explicit click (T-034).
-
-### T-136 · E2E — the extension in a real browser
-- **status:** todo
-- **sprint:** 6
-- **depends_on:** T-134
-- **files:** `e2e/extension/*.spec.ts`
-- **description:** Loads the unpacked build into Chromium and drives the popup and options page. Nothing else in the repo does this: `flow.test.ts` simulates a day against `fakeBrowser`, which cannot tell you the popup renders at all.
-- **tests:**
-  - A fresh profile's popup says "not connected" and offers the button that fixes it — not "nothing due", which would look like an extension that silently never pops.
-  - The options page verifies a pasted token against `GET /me` **before** storing it, and shows the account.
-  - A mis-pasted token is refused with an actionable message and nothing is stored.
-  - The popup renders a due card and the answer reaches the server (T-129: opening the popup deliberately asks `/due` itself).
-  - The daily mood tap appears once (T-032).
-- **notes:** Headed, not headless — Chromium's headless mode cannot run MV3 extensions. On CI that needs `xvfb-run` (T-139).
+- **notes:** (2026-09-15) Built as E2E-001 through E2E-005 in `docs/e2e-tasks.md`, all done; the web project passed 38 with 1 conditional skip on 2026-09-15. **Still open:** the day-30 cold test flow (E2E-009).
 
 ### T-137 · E2E — card parity and cross-surface truth
-- **status:** todo
+- **status:** in_progress
 - **sprint:** 6
 - **depends_on:** T-135, T-136
 - **files:** `e2e/card.ts`, `e2e/extension/popup.spec.ts`
-- **description:** `QuestionCard` (`@learnos/ui`) is the single component behind the session, the diagnostic, the day-30 test and the extension popup, so the design cannot drift between them **by construction**. What can still drift is the CSS each surface loads around it — the popup is a 380px window on its own origin with its own stylesheet entry, and T-126 was precisely that bug.
+- **description:** `QuestionCard` (`@learnos/ui`) is the single component behind the session, the diagnostic, the day-30 test and the extension side panel, so the design cannot drift between them **by construction**. What can still drift is the CSS each surface loads around it — the side panel is its own origin with its own stylesheet entry (it replaced a 380px popup in T-170), and T-126 was precisely that bug.
 - **tests:**
-  - The popup's card and the session's card compute to the same font stack and the same box model. **Not a pixel diff**: a 380px popup should lay out differently; what must match is which design system drew it.
+  - The side panel's card and the session's card compute to the same font stack and the same box model. **Not a pixel diff**: a narrow panel should lay out differently; what must match is which design system drew it.
   - An answer given through the extension moves the web app's knowledge score.
-  - The extension never shows an untaught or held-out concept (T-033, T-089).
+  - The extension never shows an untaught or held-out concept (T-033).
+- **notes:** (2026-09-15) Tracked as E2E-007 in `docs/e2e-tasks.md`. Font-stack and box-model parity pass. Open: parity across every answer kind, and an extension answer moving the web score. The popup-to-side-panel switch (T-170) is already reflected in the specs, which drive `sidepanel.html`.
 
 ### T-138 · E2E — every answer format renders and is answerable
-- **status:** todo
+- **status:** in_progress
 - **sprint:** 6
 - **depends_on:** T-134, T-140
 - **files:** `e2e/web/formats.spec.ts`, `backend/src/scripts/seedFormats.ts`
 - **description:** One test per answer surface: recognition, recall, explain, numeric, `clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`. This is the suite that would have caught T-118 — `numeric` shipped half-built, a field nothing read.
-- **tests:** each format renders its own surface (not the fallback text box), accepts an answer, and grades; `codeEditor` is absent from the extension (T-089) and from the day-30 test (T-093).
-- **notes:** Blocked on T-140 until there is data to render — see below.
+- **tests:** each format renders its own surface (not the fallback text box), accepts an answer, and grades; `codeEditor` and `orderLines` render and are answerable in the extension side panel (T-170, T-171 — this used to assert they were absent); both stay absent from the day-30 test (T-093).
+- **notes:** (2026-09-15) Unblocked — T-140 is done. Tracked as E2E-008: every format **renders** on both surfaces, including a `codeEditor` opening and submitting in the side panel. Open: the **grades** half — driving each format to a verdict through the UI.
 
 ### T-139 · E2E in CI
 - **status:** todo
@@ -773,18 +790,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 - **files:** `.github/workflows/ci.yml`
 - **description:** Run the suite on a real Postgres and Redis in Actions, under `xvfb-run` for the extension project, uploading the HTML report as an artifact. Deliberately after the suite is stable locally: a flaky E2E job teaches people to ignore CI, which costs more than it catches (the T-111 lesson).
 - **tests:** the job passes twice in a row on an unchanged tree.
-
-### T-140 · No generated item has ever carried a block
-- **status:** todo
-- **sprint:** 6
-- **depends_on:** —
-- **files:** `backend/src/scripts/seedFormats.ts`, `backend/fixtures/*`
-- **description:** Found while planning T-138. The dev database holds **1,357 items across four types** — `application` 404, `recognition` 381, `explain` 314, `recall` 258 — and **zero with a `blocks` array**. So every Sprint 5 answer surface (`clozeCode`, `hotspotLine`, `orderLines`, `codeEditor`, `numeric`) is built, unit-tested, and **has never been rendered from real data by anything**.
-  - **This is not yet evidence the generator is broken.** The seed reads `backend/fixtures`, which predate Sprint 5, so a fixture-seeded database could not contain blocks whatever the generator does. What it does mean is that nobody has confirmed the other direction either, and T-099 (reveal blocks are written and never seen) is the same smell from the other end.
-  - Two things, and the order matters. **(a)** A dev script that inserts one item per block kind for the seeded topic, using the real `ItemPayloadSchema` so it cannot drift from what the worker writes — this unblocks T-138 without a $0.46, nine-minute generation per run. **(b)** Confirm against a **live** generation that the model actually emits blocks for a code topic, and if it does not, that is a generator defect and gets its own task.
-- **acceptance:** `pnpm seed:formats` produces one answerable item per block kind; a live code-topic generation is inspected and the result recorded here either way.
-- **tests:** every inserted item passes `ItemPayloadSchema`; `toPublicItem` strips the answer key from each; `/due` serves them.
-
 
 ### T-168 · One Coolify host on AWS, managed by Terraform
 - **status:** in_progress
@@ -812,6 +817,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Previously: written and validated; nothing applied. Waiting on the founder to create an IAM user or role for Terraform — `js-ai-lab-cli` can read EC2 but cannot manage IAM, Route 53, Budgets or DLM, and cannot call the Pricing API either (prices came from ec2.shop).
   - **Account: `719312763365`** (founder decision, 2026-09-13) — it holds the $100 credit. The legacy api and t3.micro live in `353400076760`, reached by the `js-ai-lab-cli` profile; retiring them after cutover uses that account's credentials. Both stacks set `allowed_account_ids` so a shell on the wrong profile cannot plan or apply into the wrong account.
   - **Open:** whether Coolify's S3 backup destination can use the instance role or insists on an access key. If the latter, create an IAM user whose only permission is the backup bucket.
-  - ~~The legacy stack stays running until 48 quiet hours after cutover, as the rollback.~~ **Destroyed 2026-09-15 ~00:25 IST** at the founder's request, ~14h before that window closed. First pinned `allowed_account_ids = ["353400076760"]` in `infra/versions.tf` (the default profile reaches that account; the `terraform` profile reaches `719312763365`, and nothing stopped this directory using either). Read-only inventory matched state exactly; saved `plan -destroy` was 0/0/6 and applied from the file: instance `i-09317eaacfb23fa32` (root volume delete-on-termination, so no orphan), EIP `13.200.206.246`, `learnos-sg`, key pair `learnos-key`, and the local key file. Verified after: that account holds only its undeletable default SG; `i-0b2c0c0c89d40b0ee` in `719312763365` still running on `13.204.7.173`; site, API and dashboard all answering. **Acceptance still open here: the Vercel project, and the backup restore test.** `infra/deploy-backend.sh`, which targeted the destroyed host, was deleted.
+  - ~~The legacy stack stays running until 48 quiet hours after cutover, as the rollback.~~ **Destroyed 2026-09-15 ~00:25 IST** at the founder's request, ~14h before that window closed. First pinned `allowed_account_ids = ["353400076760"]` in `infra/versions.tf` (the default profile reaches that account; the `terraform` profile reaches `719312763365`, and nothing stopped this directory using either). Read-only inventory matched state exactly; saved `plan -destroy` was 0/0/6 and applied from the file: instance `i-09317eaacfb23fa32` (root volume delete-on-termination, so no orphan), EIP `13.200.206.246`, `learnos-sg`, key pair `learnos-key`, and the local key file. Verified after: that account holds only its undeletable default SG; `i-0b2c0c0c89d40b0ee` in `719312763365` still running on `13.204.7.173`; site, API and dashboard all answering. **Acceptance, as settled with the founder (2026-09-15):** the legacy AWS stack, its Terraform code and local state, and the repo's Vercel config (`vercel.json`, `.vercel/`) are all removed. **Deleting the Vercel project `learnos-app` is the founder's** — the CLI delete was refused by the tool's permission classifier; do it in the Vercel dashboard (team `learn-os`, and leave `jaibhawani-platform` alone). **The backup restore test is skipped at the founder's request.** Note for whoever reads this later: that test was about the *new* host's database backups, not the legacy stack — until one is restored, nobody knows the backups work. `infra/deploy-backend.sh`, which targeted the destroyed host, was deleted.
   - **`docs/aws-activate.md` is stale against this**: it describes ECS Fargate, RDS and ElastiCache, 20–40 concepts and 73 model calls per topic. Update it before submitting the Activate application.
   - Not in this task: CI deploys via GitHub Actions with OIDC, and secrets in SSM Parameter Store. Coolify deploys from GitHub itself and holds app environment variables, which covers both for one machine.
