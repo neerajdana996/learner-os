@@ -110,7 +110,7 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
   - **⚠ The Mailgun SMTP password was pasted into a chat transcript and should be rotated.** It authenticates as `profract-admin@mail.profract.com` and can send mail as that domain. Rotating it is a Mailgun dashboard action plus one line in `backend/.env` — no code change.
 
 ### T-044 · Dry-run checklist + annoyance log
-- **status:** todo
+- **status:** in_progress — checklist written, waiting on the founder's five days
 - **sprint:** 4
 - **depends_on:** T-037, T-041
 - **files:** `docs/dryrun.md`
