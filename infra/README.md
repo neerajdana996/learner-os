@@ -10,8 +10,12 @@ infra/
   modules/coolify-host/ the machine, its firewall, backups and snapshots
   modules/dns/          the coldrecall.info zone in Route 53
   prod/                 wires those together, plus spend alerts
-  *.tf (this folder)    LEGACY — the old t3.micro stack; destroy after cutover
+  coolify/              bootstrap.py (creates the apps) and set-secrets.py (the founder runs it)
 ```
+
+How a push becomes a deploy, where settings live, rolling back and reading
+logs are in [`docs/deploy.md`](../docs/deploy.md). This folder is the machine;
+that document is the app running on it.
 
 ## What it costs
 
