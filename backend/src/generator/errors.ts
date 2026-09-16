@@ -43,6 +43,13 @@ export type GenerationErrorReason =
   /** The prompt points at a diagram, listing or history the item does not
    *  carry — unanswerable, and it makes every other question look unreliable. */
   | 'dangling_reference'
+  /**
+   * The prompt tells the learner to write code and the item carries no
+   * `codeEditor` block to write it in (T-175). The card then shows a one-line
+   * box captioned "A few words is enough" for an answer that is a function —
+   * prompt, input and stored answer all disagreeing on one screen.
+   */
+  | 'code_answer_format'
   | 'too_many_rich'
   // items, batched (T-162). A batch is generated for several neighbouring
   // concepts at once precisely so the model can tell them apart, so "it came

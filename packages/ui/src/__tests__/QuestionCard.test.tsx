@@ -66,6 +66,40 @@ describe('answer surfaces respect the item, and the block', () => {
     }
   });
 
+  /**
+   * T-175. "Write a component that increments a counter when a button is
+   * clicked." was rendered in the one-line box below, captioned "A few words is
+   * enough", with a whole JSX snippet as its stored answer.
+   */
+  it('gives a prompt that asks for code room to write code', () => {
+    render(
+      <QuestionCard
+        item={{ ...base, type: 'application', prompt: 'Write a component that increments a counter when a button is clicked.' }}
+        value={null}
+        onChange={() => {}}
+      />,
+    );
+
+    const box = screen.getByRole('textbox', { name: 'Your answer' });
+    expect(box.tagName).toBe('TEXTAREA');
+    expect(box).toHaveClass('field__textarea--code');
+    expect(box).toHaveAttribute('spellcheck', 'false');
+  });
+
+  /** The one-liner keeps its short input: the rule is about what the question
+   *  asks for, not about the item's type. */
+  it('keeps a one-line "write the call" prompt on the short input', () => {
+    render(
+      <QuestionCard
+        item={{ ...base, type: 'application', prompt: 'Write the call that increments it by one.' }}
+        value={null}
+        onChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Your answer' })).toHaveAttribute('type', 'text');
+  });
+
   it('gives explain room to write', () => {
     render(<QuestionCard item={{ ...base, type: 'explain', prompt: 'Q' }} value={null} onChange={() => {}} />);
     expect(screen.getByRole('textbox').tagName).toBe('TEXTAREA');

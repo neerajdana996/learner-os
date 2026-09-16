@@ -35,6 +35,15 @@
     resize: vertical;
   }
 
+  /// A prompt that asks for code, answered without a `codeEditor` block
+  /// (T-175). Mono, because proportional type makes indentation a guess —
+  /// and none of the editor's typing aids, which are retrieval cues (T-088).
+  &__textarea--code {
+    font-family: $font-mono;
+    font-size: 13.5px;
+    tab-size: 2;
+  }
+
   &--invalid &__input,
   &--invalid &__textarea {
     border-color: var(--clay);

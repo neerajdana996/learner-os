@@ -200,6 +200,63 @@ describe('items generation', () => {
     expect(() => validateItems(bad)).toThrowError(/200|rubric|explain/i);
   });
 
+  /**
+   * T-175. "Write a component that increments a counter when a button is
+   * clicked." shipped as a plain `application` item: a one-line input
+   * captioned "A few words is enough", graded against a whole JSX snippet.
+   */
+  const withApplicationPrompt = (prompt: string, blocks?: unknown) => ({
+    topic: 'useState',
+    items: [
+      { type: 'application', prompt, isTransfer: false, answer: 'setCount(count + 1)', ...(blocks ? { blocks } : {}) },
+      { type: 'recall', prompt: 'Q', answer: 'A', accept: ['A'], isTransfer: true },
+      { type: 'recognition', prompt: 'Pick', options: ['a', 'b', 'c', 'd'], distractorSource: 'the nearest wrong belief', answerIndex: 0, isTransfer: false },
+      { type: 'explain', prompt: 'Explain', rubric: 'the rubric', isTransfer: false },
+    ],
+  });
+
+  const codeEditorBlock = [
+    {
+      kind: 'codeEditor',
+      slot: 'answer',
+      lang: 'javascript',
+      signature: 'Counter()',
+      starter: 'function Counter() {\n}',
+      skeleton: 'function Counter() {\n  const [count, setCount] = useState(0);\n}',
+      whyWhole: 'A blank cannot test that the setter is wired to the click.',
+      cases: [
+        { name: 'starts at zero', call: 'render(Counter).text', expect: '0' },
+        { name: 'increments once', call: 'click().text', expect: '1' },
+      ],
+    },
+  ];
+
+  it('rejects a prompt that asks for code when the item has no codeEditor block', () => {
+    const bad = withApplicationPrompt('Write a component that increments a counter when a button is clicked.');
+
+    expect(() => validateItems(bad)).toThrow(GenerationError);
+    expect(() => validateItems(bad)).toThrowError(/codeEditor|code_answer_format/i);
+  });
+
+  it('accepts the same prompt once it carries a codeEditor block', () => {
+    const good = withApplicationPrompt(
+      'Write a component that increments a counter when a button is clicked.',
+      codeEditorBlock,
+    );
+
+    expect(() => validateItems(good)).not.toThrow();
+  });
+
+  /** A one-liner is a good plain item: rejecting it would cost a call to catch
+   *  nothing. This is the false positive the rule must not have. */
+  it('leaves a one-line "write the call" prompt as a plain item', () => {
+    const fine = withApplicationPrompt(
+      'You have `const [count, setCount] = useState(0)`. Write the call that increments it by one.',
+    );
+
+    expect(() => validateItems(fine)).not.toThrow();
+  });
+
   it('rejects a set with fewer than 6 items', async () => {
     // All four types present and exactly one transfer, so every other rule
     // passes and only the count gate can fire.

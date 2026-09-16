@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { definePrompt, runPrompt, stripFences, LlmError } from '../llm/index.js';
-import { ItemPayloadSchema, LangSchema, BlockSlotSchema, DRAWING_ALT_MAX, type ItemPayload } from '@learnos/shared';
+import { ItemPayloadSchema, LangSchema, BlockSlotSchema, DRAWING_ALT_MAX, answerKindOf, wantsWrittenCode, type ItemPayload } from '@learnos/shared';
 import { parseGeneratedItemBlocks } from './blocks.js';
 
 /** sprint.md's Sprint 1 demo expects 6–8 items per taught concept. */
@@ -171,6 +171,30 @@ export function validateItems(data: unknown, options: ValidateOptions = {}): Gen
         `item refers to something shown but carries no block: "${item.payload.prompt.slice(0, 80)}"`,
       );
     }
+  }
+
+  /**
+   * A question that asks for code has to be answerable as code (T-175).
+   *
+   * The decision list in `prompts/items/domains/code.md` already says a
+   * capability — "nothing short of writing it is evidence" — is a `codeEditor`.
+   * That was prose in a prompt and nothing enforced it, so *"Write a component
+   * that increments a counter when a button is clicked."* could ship as a plain
+   * `application` item: rendered as a one-line input promising "A few words is
+   * enough", graded against a whole JSX snippet.
+   *
+   * Fatal rather than tolerated, like `dangling_reference`: the learner cannot
+   * give the answer the question asks for. Inside the retry loop it costs one
+   * more call, and the model's usual repair is the right one either way — write
+   * the `codeEditor` block, or ask a smaller question.
+   */
+  for (const item of items) {
+    if (!wantsWrittenCode(item.payload.prompt)) continue;
+    if (answerKindOf(item.payload.blocks) === 'codeEditor') continue;
+    throw new GenerationError(
+      'code_answer_format',
+      `item asks the learner to write code but has no codeEditor block: "${item.payload.prompt.slice(0, 80)}"`,
+    );
   }
 
   // Every format decision is a time decision (T-083). The learner has ~15

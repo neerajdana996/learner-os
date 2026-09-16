@@ -41,6 +41,10 @@ const CLASSIFIED: Record<GenerationErrorReason, 'integrity' | 'preference'> = {
   missing_item_type: 'integrity',
   explain_rubric: 'integrity',
   dangling_reference: 'integrity',
+  // T-175: the prompt asks for code and the item has no `codeEditor` block, so
+  // the learner cannot give the answer the question asks for. Same class as
+  // `dangling_reference` — worth one more call, never worth shipping.
+  code_answer_format: 'integrity',
   batch_slug_mismatch: 'integrity',
   duplicate_prompt: 'integrity',
   item_cues_another: 'integrity',

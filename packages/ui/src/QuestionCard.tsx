@@ -1,4 +1,4 @@
-import type { PublicItem } from '@learnos/shared';
+import { wantsWrittenCode, type PublicItem } from '@learnos/shared';
 import { BlockList, type BlockListProps } from './blocks/BlockList.js';
 import { ClozeCode } from './blocks/ClozeCode.js';
 import { HotspotLine } from './blocks/HotspotLine.js';
@@ -144,6 +144,27 @@ export function QuestionCard({
           rows={5}
           aria-label="Your answer"
           placeholder="In your own words…"
+        />
+      ) : wantsWrittenCode(item.prompt) ? (
+        /**
+         * The prompt asks for code, so give it somewhere to write code (T-175).
+         *
+         * An item like this should have arrived with a `codeEditor` block, and
+         * since T-175 the generator refuses to produce one without it. This is
+         * the backstop for the items already in the database: a one-line box
+         * captioned "A few words is enough" for an answer that is a function is
+         * three different ideas of the answer on one card.
+         */
+        <textarea
+          className="field__textarea field__textarea--code"
+          value={typeof value === 'string' ? value : ''}
+          onChange={(e) => onChange(e.target.value)}
+          rows={6}
+          aria-label="Your answer"
+          placeholder="Write the code"
+          spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="off"
         />
       ) : (
         /* `recall` and `application` want one short answer. A textarea invited

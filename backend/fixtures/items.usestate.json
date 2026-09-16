@@ -49,11 +49,12 @@
     },
     {
       "type": "application",
-      "prompt": "Write a component that increments a counter when a button is clicked.",
-      "answer": "const [count, setCount] = useState(0); return <button onClick={() => setCount(count + 1)}>{count}</button>;",
+      "prompt": "You have `const [count, setCount] = useState(0)`. Write the call that increments it by one.",
+      "answer": "setCount(count + 1)",
       "accept": [
-        "setCount(count + 1)",
-        "useState(0)"
+        "setCount(c => c + 1)",
+        "setCount(prev => prev + 1)",
+        "setCount(count+1)"
       ],
       "isTransfer": false
     },
