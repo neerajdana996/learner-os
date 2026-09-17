@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
+import { notRetired } from '../../lib/retire.js';
 import { cards, conceptPrereqs, concepts, items, reviewEvents, tests, topics, users } from '../../db/schema.js';
 
 export async function findOwnedTopic(topicId: string, userId: string) {
@@ -44,7 +45,10 @@ export async function findItemForConcept(conceptId: string) {
   const [item] = await db
     .select({ id: items.id, conceptId: items.conceptId, payload: items.payload })
     .from(items)
-    .where(eq(items.conceptId, conceptId))
+    // Never a retired question (T-062). The diagnostic sets the learner's
+    // starting point, so a question the founder rejected as wrong would decide
+    // what gets taught — and the day-0 baseline the pilot measures against.
+    .where(and(eq(items.conceptId, conceptId), notRetired()))
     .limit(1);
   return item ?? null;
 }

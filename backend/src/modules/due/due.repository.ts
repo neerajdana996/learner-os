@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, lt, lte } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
-import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
+import { notRetired } from '../../lib/retire.js';
 import { withinTeachingWindow } from '../../lib/courseWindow.js';
 import { panelEligible, reviewEligible } from '../../lib/popupEligible.js';
 
@@ -18,7 +18,7 @@ export const RECENT_WINDOW = 3;
  */
 function servableItem(popupOnly: boolean) {
   return and(
-    lt(items.flaggedBad, RETIRED_FLAG_THRESHOLD),
+    notRetired(),
     // Everything these queries return is a review, on either surface, and a
     // `codeEditor` is never a review (T-088).
     reviewEligible(),

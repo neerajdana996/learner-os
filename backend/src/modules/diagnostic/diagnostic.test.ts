@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { createApp } from '../../app.js';
 import { db } from '../../db/client.js';
 import { cards, conceptPrereqs, concepts, items, reviewEvents, tests, topics, users } from '../../db/schema.js';
 import { seedUser, truncateAll } from '../../test/db.js';
+import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
+import { findItemForConcept } from './diagnostic.repository.js';
 import { KNOWN_THRESHOLD, MAX_QUESTIONS } from '../../lib/diagnostic.js';
 
 const app = createApp();
@@ -229,3 +231,42 @@ describe('diagnostic', () => {
     expect((await request(app).get(`/diagnostic/${topicId}/next`)).status).toBe(401);
   });
 });
+
+/**
+ * T-062. The diagnostic decides what the learner is taught and sets the day-0
+ * baseline the pilot measures against, so a question the founder rejected as
+ * wrong deciding either is the worst place for it — and this picker read
+ * straight from the table.
+ */
+describe('the diagnostic never asks a retired question', () => {
+  it('picks the surviving question instead', async () => {
+    const { conceptRows } = await seedTopic(2);
+    const concept = conceptRows[0];
+    if (!concept) throw new Error('no concept');
+
+    const [replacement] = await db
+      .insert(items)
+      .values({
+        conceptId: concept.id,
+        type: 'recall',
+        payload: { type: 'recall', prompt: 'the replacement', answer: ANSWER, accept: [] },
+      })
+      .returning({ id: items.id });
+    await db
+      .update(items)
+      .set({ flaggedBad: RETIRED_FLAG_THRESHOLD })
+      .where(and(eq(items.conceptId, concept.id), ne(items.id, replacement!.id)));
+
+    expect((await findItemForConcept(concept.id))?.id).toBe(replacement!.id);
+  });
+
+  it('offers nothing for a concept whose questions are all retired', async () => {
+    const { conceptRows } = await seedTopic(2);
+    const concept = conceptRows[0];
+    if (!concept) throw new Error('no concept');
+    await db.update(items).set({ flaggedBad: RETIRED_FLAG_THRESHOLD }).where(eq(items.conceptId, concept.id));
+
+    expect(await findItemForConcept(concept.id)).toBeNull();
+  });
+});
+

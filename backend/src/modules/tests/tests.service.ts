@@ -6,7 +6,7 @@ import { recordReview } from '../../lib/recordReview.js';
 import { toPublicItem } from '../../lib/publicItem.js';
 import { estimatedSeconds, scoreTest } from '../../lib/testGen.js';
 import { testIsDue } from '../../lib/testLifecycle.js';
-import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
+import { isRetired } from '../../lib/retire.js';
 import { existingTest, ownedTopic, storedItems, testAnswers, testEventKey, type TestDatabase } from './tests.repository.js';
 
 export class TestError extends Error {
@@ -39,7 +39,7 @@ export async function nextTestItem(userId: string, id: string): Promise<TestNext
   const { ids, rows, answers, scores } = await load(userId, id);
   const nextId = ids.find((itemId) => !answers.some((a) => a.itemId === itemId));
   const row = rows.find((item) => item.id === nextId);
-  if (row && row.flaggedBad >= RETIRED_FLAG_THRESHOLD) throw new TestError('test_item_retired');
+  if (row && isRetired(row.flaggedBad)) throw new TestError('test_item_retired');
   return { testId: id, done: !nextId, completed: !!scores, item: row && !scores ? toPublicItem(row) : null,
     progress: { answered: answers.length, total: ids.length },
     estimatedSeconds: rows.reduce((sum, item) => sum + estimatedSeconds(item), 0), ...(scores ? { scores } : {}) };
@@ -54,7 +54,7 @@ export async function answerTestItem(userId: string, id: string, answer: TestSub
     if (scores) throw new TestError('test_completed');
     if (ids.find((itemId) => !answers.some((a) => a.itemId === itemId)) !== answer.itemId)
       throw new TestError('answer_out_of_order');
-    if (rows.find((item) => item.id === answer.itemId)!.flaggedBad >= RETIRED_FLAG_THRESHOLD)
+    if (isRetired(rows.find((item) => item.id === answer.itemId)!.flaggedBad))
       throw new TestError('test_item_retired');
     await recordReview(userId, { ...answer, surface: 'test', idempotencyKey: testEventKey(id, answer.itemId) }, now, tx);
   });

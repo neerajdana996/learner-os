@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { createApp } from '../../app.js';
 import { db } from '../../db/client.js';
 import { cards, conceptPrereqs, concepts, items, sessionDays, topics } from '../../db/schema.js';
 import { seedUser, truncateAll } from '../../test/db.js';
+import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
 
 const app = createApp();
 const DAY = 86_400_000;
@@ -199,6 +200,70 @@ describe('GET /session', () => {
 
   it('requires authentication', async () => {
     expect((await request(app).get('/session')).status).toBe(401);
+  });
+});
+
+/**
+ * T-062. `qa:retire` kept a rejected question out of the extension's queue and
+ * nowhere else: the session's own retrieval item was read straight from the
+ * table, so a question the founder had marked *wrong* was still what the
+ * learner was asked after being taught.
+ */
+describe('GET /session — retired questions', () => {
+  it('teaches with the surviving question, not the retired one', async () => {
+    const { user, topicId, byOrder } = await seed({ count: 3 });
+    const first = byOrder.get(1) as string;
+    const [replacement] = await db
+      .insert(items)
+      .values({
+        conceptId: first,
+        type: 'recall',
+        payload: { type: 'recall', prompt: 'the replacement', answer: 'the answer', accept: [] },
+      })
+      .returning({ id: items.id });
+    await db.update(items).set({ flaggedBad: RETIRED_FLAG_THRESHOLD }).where(
+      and(eq(items.conceptId, first), ne(items.id, replacement!.id)),
+    );
+
+    const res = await getSession(user.cookie);
+
+    expect(res.status).toBe(200);
+    const taught = (res.body.newConcepts as { conceptId: string; item: { itemId: string } }[]).find(
+      (c) => c.conceptId === first,
+    );
+    expect(taught?.item.itemId).toBe(replacement!.id);
+    expect(topicId).toBeTruthy();
+  });
+
+  /**
+   * The degenerate case, decided deliberately: a concept with nothing left to
+   * ask is skipped, not thrown. Generation failing is a bug worth failing on;
+   * the founder rejecting every question is content QA working, and it must not
+   * take down the whole session for the other concepts that day.
+   */
+  it('skips a concept whose every question has been retired, and still teaches the rest', async () => {
+    // One day left for three concepts, so the planner picks all three and the
+    // skip has something to leave behind.
+    const { user, byOrder } = await seed({ count: 3, days: 1 });
+    const first = byOrder.get(1) as string;
+    await db.update(items).set({ flaggedBad: RETIRED_FLAG_THRESHOLD }).where(eq(items.conceptId, first));
+
+    const res = await getSession(user.cookie);
+
+    expect(res.status).toBe(200);
+    const taughtIds = (res.body.newConcepts as { conceptId: string }[]).map((c) => c.conceptId);
+    expect(taughtIds).not.toContain(first);
+    expect(taughtIds.length).toBeGreaterThan(0);
+  });
+
+  it('never offers a retired question as a due review', async () => {
+    const { user, byOrder } = await seed({ count: 3, taughtOrders: [1] });
+    const taught = byOrder.get(1) as string;
+    await db.update(items).set({ flaggedBad: RETIRED_FLAG_THRESHOLD }).where(eq(items.conceptId, taught));
+
+    const res = await getSession(user.cookie);
+
+    expect((res.body.dueReviews as { conceptId: string }[]).some((i) => i.conceptId === taught)).toBe(false);
   });
 });
 

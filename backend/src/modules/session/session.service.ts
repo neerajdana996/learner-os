@@ -1,6 +1,7 @@
 import { isTeaching } from '../../lib/courseWindow.js';
 import { rationItems } from '../../lib/rationItems.js';
 import { planSession, remainingDays } from '../../lib/planner.js';
+import { log } from '../../lib/log.js';
 import { toPublicItem } from '../../lib/publicItem.js';
 import { localDayFor } from '../../lib/today.js';
 import { newCard, toDbCard } from '../../scheduler/index.js';
@@ -115,16 +116,27 @@ export async function getSession(userId: string, now: Date = new Date()): Promis
    */
   const itemByConcept = rationItems(chosen.map((c) => c.id), itemRows);
 
-  const newConcepts = chosen.map((concept) => {
+  const newConcepts = chosen.flatMap((concept) => {
     const item = itemByConcept.get(concept.id);
-    // Generation is all-or-nothing per topic (T-007), so a taught concept with
-    // no item or no teaching content means something upstream went wrong —
-    // better to fail loudly than to render a blank lesson.
-    if (!item) throw new SessionError('missing_teaching', `concept ${concept.id} has no items`);
+    /**
+     * No servable item: every question for this concept has been retired
+     * (T-062). Skipped rather than thrown, and the two cases are different:
+     * generation is all-or-nothing (T-007), so a concept that never had items
+     * is a bug worth failing on — but a concept whose items the founder
+     * *rejected* is content QA working, and it must not take down the session
+     * for every other concept that day.
+     *
+     * Logged so it is visible: a concept with nothing left to ask will never be
+     * taught until someone writes a replacement question.
+     */
+    if (!item) {
+      log.warn('concept_has_no_servable_item', { conceptId: concept.id, topicId: topic.id });
+      return [];
+    }
     if (!concept.explanationShort || !concept.explanationLong) {
       throw new SessionError('missing_teaching', `concept ${concept.id} has no teaching content`);
     }
-    return {
+    return [{
       conceptId: concept.id,
       title: concept.title,
       teachMode: concept.teachMode ?? 'try_first',
@@ -137,7 +149,7 @@ export async function getSession(userId: string, now: Date = new Date()): Promis
       explanationLong: concept.explanationLong,
       corrections: CorrectionSchema.array().parse(concept.corrections ?? []),
       item: toPublicItem(item),
-    };
+    }];
   });
 
   return {

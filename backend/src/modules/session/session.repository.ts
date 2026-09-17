@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
+import { notRetired } from '../../lib/retire.js';
 import { cards, conceptPrereqs, concepts, items, sessionDays, topics } from '../../db/schema.js';
 
 export async function findActiveTopic(userId: string, topicId?: string) {
@@ -61,7 +62,9 @@ export async function findItemsForConcepts(conceptIds: string[]) {
     // (T-088). It is denormalised onto the row precisely for queries like this.
     .select({ id: items.id, conceptId: items.conceptId, payload: items.payload, answerKind: items.answerKind })
     .from(items)
-    .where(inArray(items.conceptId, conceptIds))
+    // A question the founder rejected as wrong was still taught with, because
+    // this read straight from the table (T-062).
+    .where(and(inArray(items.conceptId, conceptIds), notRetired()))
     // Deterministic, so the same session rebuilt gives the same lesson — the
     // ration would otherwise depend on whatever order the database returned.
     .orderBy(asc(items.id));

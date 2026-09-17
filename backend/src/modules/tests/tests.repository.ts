@@ -2,7 +2,7 @@ import { and, asc, eq, gte, inArray, isNotNull, lt, notExists, sql } from 'drizz
 import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, tests, topics, users } from '../../db/schema.js';
 import { coldTestEligible } from '../../lib/popupEligible.js';
-import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
+import { notRetired } from '../../lib/retire.js';
 import { fromDbCard, predictedRecall } from '../../scheduler/index.js';
 
 export type TestDatabase = Pick<typeof db, 'select'>;
@@ -33,7 +33,7 @@ export async function testCandidates(userId: string, topicId: string, now: Date,
   return database.select({ id: items.id, conceptId: items.conceptId, payload: items.payload,
     type: items.type, answerKind: items.answerKind, isTransfer: items.isTransfer })
     .from(items).innerJoin(concepts, eq(concepts.id, items.conceptId))
-    .where(and(eq(concepts.topicId, topicId), coldTestEligible(), lt(items.flaggedBad, RETIRED_FLAG_THRESHOLD),
+    .where(and(eq(concepts.topicId, topicId), coldTestEligible(), notRetired(),
       notExists(database.select({ one: sql`1` }).from(reviewEvents).where(and(
         eq(reviewEvents.userId, userId), eq(reviewEvents.itemId, items.id), isNotNull(reviewEvents.correct),
         gte(reviewEvents.createdAt, new Date(now.getTime() - 7 * 86_400_000)),

@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { and, asc, count, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { db, pg } from '../db/client.js';
 import { cards, concepts, items, topics } from '../db/schema.js';
-import { RETIRED_FLAG_THRESHOLD } from '../lib/retire.js';
+import { isRetired, RETIRED_FLAG_THRESHOLD } from '../lib/retire.js';
 import { ItemPayloadSchema, type ItemPayload } from '@learnos/shared';
 
 /** Anything the founder did wrong in the file, or that would corrupt a row. */
@@ -78,7 +78,7 @@ function field(kind: 'concept' | 'item', id: string, name: string, value: string
 
 function renderItem(row: ItemRow, index: number): string {
   const payload = ItemPayloadSchema.parse(row.payload);
-  const flags = [payload.type, row.isTransfer ? 'transfer' : null, row.flaggedBad >= RETIRED_FLAG_THRESHOLD ? '**RETIRED**' : null]
+  const flags = [payload.type, row.isTransfer ? 'transfer' : null, isRetired(row.flaggedBad) ? '**RETIRED**' : null]
     .filter(Boolean)
     .join(' · ');
 

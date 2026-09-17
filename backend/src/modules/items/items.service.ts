@@ -1,4 +1,4 @@
-import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
+import { isRetired } from '../../lib/retire.js';
 import { ItemPayloadSchema } from '@learnos/shared';
 import { findItemPayload, incrementFlag } from './items.repository.js';
 
@@ -33,7 +33,7 @@ export async function flagItem(itemId: string): Promise<FlagResult> {
   const updated = await incrementFlag(itemId);
   if (!updated) throw new ItemError('not_found');
 
-  return { retired: updated.flaggedBad >= RETIRED_FLAG_THRESHOLD };
+  return { retired: isRetired(updated.flaggedBad) };
 }
 
 /**

@@ -232,21 +232,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Rendered user message for `generateConceptMap` contains the topic title.
   - A concept-map response below the enforced floor → `GenerationError`, with the floor and the prompt's asked range agreeing.
 
-### T-062 · Retired items are still served outside `/due`
-- **status:** todo
-- **sprint:** 3
-- **depends_on:** T-024
-- **files:** `backend/src/modules/session/session.repository.ts`, `backend/src/modules/diagnostic/diagnostic.repository.ts`, `backend/src/modules/due/due.repository.ts`, their tests
-- **description:** T-024 made `pnpm qa:retire` exclude an item from `GET /due`, but three other paths pick items straight out of the table and ignore `flagged_bad`: the session planner's post-teaching retrieval check (`findItemsForConcepts`), the diagnostic's per-concept picker, and — when it is written — T-038's test generator. A question the founder rejected as wrong is still asked in a session, and worse, could land in the Day-30 test, where it is scored.
-  - Push the filter down to one shared helper rather than repeating `lt(items.flaggedBad, RETIRED_FLAG_THRESHOLD)` in four repositories, so T-038 gets it by default.
-  - Decide the degenerate case deliberately: a concept whose every item is retired. The session must not hand back a concept with no retrieval item (`NewConceptSchema` requires one) — either skip the concept or fail generation loudly.
-- **acceptance:** A retired item is unreachable from every surface: `/due`, `/session`, the diagnostic, and the Day-30/45 tests.
-- **tests:**
-  - A retired item never appears in `GET /session`'s `newConcepts` or `dueReviews`.
-  - A retired item is never picked by the diagnostic.
-  - A concept whose items are all retired does not produce a session entry with a missing item.
-  - The shared helper is the only place the threshold is compared.
-
 ### T-063 · QA cannot fix a wrong misconception
 - **status:** todo
 - **sprint:** 4

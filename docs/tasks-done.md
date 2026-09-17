@@ -2631,3 +2631,24 @@
   - **Schema:** `leech_baseline` (int, default 0, not null) and `leech_cleared_at` (nullable), applied to dev and test with `pnpm db:push`; production applies them at container start. Both additive.
   - **Tests:** the four acceptance lines, plus "it is set aside again once it is failed enough times *after* the fix", the note clearing on the next answer, the map flag, and an unedited file changing nothing. Five existing `applyEdits` assertions gained `leechesCleared: 0` — the result shape genuinely grew a field. Backend 734/734, frontend 89, extension 128, `@learnos/ui` 50, `@learnos/shared` 57, lint 7/7, frontend build green.
   - **Not done:** nothing tells the learner *why* it came back beyond "after a fix", and there is no way for the founder to bring a concept back by hand without editing something — both deliberate, since `qa:apply` is the moment a question actually changes.
+
+### T-062 · Retired items are still served outside `/due`
+- **status:** done
+- **sprint:** 3
+- **depends_on:** T-024
+- **files:** `backend/src/modules/session/session.repository.ts`, `backend/src/modules/diagnostic/diagnostic.repository.ts`, `backend/src/modules/due/due.repository.ts`, their tests
+- **description:** T-024 made `pnpm qa:retire` exclude an item from `GET /due`, but three other paths pick items straight out of the table and ignore `flagged_bad`: the session planner's post-teaching retrieval check (`findItemsForConcepts`), the diagnostic's per-concept picker, and — when it is written — T-038's test generator. A question the founder rejected as wrong is still asked in a session, and worse, could land in the Day-30 test, where it is scored.
+  - Push the filter down to one shared helper rather than repeating `lt(items.flaggedBad, RETIRED_FLAG_THRESHOLD)` in four repositories, so T-038 gets it by default.
+  - Decide the degenerate case deliberately: a concept whose every item is retired. The session must not hand back a concept with no retrieval item (`NewConceptSchema` requires one) — either skip the concept or fail generation loudly.
+- **acceptance:** A retired item is unreachable from every surface: `/due`, `/session`, the diagnostic, and the Day-30/45 tests.
+- **tests:**
+  - A retired item never appears in `GET /session`'s `newConcepts` or `dueReviews`.
+  - A retired item is never picked by the diagnostic.
+  - A concept whose items are all retired does not produce a session entry with a missing item.
+  - The shared helper is the only place the threshold is compared.
+- **notes:** (2026-09-17) **Done.** The comparison now lives in `lib/retire.ts` as `notRetired()` (SQL) and `isRetired(flaggedBad)` (a loaded row), and every caller uses one of them: `/due`, the cold test's candidates and its submit-time guards, the flag route, the QA export's **RETIRED** marker — and the two that had no filter at all, the **session's post-teaching retrieval item** (`findItemsForConcepts`) and the **diagnostic's per-concept item** (`findItemForConcept`).
+  - **The cold test was already covered**, contrary to the task's "when it is written": `testCandidates` carried the comparison inline. It now uses the helper like everything else.
+  - **The degenerate case, decided:** a concept whose every question is retired is **skipped**, not thrown. The two cases are genuinely different — generation is all-or-nothing (T-007), so a concept that never had items is a bug worth failing the session over, while a concept whose items the founder *rejected* is content QA working and must not take down that day's session for every other concept. It logs `concept_has_no_servable_item` (T-047's structured log) so a concept with nothing left to ask is visible rather than silently never taught.
+  - **`lib/retire.ts` gained a guard test** that walks every non-test source file and fails if `RETIRED_FLAG_THRESHOLD` is compared anywhere outside it. `scripts/qa.ts` is the one allowed mention, because `qa:retire` is what *writes* the threshold. A query added later that writes the rule out again fails by name.
+  - **Tests:** the four acceptance lines — a retired question is never taught with, never a due review, never picked by the diagnostic, and a concept with none left is skipped rather than served broken — plus "offers nothing for a concept whose questions are all retired" and the threshold boundary. Backend 741/741, frontend 89, extension 128, `@learnos/ui` 50, `@learnos/shared` 57, lint 7/7.
+  - **Not done:** nothing re-serves a concept once a replacement question is written — the same shape as T-176's fix for leeches, and worth the same treatment if it ever happens in practice.
