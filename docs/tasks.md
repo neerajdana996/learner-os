@@ -153,24 +153,22 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 ## Fix / discovered tasks
 _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 
-### T-059 · Leech handling — a concept you keep failing eats the whole session
+### T-176 · Nothing ever un-sets-aside a concept
 - **status:** todo
-- **sprint:** 4
-- **severity:** high — a handful of leeches can consume most of a 10-minute daily budget
-- **depends_on:** T-016
-- **files:** `backend/src/lib/recordReview.ts`, `backend/src/modules/due/due.repository.ts`, `backend/src/db/schema.ts` (schema task), tests
-- **description:** From the Anki comparison (2026-09-05). Anki tags a card a **leech** after a threshold of lapses (default 8) and suspends or surfaces it, because a card you keep forgetting is usually a *content* problem — ambiguous wording, two ideas in one card — not a memory problem, and left alone it returns forever at short intervals.
-  learnos has no equivalent. `cards.lapses` is recorded and never read. A concept the learner keeps failing keeps coming back with a short interval, and because T-016 fills the session with due reviews before anything else, three or four leeches can crowd out the new teaching for the rest of the thirty days — silently converting the course into a loop over the learner's four worst concepts.
-  Add a lapse threshold. On crossing it: stop scheduling the concept normally, flag it for the founder's QA queue (a leech is strong evidence the *item* is bad, which is exactly what T-024 is looking for), and tell the learner plainly rather than dropping it silently.
-- **why it matters more here than in Anki:** an Anki user with 2,000 cards absorbs a few leeches. A learner with ~40 concepts and a 10-minute budget does not — and every session a leech steals is a session not spent on the taught-vs-held-out comparison the pilot exists to measure.
-- **acceptance:** A concept lapsed N times stops dominating the due queue, appears in the QA export, and the learner is told it has been set aside rather than finding it silently gone.
+- **sprint:** 6
+- **severity:** medium — the fix that content QA makes never reaches the learner it was made for
+- **depends_on:** T-059, T-024
+- **files:** `backend/src/scripts/qa.ts`, `backend/src/lib/recordReview.ts`, `backend/src/db/schema.ts`, tests alongside
+- **description:** Found closing T-059 (2026-09-17). A concept is set aside after four lapses and `cards.leeched_at` is never cleared by anything. That is right while the question is still bad — but the whole point of surfacing leeches in the QA export is that the founder then *fixes* the question, and after the fix the learner is still never asked it again. The concept sits marked "set aside" on their map for the rest of the course while a now-correct question goes unasked.
+  - The obvious hook is `qa:apply`: when an edit lands on a concept's items, clear `leeched_at` for every card on that concept, so the fix reaches the people it was made for. `pnpm qa:retire` is the opposite case and should leave the stamp alone — a retired question is gone, not fixed.
+  - Decide what the learner sees. Silently re-asking a concept they were told was set aside is its own small betrayal; a line on the map ("we fixed this one — it's back") is honest and costs nothing.
+  - Worth considering: a lapse count that resets with it, or the next failure sets it aside again immediately (it would, since `lapses` keeps climbing) — which would make the fix last exactly one answer.
+- **acceptance:** A concept whose items are edited through `qa:apply` becomes askable again for every learner who had it set aside, its `lapses` counted from that point, and the learner is told rather than finding it back unannounced.
 - **tests:**
-  - A card at the lapse threshold is excluded from `GET /due`.
-  - A card one lapse below the threshold is still returned.
-  - Crossing the threshold flags the concept's items for QA.
-  - A leeched concept still appears on the map, marked, rather than vanishing.
-  - Day-30/45 tests still include it (T-038) — setting it aside affects *practice*, never *measurement*.
-- **notes:** (2026-09-15) **More urgent since T-171.** `codeEditor` is now a review on both surfaces, and one takes two to four minutes. A leeched concept whose served item is a `codeEditor` costs up to a quarter of the daily budget every time it returns, and in the side panel it is the card most likely to be dismissed — three dismissals end the extension's day.
+  - `qa:apply` on an edited concept clears `leeched_at` for every card on it.
+  - `qa:retire` does not.
+  - A cleared concept appears in `GET /due` again.
+  - A cleared concept is not immediately set aside again by its next failure.
 
 ### T-060 · Decide desired retention deliberately, rather than inheriting 0.9
 - **status:** todo

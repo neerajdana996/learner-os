@@ -157,3 +157,27 @@ describe('persisted cold tests', () => {
     expect(await db.select().from(reviewEvents).where(and(eq(reviewEvents.userId, seed.user.id), eq(reviewEvents.surface, 'test')))).toHaveLength(0);
   });
 });
+
+/**
+ * T-059. Setting a concept aside stops it being *practised*. It must never
+ * touch what is *measured*: the Day-30 test is the pilot's only output, and a
+ * concept quietly dropped from it would bias the result towards whatever the
+ * learner happened to find easy.
+ */
+describe('a concept set aside as a leech', () => {
+  it('is still asked by the cold test', async () => {
+    const { user, topic, concepts: conceptRows } = await seedColdTopic();
+    const leeched = conceptRows.find((c) => !c.heldOut);
+    if (!leeched) throw new Error('no taught concept in the fixture');
+
+    await db
+      .update(cards)
+      .set({ leechedAt: new Date(NOW.getTime() - DAY), lapses: 4 })
+      .where(and(eq(cards.userId, user.id), eq(cards.conceptId, leeched.id)));
+
+    const candidates = await testCandidates(user.id, topic.id, NOW);
+
+    expect(candidates.some((item) => item.conceptId === leeched.id)).toBe(true);
+  });
+});
+

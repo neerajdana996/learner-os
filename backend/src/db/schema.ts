@@ -194,6 +194,23 @@ export const cards = pgTable(
     state: integer('state').default(0).notNull(),
     lastReview: timestamp('last_review', { withTimezone: true }),
     taughtAt: timestamp('taught_at', { withTimezone: true }),
+    /**
+     * When this concept was set aside as a leech (T-059). Null until then.
+     *
+     * `lapses` was recorded and never read: a concept the learner keeps failing
+     * kept coming back on a short interval, and because the session fills with
+     * due reviews before any new teaching, a handful of them quietly turn the
+     * course into a loop over the learner's worst concepts.
+     *
+     * A stamp rather than a boolean, because *when* it happened is what content
+     * QA needs — a concept every learner sets aside on day two is a badly
+     * written question, which is exactly what T-024 is looking for.
+     *
+     * It affects **practice only**. The concept stays on the map, marked, and
+     * the Day-30 test still asks it: setting it aside must never quietly edit
+     * the measurement.
+     */
+    leechedAt: timestamp('leeched_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({

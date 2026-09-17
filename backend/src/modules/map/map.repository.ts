@@ -29,6 +29,9 @@ export async function findMapRows(userId: string, topicId: string) {
       state: cards.state,
       lastReview: cards.lastReview,
       taughtAt: cards.taughtAt,
+      // T-059: set aside as a leech. The concept stays on the map — marked,
+      // never missing — because a concept that vanishes reads as a bug.
+      leechedAt: cards.leechedAt,
     })
     .from(concepts)
     .leftJoin(cards, and(eq(cards.conceptId, concepts.id), eq(cards.userId, userId)))

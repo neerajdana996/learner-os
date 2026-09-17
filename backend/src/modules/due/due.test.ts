@@ -7,6 +7,7 @@ import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js
 import { seedUser, truncateAll } from '../../test/db.js';
 import { toPublicItem } from '../../lib/publicItem.js';
 import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
+import { LEECH_LAPSES } from '../../lib/leech.js';
 
 const app = createApp();
 
@@ -57,6 +58,10 @@ async function seedDueConcept(
     answerKind?: string | null;
     /** At `RETIRED_FLAG_THRESHOLD` the item is retired and never served. */
     flaggedBad?: number;
+    /** Failures after learning it. Recorded by FSRS; read by T-059. */
+    lapses?: number;
+    /** Set aside as a leech (T-059) — stamped by `recordReview`, not here. */
+    leechedAt?: Date | null;
   },
 ) {
   const [concept] = await db
@@ -83,6 +88,8 @@ async function seedDueConcept(
     conceptId: concept.id,
     due: opts.due ?? past(1),
     taughtAt: (opts.taught ?? true) ? past(5) : null,
+    lapses: opts.lapses ?? 0,
+    leechedAt: opts.leechedAt ?? null,
   });
 
   return { concept, itemIds: inserted.map((i) => i.id) };
@@ -333,6 +340,47 @@ describe('GET /due', () => {
     const { body } = await getDue(user.cookie, '?limit=1');
     expect(body.items).toHaveLength(1);
     expect(body.items[0].conceptTitle).toBe('drag');
+  });
+
+  /**
+   * T-059. A concept the learner keeps failing used to come back on a short
+   * interval, and because the session fills with due reviews before any new
+   * teaching, a handful of them turn the course into a loop over the learner's
+   * worst concepts.
+   *
+   * The queue filters on the stamp rather than on `lapses`: the threshold is
+   * applied once, when the answer is recorded (`recordReview`), so the decision
+   * lives in one place and this query cannot drift from it.
+   */
+  it('never serves a concept that was set aside as a leech', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, {
+      slug: 'leech',
+      order: 1,
+      lapses: LEECH_LAPSES,
+      leechedAt: past(1),
+    });
+
+    expect((await getDue(user.cookie)).body.items).toEqual([]);
+  });
+
+  it('still serves a concept one lapse below the threshold', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, { slug: 'nearly', order: 1, lapses: LEECH_LAPSES - 1 });
+
+    expect((await getDue(user.cookie)).body.items).toHaveLength(1);
+  });
+
+  /** Set aside is about *practice*. A leech that is somehow still due must not
+   *  take the one row the extension asked for, either. */
+  it('skips past a leeched card rather than spending the limit on it', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, { slug: 'leech', order: 1, due: past(5), leechedAt: past(2) });
+    await seedDueConcept(user.id, topic.id, { slug: 'servable', order: 2, due: past(1) });
+
+    const { body } = await getDue(user.cookie, '?limit=1');
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].conceptTitle).toBe('servable');
   });
 
   it('requires a user', async () => {

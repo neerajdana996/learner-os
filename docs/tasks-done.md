@@ -2578,3 +2578,33 @@
   - **Not done:** the ~1,357 items already in the dev database are unchanged. Nothing rewrites history, and the card handles them; a QA pass over existing items is T-045's, and `pnpm qa` can now be pointed at them knowing what to look for.
   - **Related:** this is the other end of T-166/T-140 — the enrichment pass produced only `clozeCode` and never a `codeEditor`, so "write the code" questions kept landing as plain text items.
   - This is plausibly also part of the long-standing intermittent backend flake (T-111): a slow or refused provider call from inside the suite would fail a *different* DB-touching test depending on timing. Worth watching whether T-111 recurs now.
+
+### T-059 · Leech handling — a concept you keep failing eats the whole session
+- **status:** done
+- **sprint:** 4
+- **severity:** high — a handful of leeches can consume most of a 10-minute daily budget
+- **depends_on:** T-016
+- **files:** `backend/src/lib/recordReview.ts`, `backend/src/modules/due/due.repository.ts`, `backend/src/db/schema.ts` (schema task), tests
+- **description:** From the Anki comparison (2026-09-05). Anki tags a card a **leech** after a threshold of lapses (default 8) and suspends or surfaces it, because a card you keep forgetting is usually a *content* problem — ambiguous wording, two ideas in one card — not a memory problem, and left alone it returns forever at short intervals.
+  learnos has no equivalent. `cards.lapses` is recorded and never read. A concept the learner keeps failing keeps coming back with a short interval, and because T-016 fills the session with due reviews before anything else, three or four leeches can crowd out the new teaching for the rest of the thirty days — silently converting the course into a loop over the learner's four worst concepts.
+  Add a lapse threshold. On crossing it: stop scheduling the concept normally, flag it for the founder's QA queue (a leech is strong evidence the *item* is bad, which is exactly what T-024 is looking for), and tell the learner plainly rather than dropping it silently.
+- **why it matters more here than in Anki:** an Anki user with 2,000 cards absorbs a few leeches. A learner with ~40 concepts and a 10-minute budget does not — and every session a leech steals is a session not spent on the taught-vs-held-out comparison the pilot exists to measure.
+- **acceptance:** A concept lapsed N times stops dominating the due queue, appears in the QA export, and the learner is told it has been set aside rather than finding it silently gone.
+- **tests:**
+  - A card at the lapse threshold is excluded from `GET /due`.
+  - A card one lapse below the threshold is still returned.
+  - Crossing the threshold flags the concept's items for QA.
+  - A leeched concept still appears on the map, marked, rather than vanishing.
+  - Day-30/45 tests still include it (T-038) — setting it aside affects *practice*, never *measurement*.
+- **notes:** (2026-09-15) **More urgent since T-171.** `codeEditor` is now a review on both surfaces, and one takes two to four minutes. A leeched concept whose served item is a `codeEditor` costs up to a quarter of the daily budget every time it returns, and in the side panel it is the card most likely to be dismissed — three dismissals end the extension's day.
+  - (2026-09-17) **Done.** A concept is set aside after **`LEECH_LAPSES = 4`** failures *after it was learned* (FSRS only counts a lapse on a review-state card, so stumbles on the way in do not count).
+    - **Why 4 and not Anki's 8.** Anki counts over months; a topic here teaches for seven days and a concept comes up a handful of times, so 8 could never be reached before the teaching ends — the rule would never fire. Four is "failed four times in one week", already most of what a ten-minute day can spare on one concept. It is one constant in `lib/leech.ts`: if the dry run (T-044) shows concepts being set aside that the learner was about to get, that is the line to change.
+    - **Mechanism:** a new `cards.leeched_at` stamp, written once by `recordReview` when the scheduled card crosses the threshold, never re-stamped — the date is the evidence content QA needs, and a concept that keeps being failed would otherwise keep moving its own timestamp forward. `/due` filters on the stamp rather than on `lapses`, so the threshold is applied in exactly one place and the query cannot drift from it. Both surfaces go quiet at once, because both read that queue.
+    - **The learner is told, at the moment it happens** — the web session's verdict and the extension card both say it plainly ("we're setting this one aside… it still counts on day 30"), because that answer is the last time the concept is asked and a concept that silently stops appearing reads as the product losing it. The review response carries `leeched`; the extension's Zod schema takes it as optional so a card built against an older backend still renders.
+    - **The map marks it, never hides it** (`concept__aside`, "set aside"): still `taught`, still named, still scored. A flag rather than a new `ConceptState`, because being set aside says nothing about how well the concept is known.
+    - **The QA export flags it with a count** — "Set aside as a leech for N learners". Counted across learners on purpose: one learner setting a concept aside is a bad day, five is a bad question, which is exactly what T-024 is looking for.
+    - **Measurement untouched.** `testCandidates` never reads `cards`, so the Day-30 test still asks a set-aside concept; a guard test now says so, since that is the property most likely to be broken by accident later.
+    - **Schema:** `cards.leeched_at` is nullable with no default and was applied to the dev and test databases with `pnpm db:push`. Production applies it at container start (`docs/deploy.md`) — additive, so nothing can be lost.
+    - **Tests:** the five acceptance lines, plus the stamp-once rule and "a correct answer never sets anything aside". Backend 726/726, frontend 89, extension 128, `@learnos/ui` 50, `@learnos/shared` 57, lint 7/7, frontend build green.
+    - **Not retroactive:** cards already past four lapses are not stamped until their next failure. Deliberate — nothing rewrites history from a migration — and it resolves itself within a day of practice.
+    - **Found while building it:** nothing ever un-sets-aside a concept. Logged as T-176.

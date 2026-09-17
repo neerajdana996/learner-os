@@ -419,3 +419,37 @@ describe('qa retire', () => {
     await expect(retireItem('11111111-1111-4111-8111-111111111111')).rejects.toBeInstanceOf(QaError);
   });
 });
+
+/**
+ * T-059. A leech is evidence about the *question*: a concept several learners
+ * keep failing after being taught is usually ambiguous or holds two ideas, and
+ * this export is where the founder goes looking for exactly that.
+ */
+describe('leeches in the export', () => {
+  it('flags a concept learners have set aside, with how many', async () => {
+    const { topic, taught, user } = await seedTopic();
+    await db.insert(cards).values({
+      userId: user.id,
+      conceptId: taught.id,
+      due: new Date(),
+      taughtAt: new Date(),
+      lapses: 4,
+      leechedAt: new Date(),
+    });
+
+    const dir = mkdtempSync(join(tmpdir(), 'qa-leech-'));
+    const { path } = await exportTopic(topic.id, dir);
+    const markdown = readFileSync(path, 'utf8');
+
+    expect(markdown).toContain('Set aside as a leech');
+    expect(markdown).toContain('for 1 learner');
+  });
+
+  it('says nothing about leeches when there are none', async () => {
+    const { topic } = await seedTopic();
+    const dir = mkdtempSync(join(tmpdir(), 'qa-noleech-'));
+    const { path } = await exportTopic(topic.id, dir);
+
+    expect(readFileSync(path, 'utf8')).not.toContain('Set aside as a leech');
+  });
+});

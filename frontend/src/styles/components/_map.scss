@@ -115,6 +115,18 @@
     flex-grow: 1;
   }
 
+  /// Set aside as a leech (T-059). A label rather than a state change: the
+  /// concept is still taught, still scored, and still on the day-30 test — the
+  /// product has only stopped asking it in sessions.
+  &__aside {
+    margin-left: $s-2;
+    font-family: $font-mono;
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
   &__value {
     font-family: $font-mono;
     font-variant-numeric: tabular-nums;

@@ -121,6 +121,9 @@ export const ReviewResultSchema = z.object({
    *  rather than the design canvas's flat "tomorrow". Null when the answer
    *  moved no schedule — a snooze, a dismissal, or nothing answered. */
   due: z.string().nullable().optional(),
+  /** The concept was set aside as a leech (T-059). Optional so a card built
+   *  against an older backend still parses rather than failing to render. */
+  leeched: z.boolean().optional(),
 });
 
 export type ReviewResult = z.infer<typeof ReviewResultSchema>;

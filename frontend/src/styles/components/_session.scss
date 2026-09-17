@@ -140,12 +140,26 @@
 .verdict {
   display: flex;
   align-items: center;
+  // Wraps because the set-aside note below is a sentence, not a chip.
+  flex-wrap: wrap;
   gap: $s-2;
   font-size: $text-base;
   font-weight: $weight-semibold;
 
   &--right {
     color: var(--sage);
+  }
+
+  /// "We're setting this one aside" (T-059). Quieter than the verdict it sits
+  /// under: it explains what the product is doing, it is not the answer.
+  &__aside {
+    display: block;
+    width: 100%;
+    margin-top: $s-2;
+    font-size: $text-sm;
+    font-weight: $weight-regular;
+    line-height: 1.55;
+    color: var(--ink-2);
   }
 }
 

@@ -258,6 +258,15 @@ export function Card({ item, onClose }: CardProps) {
             </p>
             {result.feedback ? <p className="card__why">{result.feedback}</p> : null}
 
+            {/* Set aside as a leech (T-059). The card is the surface where it
+                will be missed, so it is the surface that has to say so. */}
+            {result.leeched ? (
+              <p className="card__why">
+                We&rsquo;re setting this one aside — it won&rsquo;t come back as a card. It still
+                counts on day 30.
+              </p>
+            ) : null}
+
             {/* Being wrong here is the mechanism working, and the card says so.
                 Without this the learner is left with a bare "not this time" and
                 no idea whether the concept is now lost. */}

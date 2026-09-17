@@ -4,6 +4,7 @@ import { cards, items, reviewEvents } from '../db/schema.js';
 import { fromDbCard, newCard, predictedRecall, Rating, scheduleReview, toDbCard } from '../scheduler/index.js';
 import { ItemPayloadSchema, type Answer, type Surface } from '@learnos/shared';
 import { grade } from './grade.js';
+import { isLeech } from './leech.js';
 
 /** Surfaces that record the answer but must never move the card's schedule:
  *  the diagnostic measures prior knowledge (T-015) and the Day-30/45 tests
@@ -22,6 +23,15 @@ export interface RecordReviewResult {
   reps: number;
   /** One line for the learner, from the grader. Null when nothing was answered. */
   feedback: string | null;
+  /**
+   * This concept has been set aside as a leech (T-059).
+   *
+   * Returned so the learner can be told at the moment it happens. It is the
+   * only moment they would notice: from here the concept never appears in a
+   * session or a card again, and a concept that silently stops being asked
+   * reads as the product forgetting it rather than as a decision.
+   */
+  leeched: boolean;
 }
 
 export class ReviewError extends Error {
@@ -111,6 +121,7 @@ export async function recordReview(
         reps: card?.reps ?? 0,
         // Not stored — a replayed answer returns the recorded outcome, not fresh feedback.
         feedback: null,
+        leeched: card?.leechedAt != null,
       };
     }
   }
@@ -200,11 +211,24 @@ export async function recordReview(
   const rating = correct && !answer.assisted ? Rating.Good : Rating.Again;
   const scheduledCard = shouldSchedule ? scheduleReview(fsrsCard, rating, at) : null;
 
+  /**
+   * Four failures after learning it, and the concept is set aside (T-059).
+   *
+   * Stamped once and never re-stamped: the date is evidence for content QA, and
+   * a concept that keeps being failed would otherwise keep moving its own
+   * timestamp forward and lose it. From here `/due` skips it — on both surfaces
+   * — while the map still shows it and the Day-30 test still asks it.
+   */
+  const leechedAt =
+    scheduledCard && isLeech(scheduledCard.lapses)
+      ? existingCard?.leechedAt ?? at
+      : existingCard?.leechedAt ?? null;
+
   return database.transaction(async (tx) => {
     let cardId = existingCard?.id ?? null;
 
     if (scheduledCard) {
-      const row = toDbCard(scheduledCard);
+      const row = { ...toDbCard(scheduledCard), leechedAt };
       const [upserted] = await tx
         .insert(cards)
         .values({ userId, conceptId, ...row })
@@ -251,6 +275,7 @@ export async function recordReview(
       due: card?.due ?? null,
       reps: card?.reps ?? 0,
       feedback: graded?.feedback ?? null,
+      leeched: leechedAt !== null,
     };
   });
 }

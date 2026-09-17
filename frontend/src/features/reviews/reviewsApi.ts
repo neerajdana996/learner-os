@@ -8,6 +8,9 @@ export interface ReviewResult {
   feedback: string | null;
   scheduled: boolean;
   reps: number;
+  /** The concept has been set aside as a leech (T-059) — said plainly here,
+   *  because this is the last time the learner will be asked it. */
+  leeched: boolean;
 }
 
 export const reviewsApi = api.injectEndpoints({

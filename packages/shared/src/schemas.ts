@@ -324,6 +324,13 @@ export const MapConceptSchema = z.object({
   state: ConceptStateSchema,
   mastery: z.number().min(0).max(1),
   atRisk: z.boolean(),
+  /**
+   * Set aside as a leech: failed enough times after being learned that the
+   * product stopped asking (T-059). A separate flag rather than a new
+   * `ConceptState`, because it is orthogonal to how well the concept is known —
+   * a leech is still `taught`, and its mastery is still whatever FSRS believes.
+   */
+  leeched: z.boolean(),
 });
 
 export const MapResponseSchema = z.object({

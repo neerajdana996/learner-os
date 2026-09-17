@@ -101,6 +101,10 @@ export default function MapPage() {
                     ) : (
                       concept.title
                     )}
+                    {/* Marked, never missing (T-059): the concept is still part
+                        of the course and still on the day-30 test — the product
+                        has just stopped asking it in sessions. */}
+                    {concept.leeched ? <span className="concept__aside">set aside</span> : null}
                   </span>
                   <span
                     className={[

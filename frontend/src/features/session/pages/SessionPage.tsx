@@ -74,7 +74,7 @@ export default function SessionPage() {
   const [readMore, setReadMore] = useState(false);
   const [response, setResponse] = useState<string | number | null>(null);
   const [confidence, setConfidence] = useState<Rating | null>(null);
-  const [verdict, setVerdict] = useState<{ correct: boolean | null; feedback: string | null } | null>(null);
+  const [verdict, setVerdict] = useState<{ correct: boolean | null; feedback: string | null; leeched: boolean } | null>(null);
   /**
    * An answer on its way to the server (T-171).
    *
@@ -375,7 +375,7 @@ export default function SessionPage() {
                   onClick={() =>
                     void once(async () => {
                       const result = await answer(response, confidence);
-                      setVerdict({ correct: result.correct, feedback: result.feedback });
+                      setVerdict({ correct: result.correct, feedback: result.feedback, leeched: result.leeched });
                     })
                   }
                 >
@@ -418,7 +418,7 @@ interface RetrievalProps {
   onResponse: (value: string | number) => void;
   confidence: Rating | null;
   onConfidence: (value: Rating) => void;
-  verdict: { correct: boolean | null; feedback: string | null } | null;
+  verdict: { correct: boolean | null; feedback: string | null; leeched: boolean } | null;
 }
 
 /**
@@ -437,6 +437,16 @@ function Retrieval({ label, item, response, onResponse, confidence, onConfidence
       {verdict ? (
         <p className={`verdict${verdict.correct ? ' verdict--right' : ''}`}>
           {verdict.correct ? 'Right.' : 'Not this time.'} {verdict.feedback}
+          {/* Said the moment it happens (T-059). It is the last time this
+              concept is asked in a session, and a concept that silently stops
+              appearing reads as the product losing it. */}
+          {verdict.leeched ? (
+            <span className="verdict__aside">
+              We&rsquo;re setting this one aside — you&rsquo;ve missed it a few times now, which
+              usually means the question is the problem rather than you. It won&rsquo;t come back in
+              your sessions, and it still counts on day 30.
+            </span>
+          ) : null}
         </p>
       ) : (
         <div className="teach__confidence">

@@ -17,11 +17,13 @@ interface SeedOpts {
   taught?: Record<number, { stability: number; lastReviewDaysAgo?: number }>;
   /** order -> diagnostic estimate. >= 0.8 marks the concept "known". */
   estimates?: Record<number, number>;
+  /** Orders set aside as leeches (T-059). They must still appear, marked. */
+  leeched?: number[];
   prereqs?: Record<number, number[]>;
 }
 
 async function seed(opts: SeedOpts = {}) {
-  const { count = 4, heldOutOrders = [], taught = {}, estimates = {}, prereqs = {} } = opts;
+  const { count = 4, heldOutOrders = [], taught = {}, estimates = {}, prereqs = {}, leeched = [] } = opts;
   const user = await seedUser();
 
   const [topic] = await db
@@ -68,6 +70,7 @@ async function seed(opts: SeedOpts = {}) {
       state: 2,
       lastReview,
       taughtAt: lastReview,
+      leechedAt: leeched.includes(Number(order)) ? lastReview : null,
     };
   });
   if (cardRows.length > 0) await db.insert(cards).values(cardRows);
@@ -97,6 +100,30 @@ beforeEach(async () => {
 });
 
 describe('GET /topics/:id/map', () => {
+  /**
+   * T-059. Set aside is about practice, never about the map: a concept that
+   * vanished from it would read as the product losing the learner's work, and
+   * the Day-30 test still asks it.
+   */
+  it('still shows a concept that was set aside, marked and scored', async () => {
+    const { user, topicId, byOrder } = await seed({
+      count: 2,
+      taught: { 1: { stability: 6 }, 2: { stability: 6 } },
+      leeched: [1],
+    });
+
+    const res = await getMap(user.cookie, topicId);
+
+    expect(res.status).toBe(200);
+    const concepts = res.body.concepts as { conceptId: string; state: string; leeched: boolean; title: string | null }[];
+    const setAside = concepts.find((c) => c.conceptId === byOrder.get(1));
+    expect(setAside?.leeched).toBe(true);
+    // Still taught, still named, still scored — only the asking stopped.
+    expect(setAside?.state).toBe('taught');
+    expect(setAside?.title).toBe('Concept 1');
+    expect(concepts.find((c) => c.conceptId === byOrder.get(2))?.leeched).toBe(false);
+  });
+
   it('scores zero and reports everything untaught before any teaching', async () => {
     const { user, topicId } = await seed({ count: 4 });
     const res = await getMap(user.cookie, topicId);

@@ -6,6 +6,7 @@ import { createApp } from '../../app.js';
 import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
 import { recordReview } from '../../lib/recordReview.js';
+import { LEECH_LAPSES } from '../../lib/leech.js';
 import { seedUser, truncateAll } from '../../test/db.js';
 
 // Only the LLM call is mocked; the real grade() still runs, so the deterministic
@@ -67,6 +68,82 @@ async function seedExplainItem() {
 beforeEach(async () => {
   gradeExplanation.mockReset();
   await truncateAll();
+});
+
+/**
+ * A card already in review state, `lapses` failures in (T-059).
+ *
+ * Seeded rather than driven through four real answers: FSRS only counts a lapse
+ * once the concept has been learned, so walking it there would test ts-fsrs's
+ * state machine instead of the threshold this task is about.
+ */
+async function seedCardWithLapses(userId: string, conceptId: string, lapses: number) {
+  await db.insert(cards).values({
+    userId,
+    conceptId,
+    due: new Date(Date.now() - DAY),
+    stability: 5,
+    difficulty: 6,
+    elapsedDays: 1,
+    scheduledDays: 1,
+    reps: lapses + 2,
+    lapses,
+    state: 2,
+    lastReview: new Date(Date.now() - DAY),
+    taughtAt: new Date(Date.now() - 5 * DAY),
+  });
+}
+
+describe('leech handling (T-059)', () => {
+  it('sets a concept aside when the answer takes it to the lapse threshold', async () => {
+    const { user, concept, item } = await seedItem();
+    await seedCardWithLapses(user.id, concept.id, LEECH_LAPSES - 1);
+
+    const result = await recordReview(user.id, answer(item.id, { response: 'not the answer' }));
+
+    expect(result.correct).toBe(false);
+    // Told at the moment it happens: it is the last time this concept is asked.
+    expect(result.leeched).toBe(true);
+    const [card] = await db.select().from(cards).where(eq(cards.conceptId, concept.id));
+    expect(card?.leechedAt).toBeInstanceOf(Date);
+    expect(card?.lapses).toBe(LEECH_LAPSES);
+  });
+
+  it('leaves a concept one lapse below the threshold alone', async () => {
+    const { user, concept, item } = await seedItem();
+    await seedCardWithLapses(user.id, concept.id, LEECH_LAPSES - 2);
+
+    const result = await recordReview(user.id, answer(item.id, { response: 'not the answer' }));
+
+    expect(result.leeched).toBe(false);
+    const [card] = await db.select().from(cards).where(eq(cards.conceptId, concept.id));
+    expect(card?.leechedAt).toBeNull();
+  });
+
+  /** The date is evidence for content QA. A concept that keeps being failed
+   *  would otherwise keep moving its own timestamp forward and lose it. */
+  it('stamps the date once, not on every later failure', async () => {
+    const { user, concept, item } = await seedItem();
+    await seedCardWithLapses(user.id, concept.id, LEECH_LAPSES - 1);
+
+    await recordReview(user.id, answer(item.id, { response: 'wrong' }));
+    const [first] = await db.select().from(cards).where(eq(cards.conceptId, concept.id));
+    await recordReview(user.id, answer(item.id, { response: 'wrong again' }));
+    const [second] = await db.select().from(cards).where(eq(cards.conceptId, concept.id));
+
+    expect(second?.leechedAt?.toISOString()).toBe(first?.leechedAt?.toISOString());
+  });
+
+  /** Getting it right is not a lapse, so nothing is set aside for being slow. */
+  it('never sets aside a concept the learner is getting right', async () => {
+    const { user, concept, item } = await seedItem();
+    await seedCardWithLapses(user.id, concept.id, LEECH_LAPSES - 1);
+
+    const result = await recordReview(user.id, answer(item.id));
+
+    expect(result.correct).toBe(true);
+    expect(result.leeched).toBe(false);
+  });
 });
 
 describe('recordReview', () => {

@@ -18,9 +18,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { db, pg } from '../db/client.js';
-import { concepts, items, topics } from '../db/schema.js';
+import { cards, concepts, items, topics } from '../db/schema.js';
 import { RETIRED_FLAG_THRESHOLD } from '../lib/retire.js';
 import { ItemPayloadSchema, type ItemPayload } from '@learnos/shared';
 
@@ -99,11 +99,18 @@ function renderItem(row: ItemRow, index: number): string {
   return out;
 }
 
-function renderConcept(concept: ConceptRow, conceptItems: ItemRow[]): string {
+function renderConcept(concept: ConceptRow, conceptItems: ItemRow[], leeches = 0): string {
   let out = `## ${concept.order} · ${concept.title}${concept.heldOut ? '  — HELD OUT' : ''}\n\n`;
   out += `<!-- learnos:concept ${concept.id} -->\n`;
   out += `- [ ] reviewed\n\n`;
   out += `\`slug: ${concept.slug}\` · teach mode: \`${concept.teachMode ?? 'unset'}\` · domain: \`${concept.domain ?? 'unset'}\`\n\n`;
+
+  if (leeches > 0) {
+    // A leech is strong evidence about the *question* (T-059): a concept that
+    // several learners keep failing after being taught is usually ambiguous or
+    // holds two ideas, which is exactly what this review is looking for.
+    out += `> ⚠ **Set aside as a leech** for ${leeches} learner${leeches === 1 ? '' : 's'} — repeatedly failed after being taught, so the product stopped asking it. Read these items first.\n\n`;
+  }
 
   if (concept.heldOut) {
     // The control group the pilot's result rests on (plan.md §6): never taught,
@@ -170,6 +177,8 @@ export function renderExport(
   topic: { id: string; title: string },
   conceptRows: ConceptRow[],
   itemRows: ItemRow[],
+  /** Concept id → how many learners have it set aside as a leech (T-059). */
+  leechesByConcept: Map<string, number> = new Map(),
 ): string {
   const byConcept = new Map<string, ItemRow[]>();
   for (const item of itemRows) {
@@ -186,7 +195,7 @@ export function renderExport(
   out += `Applying an unedited file changes nothing. To drop a bad question entirely: \`pnpm qa:retire <itemId>\`.\n\n---\n\n`;
 
   for (const concept of conceptRows) {
-    out += renderConcept(concept, byConcept.get(concept.id) ?? []);
+    out += renderConcept(concept, byConcept.get(concept.id) ?? [], leechesByConcept.get(concept.id) ?? 0);
   }
   return out;
 }
@@ -220,7 +229,19 @@ export async function exportTopic(
       ? []
       : ((await db.select().from(items).where(inArray(items.conceptId, conceptIds))) as ItemRow[]);
 
-  const markdown = renderExport(topic, conceptRows, itemRows);
+  // Who has given up on what (T-059). Counted per concept across learners: one
+  // learner setting a concept aside is a bad day, five is a bad question.
+  const leechRows =
+    conceptIds.length === 0
+      ? []
+      : await db
+          .select({ conceptId: cards.conceptId, learners: count() })
+          .from(cards)
+          .where(and(inArray(cards.conceptId, conceptIds), isNotNull(cards.leechedAt)))
+          .groupBy(cards.conceptId);
+  const leechesByConcept = new Map(leechRows.map((row) => [row.conceptId, Number(row.learners)]));
+
+  const markdown = renderExport(topic, conceptRows, itemRows, leechesByConcept);
   const path = join(outDir, topicFileName(topic));
   mkdirSync(outDir, { recursive: true });
   writeFileSync(path, markdown, 'utf8');

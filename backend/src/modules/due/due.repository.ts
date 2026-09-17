@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, inArray, isNotNull, lt, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, lt, lte } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { cards, concepts, items, reviewEvents, topics } from '../../db/schema.js';
 import { RETIRED_FLAG_THRESHOLD } from '../../lib/retire.js';
@@ -48,6 +48,9 @@ export async function findDueCards(userId: string, now: Date, limit: number, pop
         eq(cards.userId, userId),
         lte(cards.due, now),
         isNotNull(cards.taughtAt),
+        // Set aside as a leech (T-059): still on the map, still in the Day-30
+        // test, but it stops taking the session's and the extension's time.
+        isNull(cards.leechedAt),
         eq(concepts.heldOut, false),
         withinTeachingWindow(now),
         // The card only counts as due if this surface can actually serve one
