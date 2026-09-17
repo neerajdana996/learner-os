@@ -97,7 +97,7 @@ local development copy and is gitignored.
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `MAIL_FROM`, `GITHUB_CLIENT_ID`, `GOOGLE_CLIENT_ID` | setting | `bootstrap.py`, copied from `backend/.env` |
 | `DATABASE_URL`, `REDIS_URL` | **secret** | `infra/coolify/set-secrets.py`, read from Coolify's own internal URLs (`DATABASE_URL` carries `sslmode=require`) |
 | `OPENAI_API_KEY`, `SMTP_PASS`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_SECRET` | **secret** | `set-secrets.py`, read from `backend/.env` |
-| `EXTENSION_ORIGINS` | setting | **unset today** — see [the extension](#the-chrome-extension) |
+| `EXTENSION_ORIGINS` | setting | `bootstrap.py` carries the pinned extension ID; **still to be set on the live backend** — see [the extension](#the-chrome-extension) |
 
 Left at their defaults in production: `AUTH_TOKEN_TTL_MIN` (15),
 `SESSION_TTL_DAYS` (30), `LLM_BASE_URL`, `GOOGLE_CLOUD_PROJECT`,
@@ -193,24 +193,36 @@ The zip lands in `extension/.output/`. `WXT_API_URL` is compiled into the
 manifest's host permission, so a build made without it talks to
 `localhost:3001` and nothing else.
 
-**A production build cannot connect today, and here is why.** In production
-the backend refuses any `chrome-extension://` origin that is not listed in
-`EXTENSION_ORIGINS`, which is unset. It cannot be set yet, because the
-extension has no fixed ID: the manifest carries no `key`, so every unpacked
-install gets its own ID. A learner installing the zip sees "Could not reach
-the backend" while the API is up.
+**The ID is pinned** (2026-09-17). `extension/wxt.config.ts` carries a public
+`key`, so every install — every laptop, every reload of the unpacked build —
+is the same:
+
+```
+chrome-extension://gijjgknkbkacdmlbloimmblgicondimf
+```
+
+That key is public: it names the extension and signs nothing. Its private half
+is not in the repository and no build reads it; it is needed only to pack a
+`.crx` by hand. `extension/src/__tests__/extensionId.test.ts` recomputes the ID
+from the key the way Chrome does, so the two cannot drift apart unnoticed.
 
 **Releasing it:**
 
-1. **Get a permanent extension ID** — one decision, the founder's:
-   - publish to the Chrome Web Store (unlisted is enough for ten people); the ID
-     is on the item's page and never changes, or
-   - add a `key` to the manifest in `extension/wxt.config.ts`, which fixes the ID
-     for unpacked installs too.
-2. **Allow it:** set `EXTENSION_ORIGINS=chrome-extension://<that id>` on the
-   backend in Coolify, then redeploy the backend.
-3. **Check it:** install that build, connect it with a token from the web app's
-   Connect extension screen, and answer a card. The answer should appear in
-   `review_events` with `surface = extension`.
-4. **For each later store upload,** raise `version` in `extension/package.json`
-   first — the store rejects a repeated version.
+1. **Allow the origin, once:** set
+   `EXTENSION_ORIGINS=chrome-extension://gijjgknkbkacdmlbloimmblgicondimf` on the
+   backend in Coolify and redeploy it. Until that is set, production refuses the
+   extension and every card reads "could not reach the backend" however healthy
+   the API is. `infra/coolify/bootstrap.py` carries the same value, so a stack
+   rebuilt from scratch starts with it.
+2. **Install it:** Chrome → Extensions → Developer mode → **Load unpacked** →
+   `extension/.output/chrome-mv3`, or drag the zip onto that page.
+3. **Check it:** connect with a token from the web app's **Connect extension**
+   screen, then answer a card. The answer should land in `review_events` with
+   `surface = extension`.
+
+**If it is ever published to the Chrome Web Store,** the store issues its own ID
+and ignores this key: remove `key` from the manifest, take the ID from the
+item's page, and update `EXTENSION_ORIGINS` to match — otherwise the published
+build is the one thing the API refuses. Raise `version` in
+`extension/package.json` before each upload; the store rejects a repeated
+version.

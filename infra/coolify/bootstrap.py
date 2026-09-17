@@ -66,8 +66,13 @@ BACKEND_ENV = {
     "CORS_ORIGINS": WEB_DOMAINS,
     "LLM_PROVIDER": "openai",
     "ADMIN_EMAILS": "neeraj.dana@coldrecall.info",
-    # EXTENSION_ORIGINS stays unset (valid: defaults to empty). In production the
-    # API then refuses the Chrome extension until its chrome-extension://<id> is added.
+    # The extension's id is pinned by the public key in extension/wxt.config.ts
+    # (T-048), so this is a constant rather than something to fill in later. In
+    # production the API refuses any chrome-extension:// origin not listed here,
+    # which is what made every earlier build report "could not reach the backend".
+    # Changing the manifest key changes the id; extension/src/__tests__/extensionId.test.ts
+    # fails if the two drift apart.
+    "EXTENSION_ORIGINS": "chrome-extension://gijjgknkbkacdmlbloimmblgicondimf",
 }
 FRONTEND_ENV = {"VITE_API_URL": API_DOMAIN}
 

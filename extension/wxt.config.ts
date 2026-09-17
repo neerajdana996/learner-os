@@ -59,6 +59,26 @@ export default defineConfig({
      * `popup`, which is why the card lives in `src/card/` now.
      */
     action: { default_title: 'Cold Recall' },
+    /**
+     * A fixed extension id (T-048, founder's call 2026-09-17).
+     *
+     * Chrome derives the id from this public key, so every install — every
+     * laptop, every reload of the unpacked build — is
+     * `chrome-extension://gijjgknkbkacdmlbloimmblgicondimf`. Without it the id
+     * came from the directory the build sat in, which is why the API could not
+     * allow the extension at all: `EXTENSION_ORIGINS` needs an id that does not
+     * move, and in production an unlisted origin is refused (`app.ts`).
+     *
+     * **This is a public key and belongs in the repository.** It signs nothing;
+     * it only names the extension. The private half was generated with it and
+     * is needed only to pack a `.crx` by hand — it is not in this repo, and
+     * nothing in the build reads it.
+     *
+     * If this extension is ever published to the Chrome Web Store, the store
+     * issues its own id: drop this `key` and update `EXTENSION_ORIGINS` to
+     * match, or the API will refuse the published build (`docs/deploy.md`).
+     */
+    key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk3cfIOjJgDuHxrWI1gMmMMqVyMatvEBOZ/S0kgyk7fkWWucmWg7GtiRkfkpTJU0KogoFdB/xIi7Ye3p1VUg5VUTgkXPrMNp2mJB64VHXufnm7R3GfKuOJ2ePvD5crq+IhzV8ADBIuEUPUxP+Mc6eQFPUyVK+LnlAMt8U5anMrbtJmfCWmFRoQP8urPazhhaoaEFmxG+Qr1NZnxAKwo8h6aeOy7I09OPRuUpQcUbbP/tfqs43FOZjDMB/nySeC5xcvWSZFG+R2ov6FHdVT7sUxezW1QYxqRsszvpfv5aX9uOtpuf0OINRvDztwAVZVvdOBsMAQbUjPv4U3aDAqeZHowIDAQAB',
     // Exactly one origin, and no `<all_urls>`: this extension reads nothing
     // from the pages the learner is browsing, and asking for more would be
     // both a lie about what it does and a much worse review to pass.
