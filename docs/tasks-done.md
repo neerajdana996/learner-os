@@ -2679,3 +2679,38 @@
     displayed number, before anything is written. Deleting *every* pair leaves the
     list alone: an absent field means "untouched" for every other field in this tool.
 
+### T-069 · A topic can be stuck on `generating` forever
+- **status:** done
+- **sprint:** 4
+- **depends_on:** T-064
+- **files:** `backend/src/workers/generator.worker.ts`, `backend/src/modules/topics/topics.service.ts`, `backend/src/scripts/`, tests
+- **description:** `topics.status` is flipped to `active` or `failed` only by `processGenerationJob`. If the job never runs to completion — the worker process is killed mid-job (`tsx watch` restarting on a file save does this), the job is evicted, or Redis is flushed (T-068) — the row stays `generating` with no job behind it, forever. The onboarding screen polls it forever, and T-065's duplicate guard now makes it worse: a stuck topic **blocks the learner from creating any new one**.
+  - Detection is cheap now that the job id is the topic id: `generating` **and** no job in the queue **and** older than a few minutes = stranded.
+  - Decide the recovery deliberately — re-enqueue, or mark `failed` so the existing "That didn't build / Try again" path takes over. Failing loudly is the better default; a silent re-enqueue can double-spend on model calls if the job was actually alive.
+  - A stranded row must not block `POST /topics` (T-065's guard), whichever recovery is chosen.
+- **acceptance:** A topic whose job has vanished reaches a terminal state without anyone running SQL by hand, and never blocks a new topic.
+- **tests:**
+  - A `generating` topic with no job, older than the threshold, is marked `failed` with a reason that says so.
+  - A `generating` topic **with** a live job is left alone, however long it has been running.
+  - A stranded topic does not block `POST /topics` from creating a new one.
+- **notes:** Done 2026-09-17. `failStrandedTopics` (topics.service) marks `failed`, with
+  `STRANDED_ERROR` in `topics.error`, every topic `generating` for over five minutes with
+  no **live** job. It runs on the existing per-minute lifecycle tick and, for the one
+  learner, just before `createTopic`'s guard, so a retry works at once rather than after
+  the next tick. The rule and its reasoning live in `lib/stranded.ts`.
+  - **"No live job", not "no job", and that decided the design.** Generation jobs keep
+    BullMQ's defaults, so finished jobs are never removed, and a worker killed mid-job
+    is moved to `failed` by the stall checker *without* the job's catch block running.
+    That is the commonest way to strand a topic, and a job still exists for it. An
+    absence check would never have fired on it. Live = waiting, waiting-children,
+    prioritized, delayed or active.
+  - **The age is only there to cover the enqueue gap.** T-065 commits the row before
+    enqueuing, outside the advisory lock, so a new topic briefly has no job for an
+    innocent reason. A topic younger than the cutoff never costs a Redis call.
+  - **An unreachable Redis marks nothing.** A queue that cannot answer is not evidence
+    that a job died, and failing every in-flight generation during a Redis blip would
+    lose work for everyone waiting. The update also re-checks `generating`, so a job
+    that finishes between the lookup and the write keeps its status.
+  - Failing rather than re-enqueuing, per the task: a silent retry of a job that was
+    alive a moment ago pays for a whole generation twice.
+

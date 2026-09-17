@@ -8,6 +8,7 @@ import { log } from '../lib/log.js';
 import { getMailTransport } from '../lib/mail.js';
 import { testIsDue } from '../lib/testLifecycle.js';
 import { existingTest } from '../modules/tests/tests.repository.js';
+import { failStrandedTopics } from '../modules/topics/topics.service.js';
 import { enqueueTest } from './tests.queue.js';
 
 export const LIFECYCLE_QUEUE = 'test-lifecycle';
@@ -19,6 +20,9 @@ export function getLifecycleQueue(): Queue<LifecycleJob> {
 /** Poll each minute so local 06:00 works at quarter-hour UTC offsets and after
  * DST changes. Persisted topic/test states make repeated scans harmless. */
 export async function processLifecycle(now = new Date()) {
+  // A topic whose generation job died reaches `failed` here, so the wait screen
+  // stops polling and "Try again" appears, with no one running SQL (T-069).
+  await failStrandedTopics(now);
   const rows = await db.select({ topic: topics, timezone: users.timezone }).from(topics)
     .innerJoin(users, eq(users.id, topics.userId)).where(inArray(topics.status, ['active', 'holdout', 'testing', 'done']));
   for (const { topic, timezone } of rows) {

@@ -5,7 +5,14 @@ import { createApp } from '../../app.js';
 import { db } from '../../db/client.js';
 import { concepts, items, topics } from '../../db/schema.js';
 import { seedUser, truncateAll } from '../../test/db.js';
+import { once } from 'node:events';
+import { Worker } from 'bullmq';
 import { closeGenerationQueue, getGenerationQueue } from '../../workers/queue.js';
+import { GENERATION_QUEUE } from '../../workers/generator.worker.js';
+import { processLifecycle } from '../../workers/lifecycle.worker.js';
+import { env } from '../../lib/env.js';
+import { STRANDED_AFTER_MS, STRANDED_ERROR } from '../../lib/stranded.js';
+import { failStrandedTopics } from './topics.service.js';
 
 const app = createApp();
 
@@ -289,3 +296,127 @@ describe('GET /topics', () => {
     expect(res.body.topics.map((t: { title: string }) => t.title)).toEqual(['Second', 'First']);
   });
 });
+
+/**
+ * T-069. A topic whose generation job died stayed `generating` forever, and
+ * T-065's guard then handed that dead row back to every attempt to start over.
+ */
+describe('stranded generation', () => {
+  const now = new Date();
+  const longAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+
+  async function seedGenerating(userId: string, createdAt = longAgo) {
+    const [row] = await db
+      .insert(topics)
+      .values({ userId, title: 'Dynamic programming', status: 'generating', createdAt })
+      .returning();
+    return row!;
+  }
+
+  async function statusOf(id: string) {
+    const [row] = await db.select().from(topics).where(eq(topics.id, id));
+    return { status: row?.status, error: row?.error };
+  }
+
+  it('marks a generating topic with no job, past the threshold, failed and says why', async () => {
+    const user = await seedUser();
+    const topic = await seedGenerating(user.id);
+
+    expect(await failStrandedTopics(now)).toBe(1);
+
+    expect(await statusOf(topic.id)).toEqual({ status: 'failed', error: STRANDED_ERROR });
+  });
+
+  it('leaves a topic with a live job alone, however long it has been running', async () => {
+    const user = await seedUser();
+    const topic = await seedGenerating(user.id);
+    // No worker runs in this file, so the job waits — alive, just slow.
+    await getGenerationQueue().add('generate', { topicId: topic.id }, { jobId: topic.id });
+
+    expect(await failStrandedTopics(now)).toBe(0);
+
+    expect((await statusOf(topic.id)).status).toBe('generating');
+  });
+
+  it('leaves a topic younger than the threshold alone, without asking the queue', async () => {
+    const user = await seedUser();
+    // Committed, not yet enqueued: the gap T-065 deliberately leaves.
+    const topic = await seedGenerating(user.id, new Date(now.getTime() - STRANDED_AFTER_MS + 1000));
+    const jobState = async () => {
+      throw new Error('a young topic must not cost a Redis round trip');
+    };
+
+    expect(await failStrandedTopics(now, { jobState })).toBe(0);
+    expect((await statusOf(topic.id)).status).toBe('generating');
+  });
+
+  /** The commonest real case: a worker killed mid-job. BullMQ's stall checker
+   *  moves that job to `failed` without the job's catch block ever running, so
+   *  a job still exists — it is just dead. */
+  it('marks a topic failed when its job exists but died', async () => {
+    const user = await seedUser();
+    const topic = await seedGenerating(user.id);
+    await getGenerationQueue().add('generate', { topicId: topic.id }, { jobId: topic.id });
+
+    const dying = new Worker(
+      GENERATION_QUEUE,
+      async () => {
+        throw new Error('job stalled more than allowable limit');
+      },
+      { connection: { url: env.REDIS_URL } },
+    );
+    await once(dying, 'failed');
+    await dying.close();
+    expect(await (await getGenerationQueue().getJob(topic.id))!.getState()).toBe('failed');
+
+    expect(await failStrandedTopics(now)).toBe(1);
+    expect((await statusOf(topic.id)).status).toBe('failed');
+  });
+
+  it('marks nothing when the queue cannot be asked', async () => {
+    const user = await seedUser();
+    const topic = await seedGenerating(user.id);
+    const jobState = async () => {
+      throw new Error('connect ECONNREFUSED 127.0.0.1:6379');
+    };
+
+    expect(await failStrandedTopics(now, { jobState })).toBe(0);
+    expect((await statusOf(topic.id)).status).toBe('generating');
+  });
+
+  it('does not block POST /topics from creating a new one', async () => {
+    const user = await seedUser();
+    const stranded = await seedGenerating(user.id);
+
+    const res = await request(app)
+      .post('/topics')
+      .set('Cookie', user.cookie)
+      .send({ title: 'Dynamic programming', ...validSpan });
+
+    expect(res.status).toBe(202);
+    expect(res.body.topicId).not.toBe(stranded.id);
+    expect((await statusOf(stranded.id)).status).toBe('failed');
+    const jobs = await getGenerationQueue().getJobs();
+    expect(jobs.map((job) => job.data.topicId)).toEqual([res.body.topicId]);
+  });
+
+  it('only touches the requesting learner when run for one user', async () => {
+    const mine = await seedUser();
+    const theirs = await seedUser();
+    await seedGenerating(mine.id);
+    const other = await seedGenerating(theirs.id);
+
+    expect(await failStrandedTopics(now, { userId: mine.id })).toBe(1);
+    expect((await statusOf(other.id)).status).toBe('generating');
+  });
+
+  it('is swept by the lifecycle tick, with nobody running SQL', async () => {
+    const user = await seedUser();
+    const topic = await seedGenerating(user.id);
+
+    await processLifecycle(now);
+
+    expect(await statusOf(topic.id)).toEqual({ status: 'failed', error: STRANDED_ERROR });
+  });
+});
+

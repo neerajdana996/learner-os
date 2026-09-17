@@ -1,9 +1,11 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, lt, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { topics } from '../../db/schema.js';
 import { getGenerationQueue } from '../../workers/queue.js';
 import type { GenerationProgress } from '../../workers/generator.worker.js';
 import type { TopicCreate } from '@learnos/shared';
+import { log } from '../../lib/log.js';
+import { jobIsLive, STRANDED_ERROR, strandedCutoff } from '../../lib/stranded.js';
 import { findTopic, insertTopic, listTopics } from './topics.repository.js';
 
 /**
@@ -29,6 +31,12 @@ import { findTopic, insertTopic, listTopics } from './topics.repository.js';
  * requests concurrently (`Promise.all`) rather than one after the other.
  */
 export async function createTopic(userId: string, body: TopicCreate) {
+  // A dead `generating` row must not be what the guard below hands back
+  // (T-069). Done here rather than left to the lifecycle tick so the learner's
+  // own retry works immediately, and before the transaction, because it asks
+  // Redis and a Redis round trip does not belong inside the advisory lock.
+  await failStrandedTopics(new Date(), { userId });
+
   const { topic, isNew } = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
 
@@ -63,6 +71,71 @@ export async function createTopic(userId: string, body: TopicCreate) {
     await getGenerationQueue().add('generate', { topicId: topic.id }, { jobId: topic.id });
   }
   return topic;
+}
+
+export type JobStateLookup = (topicId: string) => Promise<string | null>;
+
+/** The generation job's state, or null when there is none. The job id is the topic id. */
+async function generationJobState(topicId: string): Promise<string | null> {
+  const job = await getGenerationQueue().getJob(topicId);
+  return job ? await job.getState() : null;
+}
+
+/**
+ * Marks `failed` every topic that has been `generating` past the cutoff with no
+ * live job behind it (T-069; see `lib/stranded.ts` for the rule and why the
+ * recovery is failing rather than retrying). Runs on the per-minute lifecycle
+ * tick, and for one user just before `createTopic`'s guard.
+ *
+ * **When Redis cannot answer, nothing is marked.** An unreachable queue is not
+ * evidence that a job is dead, and failing every in-flight generation during a
+ * Redis blip would turn a transient outage into lost work for every learner
+ * who was waiting.
+ *
+ * The update re-checks `generating`, so a job that finishes between the lookup
+ * and the write keeps the status it just earned.
+ */
+export async function failStrandedTopics(
+  now: Date,
+  { userId, jobState = generationJobState }: { userId?: string; jobState?: JobStateLookup } = {},
+): Promise<number> {
+  const candidates = await db
+    .select({ id: topics.id, createdAt: topics.createdAt })
+    .from(topics)
+    .where(
+      and(
+        eq(topics.status, 'generating'),
+        lt(topics.createdAt, strandedCutoff(now)),
+        userId ? eq(topics.userId, userId) : undefined,
+      ),
+    );
+
+  let failed = 0;
+  for (const candidate of candidates) {
+    let state: string | null;
+    try {
+      state = await jobState(candidate.id);
+    } catch (error) {
+      log.warn('stranded_check_skipped', { topicId: candidate.id, error });
+      return failed;
+    }
+    if (jobIsLive(state)) continue;
+
+    const updated = await db
+      .update(topics)
+      .set({ status: 'failed', error: STRANDED_ERROR })
+      .where(and(eq(topics.id, candidate.id), eq(topics.status, 'generating')))
+      .returning({ id: topics.id });
+    if (updated.length === 0) continue;
+
+    failed += 1;
+    log.warn('topic_stranded', {
+      topicId: candidate.id,
+      jobState: state,
+      ageMs: now.getTime() - candidate.createdAt.getTime(),
+    });
+  }
+  return failed;
 }
 
 /**

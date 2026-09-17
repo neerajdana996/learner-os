@@ -248,21 +248,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A generation event for user A never arrives on user B's socket.
   - The client falls back to polling when the socket is closed or unavailable.
 
-### T-069 · A topic can be stuck on `generating` forever
-- **status:** todo
-- **sprint:** 4
-- **depends_on:** T-064
-- **files:** `backend/src/workers/generator.worker.ts`, `backend/src/modules/topics/topics.service.ts`, `backend/src/scripts/`, tests
-- **description:** `topics.status` is flipped to `active` or `failed` only by `processGenerationJob`. If the job never runs to completion — the worker process is killed mid-job (`tsx watch` restarting on a file save does this), the job is evicted, or Redis is flushed (T-068) — the row stays `generating` with no job behind it, forever. The onboarding screen polls it forever, and T-065's duplicate guard now makes it worse: a stuck topic **blocks the learner from creating any new one**.
-  - Detection is cheap now that the job id is the topic id: `generating` **and** no job in the queue **and** older than a few minutes = stranded.
-  - Decide the recovery deliberately — re-enqueue, or mark `failed` so the existing "That didn't build / Try again" path takes over. Failing loudly is the better default; a silent re-enqueue can double-spend on model calls if the job was actually alive.
-  - A stranded row must not block `POST /topics` (T-065's guard), whichever recovery is chosen.
-- **acceptance:** A topic whose job has vanished reaches a terminal state without anyone running SQL by hand, and never blocks a new topic.
-- **tests:**
-  - A `generating` topic with no job, older than the threshold, is marked `failed` with a reason that says so.
-  - A `generating` topic **with** a live job is left alone, however long it has been running.
-  - A stranded topic does not block `POST /topics` from creating a new one.
-
 ### T-075 · Response shapes are hand-written on the client
 - **status:** todo
 - **sprint:** 3
