@@ -16,8 +16,14 @@
  */
 export const LEECH_LAPSES = 4;
 
-/** FSRS counts a lapse when a review-state card is failed, so this is failures
- *  after the concept was learned, never the stumbles on the way there. */
-export function isLeech(lapses: number): boolean {
-  return lapses >= LEECH_LAPSES;
+/**
+ * FSRS counts a lapse when a review-state card is failed, so this is failures
+ * after the concept was learned, never the stumbles on the way there.
+ *
+ * `baseline` is the lapse count when content QA last brought the concept back
+ * (T-176). `lapses` never decreases, so without it a fixed question would be
+ * set aside again on its very next failure and the fix would last one answer.
+ */
+export function isLeech(lapses: number, baseline = 0): boolean {
+  return lapses - baseline >= LEECH_LAPSES;
 }

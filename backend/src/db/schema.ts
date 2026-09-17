@@ -211,6 +211,23 @@ export const cards = pgTable(
      * the measurement.
      */
     leechedAt: timestamp('leeched_at', { withTimezone: true }),
+    /**
+     * The lapse count when this concept was last brought back (T-176).
+     *
+     * Content QA fixes the question a leech was evidence of, and the concept
+     * becomes askable again — but `lapses` keeps climbing for the life of the
+     * card, so a plain clear would set it aside again on the very next failure
+     * and the fix would last exactly one answer. The threshold counts failures
+     * *since* this baseline.
+     */
+    leechBaseline: integer('leech_baseline').default(0).notNull(),
+    /**
+     * Set when a fix brought the concept back, cleared the next time the
+     * learner answers it (T-176). It exists to say so on the map: someone told
+     * "we're setting this aside" who then meets it again deserves the other
+     * half of the sentence.
+     */
+    leechClearedAt: timestamp('leech_cleared_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({

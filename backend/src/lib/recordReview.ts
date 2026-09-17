@@ -220,7 +220,7 @@ export async function recordReview(
    * — while the map still shows it and the Day-30 test still asks it.
    */
   const leechedAt =
-    scheduledCard && isLeech(scheduledCard.lapses)
+    scheduledCard && isLeech(scheduledCard.lapses, existingCard?.leechBaseline ?? 0)
       ? existingCard?.leechedAt ?? at
       : existingCard?.leechedAt ?? null;
 
@@ -228,7 +228,11 @@ export async function recordReview(
     let cardId = existingCard?.id ?? null;
 
     if (scheduledCard) {
-      const row = { ...toDbCard(scheduledCard), leechedAt };
+      // `leechClearedAt` is the "we fixed this one, it's back" note (T-176), and
+      // this answer is the learner meeting it again — so the note has done its
+      // job. `leechBaseline` is deliberately not written here: only a QA fix
+      // moves it.
+      const row = { ...toDbCard(scheduledCard), leechedAt, leechClearedAt: null };
       const [upserted] = await tx
         .insert(cards)
         .values({ userId, conceptId, ...row })

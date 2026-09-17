@@ -232,7 +232,7 @@ describe('qa apply', () => {
     writeFileSync(path, edited, 'utf8');
 
     const result = await applyEdits(path);
-    expect(result).toEqual({ conceptsUpdated: 1, itemsUpdated: 0 });
+    expect(result).toEqual({ conceptsUpdated: 1, itemsUpdated: 0, leechesCleared: 0 });
 
     const [row] = await db.select().from(concepts).where(eq(concepts.id, taught.id));
     expect(row?.explanationShort).toBe('useState hands the component a value React keeps for it.');
@@ -255,7 +255,7 @@ describe('qa apply', () => {
     markdown = edit(markdown, 'item', recall.id, 'accept', '[value, setValue]\nthe value and a setter');
     writeFileSync(path, markdown, 'utf8');
 
-    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 0, itemsUpdated: 1 });
+    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 0, itemsUpdated: 1, leechesCleared: 0 });
 
     const [row] = await db.select().from(items).where(eq(items.id, recall.id));
     expect(row?.payload).toEqual({
@@ -277,7 +277,7 @@ describe('qa apply', () => {
     const { path } = await exportTopic(topic.id, dir);
     const before = await snapshot(topic.id);
 
-    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 0, itemsUpdated: 0 });
+    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 0, itemsUpdated: 0, leechesCleared: 0 });
 
     expect(await snapshot(topic.id)).toBe(before);
   });
@@ -294,7 +294,7 @@ describe('qa apply', () => {
     markdown = markdown.replace('## 1 · useState basics', '## 1 · something else entirely');
     writeFileSync(path, markdown, 'utf8');
 
-    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 1, itemsUpdated: 0 });
+    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 1, itemsUpdated: 0, leechesCleared: 0 });
 
     const [row] = await db.select().from(concepts).where(eq(concepts.id, taught.id));
     expect(row?.title).toBe('useState, from scratch');
@@ -344,7 +344,7 @@ describe('qa apply', () => {
       '1. React repaints first\n2. React batches updates and schedules a re-render\n3. They never update\n4. Only in classes',
     );
     writeFileSync(path, markdown, 'utf8');
-    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 0, itemsUpdated: 1 });
+    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 0, itemsUpdated: 1, leechesCleared: 0 });
 
     const [row] = await db.select().from(items).where(eq(items.id, recognition.id));
     expect(row?.payload).toMatchObject({
@@ -453,3 +453,74 @@ describe('leeches in the export', () => {
     expect(readFileSync(path, 'utf8')).not.toContain('Set aside as a leech');
   });
 });
+
+/**
+ * T-176. A leech is evidence about the *question*, so the moment the question
+ * changes is the moment every learner who gave up on it should meet it again.
+ * Without this the fix reaches nobody it was made for.
+ */
+describe('a QA fix brings back what it fixed', () => {
+  async function seedLeechedCard(userId: string, conceptId: string, lapses = 6) {
+    await db.insert(cards).values({
+      userId,
+      conceptId,
+      due: new Date(Date.now() - 86_400_000),
+      taughtAt: new Date(Date.now() - 5 * 86_400_000),
+      lapses,
+      leechedAt: new Date(Date.now() - 86_400_000),
+    });
+  }
+
+  it('clears the set-aside for every learner, and counts what it brought back', async () => {
+    const { topic, taught, user } = await seedTopic();
+    await seedLeechedCard(user.id, taught.id);
+
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    // Edited through the field markers, the way `qa:apply` reads a file — a
+    // change to the heading text is not an edit to any row.
+    writeFileSync(
+      path,
+      edit(readFileSync(path, 'utf8'), 'concept', taught.id, 'explanationShort', 'Rewritten after the leech.'),
+      'utf8',
+    );
+
+    const result = await applyEdits(path);
+
+    expect(result).toEqual({ conceptsUpdated: 1, itemsUpdated: 0, leechesCleared: 1 });
+    const [card] = await db.select().from(cards).where(eq(cards.conceptId, taught.id));
+    expect(card?.leechedAt).toBeNull();
+    // The threshold now counts from here: `lapses` never decreases, so without
+    // this the next failure would set it aside again and the fix would last
+    // exactly one answer.
+    expect(card?.leechBaseline).toBe(card?.lapses);
+    expect(card?.leechClearedAt).toBeInstanceOf(Date);
+  });
+
+  /** A retired question is gone, not fixed: there is nothing to come back to. */
+  it('retiring an item leaves the set-aside alone', async () => {
+    const { taught, user, items: seeded } = await seedTopic();
+    await seedLeechedCard(user.id, taught.id);
+
+    const [firstItem] = seeded;
+    if (!firstItem) throw new Error('no seeded item');
+    await retireItem(firstItem.id);
+
+    const [card] = await db.select().from(cards).where(eq(cards.conceptId, taught.id));
+    expect(card?.leechedAt).toBeInstanceOf(Date);
+  });
+
+  it('touches nothing when the file has no edits in it', async () => {
+    const { topic, taught, user } = await seedTopic();
+    await seedLeechedCard(user.id, taught.id);
+
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    const result = await applyEdits(path);
+
+    expect(result.leechesCleared).toBe(0);
+    const [card] = await db.select().from(cards).where(eq(cards.conceptId, taught.id));
+    expect(card?.leechedAt).toBeInstanceOf(Date);
+  });
+});
+

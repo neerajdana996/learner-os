@@ -55,6 +55,7 @@ export async function getMap(
   // set aside says nothing about how well the concept is known, which is all
   // that function is about.
   const leechedById = new Map(rows.map((row) => [row.id, row.leechedAt != null]));
+  const backAfterFixById = new Map(rows.map((row) => [row.id, row.leechedAt == null && row.leechClearedAt != null]));
 
   return {
     topicId: topic.id,
@@ -72,6 +73,7 @@ export async function getMap(
       mastery: concept.mastery,
       atRisk: concept.atRisk,
       leeched: leechedById.get(concept.conceptId) ?? false,
+      backAfterFix: backAfterFixById.get(concept.conceptId) ?? false,
     })),
     // Edges are kept for held-out concepts: the shape of the graph is not the
     // secret, only what the node is called.

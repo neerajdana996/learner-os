@@ -374,6 +374,9 @@ function buildPayload(itemId: string, stored: unknown, edits: Map<ItemField, str
 export interface ApplyResult {
   conceptsUpdated: number;
   itemsUpdated: number;
+  /** Cards brought back because the question they had given up on changed
+   *  (T-176). Reported so a fix's reach is visible, not silent. */
+  leechesCleared: number;
 }
 
 /**
@@ -430,9 +433,30 @@ export async function applyEdits(filePath: string): Promise<ApplyResult> {
   }
 
   if (conceptUpdates.length === 0 && itemUpdates.length === 0) {
-    return { conceptsUpdated: 0, itemsUpdated: 0 };
+    return { conceptsUpdated: 0, itemsUpdated: 0, leechesCleared: 0 };
   }
 
+  /**
+   * Bring back what the fix was for (T-176).
+   *
+   * A leech is evidence about the *question*, and this is the moment the
+   * question changed — so every learner who had given up on this concept can be
+   * asked it again. `leech_baseline` moves to the current lapse count, because
+   * `lapses` never decreases: without it the next failure would set the concept
+   * aside again and the fix would last exactly one answer. `leech_cleared_at`
+   * is what the map says out loud, and the learner's next answer clears it.
+   *
+   * `qa:retire` deliberately does none of this: a retired question is gone, not
+   * fixed, and there is nothing to come back to.
+   */
+  const touchedConcepts = [
+    ...new Set([
+      ...conceptUpdates.map((update) => update.id),
+      ...itemUpdates.map((update) => itemRows.find((row) => row.id === update.id)?.conceptId).filter((id): id is string => Boolean(id)),
+    ]),
+  ];
+
+  let leechesCleared = 0;
   await db.transaction(async (tx) => {
     for (const update of conceptUpdates) {
       await tx.update(concepts).set(update.values).where(eq(concepts.id, update.id));
@@ -440,9 +464,17 @@ export async function applyEdits(filePath: string): Promise<ApplyResult> {
     for (const update of itemUpdates) {
       await tx.update(items).set({ payload: update.payload }).where(eq(items.id, update.id));
     }
+    if (touchedConcepts.length > 0) {
+      const cleared = await tx
+        .update(cards)
+        .set({ leechedAt: null, leechBaseline: sql`${cards.lapses}`, leechClearedAt: new Date() })
+        .where(and(inArray(cards.conceptId, touchedConcepts), isNotNull(cards.leechedAt)))
+        .returning({ id: cards.id });
+      leechesCleared = cleared.length;
+    }
   });
 
-  return { conceptsUpdated: conceptUpdates.length, itemsUpdated: itemUpdates.length };
+  return { conceptsUpdated: conceptUpdates.length, itemsUpdated: itemUpdates.length, leechesCleared };
 }
 
 // ---------- retire ----------
@@ -482,7 +514,7 @@ async function main(): Promise<void> {
     console.log(
       result.conceptsUpdated + result.itemsUpdated === 0
         ? 'no changes'
-        : `updated ${result.conceptsUpdated} concepts and ${result.itemsUpdated} items`,
+        : `updated ${result.conceptsUpdated} concepts and ${result.itemsUpdated} items${result.leechesCleared > 0 ? `, and brought ${result.leechesCleared} set-aside card${result.leechesCleared === 1 ? '' : 's'} back` : ''}`
     );
     return;
   }

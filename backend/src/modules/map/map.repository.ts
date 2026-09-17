@@ -32,6 +32,8 @@ export async function findMapRows(userId: string, topicId: string) {
       // T-059: set aside as a leech. The concept stays on the map — marked,
       // never missing — because a concept that vanishes reads as a bug.
       leechedAt: cards.leechedAt,
+      // T-176: brought back by a QA fix, not answered since.
+      leechClearedAt: cards.leechClearedAt,
     })
     .from(concepts)
     .leftJoin(cards, and(eq(cards.conceptId, concepts.id), eq(cards.userId, userId)))

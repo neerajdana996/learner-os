@@ -62,6 +62,8 @@ async function seedDueConcept(
     lapses?: number;
     /** Set aside as a leech (T-059) — stamped by `recordReview`, not here. */
     leechedAt?: Date | null;
+    /** Lapses at the last QA fix (T-176): the threshold counts from here. */
+    leechBaseline?: number;
   },
 ) {
   const [concept] = await db
@@ -90,6 +92,7 @@ async function seedDueConcept(
     taughtAt: (opts.taught ?? true) ? past(5) : null,
     lapses: opts.lapses ?? 0,
     leechedAt: opts.leechedAt ?? null,
+    leechBaseline: opts.leechBaseline ?? 0,
   });
 
   return { concept, itemIds: inserted.map((i) => i.id) };
@@ -381,6 +384,24 @@ describe('GET /due', () => {
     const { body } = await getDue(user.cookie, '?limit=1');
     expect(body.items).toHaveLength(1);
     expect(body.items[0].conceptTitle).toBe('servable');
+  });
+
+  /**
+   * T-176. After content QA fixes the question, the concept is askable again
+   * even though `lapses` still stands well above the threshold — that count
+   * never decreases, so the baseline is what makes a fix mean anything.
+   */
+  it('serves a concept again once a QA fix has brought it back', async () => {
+    const { user, topic } = await seedUserWithTopic();
+    await seedDueConcept(user.id, topic.id, {
+      slug: 'fixed',
+      order: 1,
+      lapses: LEECH_LAPSES + 2,
+      leechedAt: null,
+      leechBaseline: LEECH_LAPSES + 2,
+    });
+
+    expect((await getDue(user.cookie)).body.items).toHaveLength(1);
   });
 
   it('requires a user', async () => {

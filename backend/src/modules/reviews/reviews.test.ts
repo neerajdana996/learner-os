@@ -77,8 +77,14 @@ beforeEach(async () => {
  * once the concept has been learned, so walking it there would test ts-fsrs's
  * state machine instead of the threshold this task is about.
  */
-async function seedCardWithLapses(userId: string, conceptId: string, lapses: number) {
+async function seedCardWithLapses(
+  userId: string,
+  conceptId: string,
+  lapses: number,
+  extra: { leechBaseline?: number; leechedAt?: Date | null; leechClearedAt?: Date | null } = {},
+) {
   await db.insert(cards).values({
+    ...extra,
     userId,
     conceptId,
     due: new Date(Date.now() - DAY),
@@ -132,6 +138,51 @@ describe('leech handling (T-059)', () => {
     const [second] = await db.select().from(cards).where(eq(cards.conceptId, concept.id));
 
     expect(second?.leechedAt?.toISOString()).toBe(first?.leechedAt?.toISOString());
+  });
+
+  /**
+   * T-176. After a QA fix the card keeps its lapse count — it never decreases —
+   * so without a baseline the very next failure would set the concept aside
+   * again and the fix would have lasted exactly one answer.
+   */
+  it('does not set a fixed concept aside again on its next failure', async () => {
+    const { user, concept, item } = await seedItem();
+    await seedCardWithLapses(user.id, concept.id, LEECH_LAPSES + 2, {
+      leechBaseline: LEECH_LAPSES + 2,
+      leechedAt: null,
+    });
+
+    const result = await recordReview(user.id, answer(item.id, { response: 'wrong' }));
+
+    expect(result.leeched).toBe(false);
+    const [card] = await db.select().from(cards).where(eq(cards.conceptId, concept.id));
+    expect(card?.leechedAt).toBeNull();
+  });
+
+  it('sets it aside again once it is failed enough times after the fix', async () => {
+    const { user, concept, item } = await seedItem();
+    // One short of the threshold, counting from the fix.
+    await seedCardWithLapses(user.id, concept.id, 10 + LEECH_LAPSES - 1, { leechBaseline: 10, leechedAt: null });
+
+    const result = await recordReview(user.id, answer(item.id, { response: 'wrong' }));
+
+    expect(result.leeched).toBe(true);
+  });
+
+  /** The "we fixed this one, it's back" note has done its job the moment the
+   *  learner meets the concept again (T-176). */
+  it('clears the back-after-a-fix note when the concept is answered', async () => {
+    const { user, concept, item } = await seedItem();
+    await seedCardWithLapses(user.id, concept.id, 6, {
+      leechBaseline: 6,
+      leechedAt: null,
+      leechClearedAt: new Date(Date.now() - DAY),
+    });
+
+    await recordReview(user.id, answer(item.id));
+
+    const [card] = await db.select().from(cards).where(eq(cards.conceptId, concept.id));
+    expect(card?.leechClearedAt).toBeNull();
   });
 
   /** Getting it right is not a lapse, so nothing is set aside for being slow. */

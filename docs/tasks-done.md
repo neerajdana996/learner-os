@@ -2608,3 +2608,26 @@
     - **Tests:** the five acceptance lines, plus the stamp-once rule and "a correct answer never sets anything aside". Backend 726/726, frontend 89, extension 128, `@learnos/ui` 50, `@learnos/shared` 57, lint 7/7, frontend build green.
     - **Not retroactive:** cards already past four lapses are not stamped until their next failure. Deliberate — nothing rewrites history from a migration — and it resolves itself within a day of practice.
     - **Found while building it:** nothing ever un-sets-aside a concept. Logged as T-176.
+
+### T-176 · Nothing ever un-sets-aside a concept
+- **status:** done
+- **sprint:** 6
+- **severity:** medium — the fix that content QA makes never reaches the learner it was made for
+- **depends_on:** T-059, T-024
+- **files:** `backend/src/scripts/qa.ts`, `backend/src/lib/recordReview.ts`, `backend/src/db/schema.ts`, tests alongside
+- **description:** Found closing T-059 (2026-09-17). A concept is set aside after four lapses and `cards.leeched_at` is never cleared by anything. That is right while the question is still bad — but the whole point of surfacing leeches in the QA export is that the founder then *fixes* the question, and after the fix the learner is still never asked it again. The concept sits marked "set aside" on their map for the rest of the course while a now-correct question goes unasked.
+  - The obvious hook is `qa:apply`: when an edit lands on a concept's items, clear `leeched_at` for every card on that concept, so the fix reaches the people it was made for. `pnpm qa:retire` is the opposite case and should leave the stamp alone — a retired question is gone, not fixed.
+  - Decide what the learner sees. Silently re-asking a concept they were told was set aside is its own small betrayal; a line on the map ("we fixed this one — it's back") is honest and costs nothing.
+  - Worth considering: a lapse count that resets with it, or the next failure sets it aside again immediately (it would, since `lapses` keeps climbing) — which would make the fix last exactly one answer.
+- **acceptance:** A concept whose items are edited through `qa:apply` becomes askable again for every learner who had it set aside, its `lapses` counted from that point, and the learner is told rather than finding it back unannounced.
+- **tests:**
+  - `qa:apply` on an edited concept clears `leeched_at` for every card on it.
+  - `qa:retire` does not.
+  - A cleared concept appears in `GET /due` again.
+  - A cleared concept is not immediately set aside again by its next failure.
+- **notes:** (2026-09-17) **Done.** `qa:apply` now clears the set-aside for every learner on a concept whose text or items it changed, and reports how many cards it brought back (`leechesCleared`, printed by the CLI). `qa:retire` deliberately does not: a retired question is gone, not fixed.
+  - **A baseline, not just a clear.** `cards.lapses` never decreases, so clearing the stamp alone would set the concept aside again on its very next failure and the fix would last exactly one answer. `cards.leech_baseline` records the lapse count at the fix and `isLeech(lapses, baseline)` counts from there — four more failures after the fix set it aside again, which is the same rule applied to the new question rather than the old one.
+  - **The learner is told it came back.** `cards.leech_cleared_at` is set by the fix and cleared by that learner's next answer, and the map shows "back after a fix" in sage while it stands. Someone who was told "we're setting this aside" and then meets the concept again without a word would reasonably think the product had forgotten its own decision.
+  - **Schema:** `leech_baseline` (int, default 0, not null) and `leech_cleared_at` (nullable), applied to dev and test with `pnpm db:push`; production applies them at container start. Both additive.
+  - **Tests:** the four acceptance lines, plus "it is set aside again once it is failed enough times *after* the fix", the note clearing on the next answer, the map flag, and an unedited file changing nothing. Five existing `applyEdits` assertions gained `leechesCleared: 0` — the result shape genuinely grew a field. Backend 734/734, frontend 89, extension 128, `@learnos/ui` 50, `@learnos/shared` 57, lint 7/7, frontend build green.
+  - **Not done:** nothing tells the learner *why* it came back beyond "after a fix", and there is no way for the founder to bring a concept back by hand without editing something — both deliberate, since `qa:apply` is the moment a question actually changes.

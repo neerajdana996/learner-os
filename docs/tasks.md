@@ -153,23 +153,6 @@ Source in `design/*.dc.html`. Tokens are mirrored in `frontend/src/styles/_theme
 ## Fix / discovered tasks
 _(add here in the same format as `T-FIX-001`, with sprint and severity)_
 
-### T-176 · Nothing ever un-sets-aside a concept
-- **status:** todo
-- **sprint:** 6
-- **severity:** medium — the fix that content QA makes never reaches the learner it was made for
-- **depends_on:** T-059, T-024
-- **files:** `backend/src/scripts/qa.ts`, `backend/src/lib/recordReview.ts`, `backend/src/db/schema.ts`, tests alongside
-- **description:** Found closing T-059 (2026-09-17). A concept is set aside after four lapses and `cards.leeched_at` is never cleared by anything. That is right while the question is still bad — but the whole point of surfacing leeches in the QA export is that the founder then *fixes* the question, and after the fix the learner is still never asked it again. The concept sits marked "set aside" on their map for the rest of the course while a now-correct question goes unasked.
-  - The obvious hook is `qa:apply`: when an edit lands on a concept's items, clear `leeched_at` for every card on that concept, so the fix reaches the people it was made for. `pnpm qa:retire` is the opposite case and should leave the stamp alone — a retired question is gone, not fixed.
-  - Decide what the learner sees. Silently re-asking a concept they were told was set aside is its own small betrayal; a line on the map ("we fixed this one — it's back") is honest and costs nothing.
-  - Worth considering: a lapse count that resets with it, or the next failure sets it aside again immediately (it would, since `lapses` keeps climbing) — which would make the fix last exactly one answer.
-- **acceptance:** A concept whose items are edited through `qa:apply` becomes askable again for every learner who had it set aside, its `lapses` counted from that point, and the learner is told rather than finding it back unannounced.
-- **tests:**
-  - `qa:apply` on an edited concept clears `leeched_at` for every card on it.
-  - `qa:retire` does not.
-  - A cleared concept appears in `GET /due` again.
-  - A cleared concept is not immediately set aside again by its next failure.
-
 ### T-060 · Decide desired retention deliberately, rather than inheriting 0.9
 - **status:** todo
 - **sprint:** 4

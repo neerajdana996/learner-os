@@ -19,11 +19,13 @@ interface SeedOpts {
   estimates?: Record<number, number>;
   /** Orders set aside as leeches (T-059). They must still appear, marked. */
   leeched?: number[];
+  /** Orders brought back by a QA fix and not answered since (T-176). */
+  backAfterFix?: number[];
   prereqs?: Record<number, number[]>;
 }
 
 async function seed(opts: SeedOpts = {}) {
-  const { count = 4, heldOutOrders = [], taught = {}, estimates = {}, prereqs = {}, leeched = [] } = opts;
+  const { count = 4, heldOutOrders = [], taught = {}, estimates = {}, prereqs = {}, leeched = [], backAfterFix = [] } = opts;
   const user = await seedUser();
 
   const [topic] = await db
@@ -71,6 +73,7 @@ async function seed(opts: SeedOpts = {}) {
       lastReview,
       taughtAt: lastReview,
       leechedAt: leeched.includes(Number(order)) ? lastReview : null,
+      leechClearedAt: backAfterFix.includes(Number(order)) ? lastReview : null,
     };
   });
   if (cardRows.length > 0) await db.insert(cards).values(cardRows);
@@ -105,6 +108,23 @@ describe('GET /topics/:id/map', () => {
    * vanished from it would read as the product losing the learner's work, and
    * the Day-30 test still asks it.
    */
+  /** T-176: the other half of the sentence the learner was told. */
+  it('marks a concept a QA fix brought back', async () => {
+    const { user, topicId, byOrder } = await seed({
+      count: 2,
+      taught: { 1: { stability: 6 } },
+      backAfterFix: [1],
+    });
+
+    const res = await getMap(user.cookie, topicId);
+
+    const concept = (res.body.concepts as { conceptId: string; leeched: boolean; backAfterFix: boolean }[]).find(
+      (c) => c.conceptId === byOrder.get(1),
+    );
+    expect(concept?.backAfterFix).toBe(true);
+    expect(concept?.leeched).toBe(false);
+  });
+
   it('still shows a concept that was set aside, marked and scored', async () => {
     const { user, topicId, byOrder } = await seed({
       count: 2,

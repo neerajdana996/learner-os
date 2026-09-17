@@ -331,6 +331,12 @@ export const MapConceptSchema = z.object({
    * a leech is still `taught`, and its mastery is still whatever FSRS believes.
    */
   leeched: z.boolean(),
+  /**
+   * Brought back because content QA changed the question it was set aside for
+   * (T-176), and not answered since. The other half of the sentence the learner
+   * was told when it went away.
+   */
+  backAfterFix: z.boolean(),
 });
 
 export const MapResponseSchema = z.object({

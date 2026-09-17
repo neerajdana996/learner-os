@@ -105,6 +105,13 @@ export default function MapPage() {
                         of the course and still on the day-30 test — the product
                         has just stopped asking it in sessions. */}
                     {concept.leeched ? <span className="concept__aside">set aside</span> : null}
+                    {/* The other half of the sentence (T-176): this learner was
+                        told the concept was being set aside, so being asked it
+                        again without a word would read as the product forgetting
+                        its own decision. */}
+                    {concept.backAfterFix ? (
+                      <span className="concept__aside concept__aside--back">back after a fix</span>
+                    ) : null}
                   </span>
                   <span
                     className={[

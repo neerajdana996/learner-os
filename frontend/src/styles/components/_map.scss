@@ -125,6 +125,12 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--muted);
+
+    /// Brought back by a fix (T-176). Sage rather than grey: this one is good
+    /// news, and it is the answer to a sentence the learner already read.
+    &--back {
+      color: var(--sage);
+    }
   }
 
   &__value {
