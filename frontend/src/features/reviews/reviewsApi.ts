@@ -1,17 +1,8 @@
 import { api } from '../../store/api';
-import type { Answer } from '@learnos/shared';
+import type { Answer, ReviewResult } from '@learnos/shared';
 
-export interface ReviewResult {
-  eventId: string;
-  conceptId: string;
-  correct: boolean | null;
-  feedback: string | null;
-  scheduled: boolean;
-  reps: number;
-  /** The concept has been set aside as a leech (T-059) — said plainly here,
-   *  because this is the last time the learner will be asked it. */
-  leeched: boolean;
-}
+/** From `@learnos/shared`, the schema the server checks it against (T-075). */
+export type { ReviewResult };
 
 export const reviewsApi = api.injectEndpoints({
   endpoints: (build) => ({

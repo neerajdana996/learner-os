@@ -2714,3 +2714,42 @@
   - Failing rather than re-enqueuing, per the task: a silent retry of a job that was
     alive a moment ago pays for a whole generation twice.
 
+### T-075 · Response shapes are hand-written on the client
+- **status:** done
+- **sprint:** 3
+- **depends_on:** T-072
+- **files:** `backend/src/shared/schemas.ts`, `frontend/src/features/*/[feature]Api.ts`, `backend/src/modules/*/[module].controller.ts`
+- **description:** T-072 shipped a client type that claimed nine fields where the server sent four, and nothing caught it — because `TopicSummary` (and the same pattern elsewhere) is declared by hand in the feature's API file rather than inferred from a schema in `backend/src/shared`. plan.md §5 makes `backend/src/shared` the source of truth for shared types; response shapes quietly opted out of it.
+  - Define the response schemas in shared (`TopicSummarySchema`, `SessionResponseSchema` already exists, `MapResponseSchema` already exists) and have each feature's API type be `z.infer` of it.
+  - Have controllers parse their own response against the schema when `NODE_ENV !== 'production'`, so drift fails loudly in dev instead of arriving as `undefined` in a UI three screens away.
+- **acceptance:** No response type is written by hand on the client, and a controller that drops a field fails in dev.
+- **tests:**
+  - Each controller's response parses against its shared schema.
+  - Removing a field from a controller's select makes its test fail.
+- **notes:** Done 2026-09-17. Written before the workspace move: `backend/src/shared` is now
+  `packages/shared`, and most responses already had shared schemas by the time this was
+  picked up. What remained hand-written was `TopicSummary`, `GenerationProgress`,
+  `ReviewResult` and `ResetSummary` on the web client, six inline `{ ok: true }`-style
+  generics, and the extension's own `ReviewResultSchema` plus two inline zod shapes. All of
+  them now come from shared (`TopicSummarySchema`, `TopicListResponseSchema`,
+  `TopicCreateResponseSchema`, `ReviewResultSchema`, `ItemFlagResponseSchema`,
+  `SkeletonResponseSchema`, `SessionCompleteResponseSchema`, `DeleteMeResponseSchema`,
+  `DevResetResponseSchema`, `OkResponseSchema`), and the backend's duplicate
+  `GenerationProgress` and `ResetSummary` became aliases of them.
+  - **`sendJson(res, schema, body, status)`** (`lib/respond.ts`) is how every controller,
+    router and the health routes send a success body. Outside production it parses the
+    body *after a JSON round trip* (services return `Date`s, the schema describes the wire)
+    and throws `ResponseShapeError` naming the route and field. It sends the original body,
+    not zod's stripped output, so development answers exactly like production. In
+    production it does not check: drift there must not become a 500 mid-session.
+  - Because every route test runs through it, the whole existing suite became the "each
+    controller's response parses" test. A source guard (`respond.test.ts`) fails on any
+    bare `.json(` in a controller or router other than an `{ error }` body.
+  - **Found on the first run:** `GET /topics` never sent `progress`, while the client type
+    promised it on both topic responses. It now sends `progress: null`.
+  - `topics.shape.test.ts` reintroduces T-072 for real, with the list query dropping
+    `endsAt`, and asserts `GET /topics` fails with the field named.
+  - The extension's review schema used to mark `due` and `leeched` optional for an older
+    backend. The deployed backend has sent both since T-059, so it now uses the shared
+    schema as-is.
+

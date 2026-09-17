@@ -3,6 +3,8 @@ import { Redis } from 'ioredis';
 import { pg } from '../db/client.js';
 import { env } from '../lib/env.js';
 import { log } from '../lib/log.js';
+import { HealthResponseSchema, ReadinessResponseSchema } from '@learnos/shared';
+import { sendJson } from '../lib/respond.js';
 
 /**
  * Liveness and readiness (T-047).
@@ -79,7 +81,7 @@ export function createHealthRouter(checks: ReadinessChecks = liveChecks, timeout
 
   /** Liveness. Coolify restarts on this, so it answers from the process alone. */
   router.get('/health', (_req, res) => {
-    res.json({ ok: true });
+    sendJson(res, HealthResponseSchema, { ok: true });
   });
 
   /**
@@ -100,7 +102,7 @@ export function createHealthRouter(checks: ReadinessChecks = liveChecks, timeout
 
     const [postgres, redisResult] = await Promise.all([run('postgres'), run('redis')]);
     const ok = postgres === 'ok' && redisResult === 'ok';
-    res.status(ok ? 200 : 503).json({ ok, checks: { postgres, redis: redisResult } });
+    sendJson(res, ReadinessResponseSchema, { ok, checks: { postgres, redis: redisResult } }, ok ? 200 : 503);
   });
 
   return router;

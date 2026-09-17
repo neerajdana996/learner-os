@@ -4,10 +4,12 @@ import { isProd } from '../../lib/env.js';
 import { userId } from '../../middleware/auth.js';
 import { SESSION_COOKIE } from '../auth/cookie.js';
 import { deleteMe, EmailMismatchError, exportMe, getMe, patchMe, UserNotFoundError } from './users.service.js';
+import { DeleteMeResponseSchema, MeExportSchema, MeResponseSchema } from '@learnos/shared';
+import { sendJson } from '../../lib/respond.js';
 
 export async function getMeHandler(req: Request, res: Response) {
   try {
-    res.json(await getMe(userId(req)));
+    sendJson(res, MeResponseSchema, await getMe(userId(req)));
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       res.status(404).json({ error: 'not_found' });
@@ -19,7 +21,7 @@ export async function getMeHandler(req: Request, res: Response) {
 
 export async function patchMeHandler(req: Request, res: Response) {
   try {
-    res.json(await patchMe(userId(req), req.body));
+    sendJson(res, MeResponseSchema, await patchMe(userId(req), req.body));
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       res.status(404).json({ error: 'not_found' });
@@ -35,7 +37,7 @@ export async function exportMeHandler(req: Request, res: Response) {
   try {
     const data = await exportMe(userId(req));
     res.setHeader('Content-Disposition', 'attachment; filename="cold-recall-data.json"');
-    res.json(data);
+    sendJson(res, MeExportSchema, data);
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       res.status(404).json({ error: 'not_found' });
@@ -66,5 +68,5 @@ export async function deleteMeHandler(req: Request, res: Response) {
   }
 
   res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', secure: isProd, path: '/' });
-  res.status(200).json({ deleted: true });
+  sendJson(res, DeleteMeResponseSchema, { deleted: true });
 }

@@ -11,15 +11,19 @@
  * server change shows up here as a clear parse failure instead of `undefined`
  * reaching the card UI.
  */
-import { z, type output, type ZodTypeAny } from 'zod';
+import type { output, ZodTypeAny } from 'zod';
 import {
+  ItemFlagResponseSchema,
   MeResponseSchema,
   PulseResponseSchema,
+  ReviewResultSchema,
+  SkeletonResponseSchema,
   TelemetryResponseSchema,
   type Answer,
   type ClientEvent,
   type MeResponse,
   type PulseCreate,
+  type ReviewResult,
 } from '@learnos/shared';
 import { clearToken, getToken } from './storage';
 
@@ -105,28 +109,16 @@ export function getMe(token?: string): Promise<MeResponse> {
 }
 
 /**
- * What the server says back about one answer (T-029).
+ * What the server says back about one answer (T-029) — `ReviewResultSchema`
+ * in `@learnos/shared`, the same schema the server checks its response
+ * against (T-075). It used to be redeclared here, a second copy of a shape
+ * the web card also reads.
  *
  * `gapDaysSinceLast` is the line the card is built around — "9 days since you
  * last saw this" is the product in one sentence, and it is the difference
- * between a flashcard and a retention measurement. `feedback` is the grader's
- * one line, null when nothing was answered.
+ * between a flashcard and a retention measurement.
  */
-export const ReviewResultSchema = z.object({
-  correct: z.boolean().nullable(),
-  gapDaysSinceLast: z.number().nullable(),
-  feedback: z.string().nullable(),
-  /** When FSRS will next surface the concept. Already on the wire from
-   *  `recordReview`; the card uses it to promise a return date it can keep
-   *  rather than the design canvas's flat "tomorrow". Null when the answer
-   *  moved no schedule — a snooze, a dismissal, or nothing answered. */
-  due: z.string().nullable().optional(),
-  /** The concept was set aside as a leech (T-059). Optional so a card built
-   *  against an older backend still parses rather than failing to render. */
-  leeched: z.boolean().optional(),
-});
-
-export type ReviewResult = z.infer<typeof ReviewResultSchema>;
+export type { ReviewResult };
 
 /**
  * Records one outcome. Snooze and dismiss go through here too, with
@@ -147,7 +139,7 @@ export function postReview(answer: Answer): Promise<ReviewResult> {
  * same rule.
  */
 export function flagItem(itemId: string): Promise<{ retired: boolean }> {
-  return apiJson(z.object({ retired: z.boolean() }), `/items/${itemId}/flag`, { method: 'POST' });
+  return apiJson(ItemFlagResponseSchema, `/items/${itemId}/flag`, { method: 'POST' });
 }
 
 /**
@@ -167,7 +159,7 @@ export function postPulse(pulse: PulseCreate): Promise<{ ok: true }> {
  * the learner takes it, and the card then sends `assisted: true`.
  */
 export async function getSkeleton(itemId: string): Promise<string> {
-  const { skeleton } = await apiJson(z.object({ skeleton: z.string() }), `/items/${itemId}/skeleton`);
+  const { skeleton } = await apiJson(SkeletonResponseSchema, `/items/${itemId}/skeleton`);
   return skeleton;
 }
 

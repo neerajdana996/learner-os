@@ -1,34 +1,23 @@
 import { api } from '../../store/api';
-import type { TopicCreate } from '@learnos/shared';
+import type {
+  GenerationProgress,
+  TopicCreate,
+  TopicCreateResponse,
+  TopicListResponse,
+  TopicSummary,
+} from '@learnos/shared';
 
-/** How far generation has got (T-064). Null unless the topic is generating —
- *  and null even then until the concept map returns, or if the job has been
- *  evicted from Redis. */
-export interface GenerationProgress {
-  stage: 'map' | 'content' | 'saving';
-  completed: number;
-  total: number;
-  concept?: string;
-}
-
-export interface TopicSummary {
-  id: string;
-  title: string;
-  why: string | null;
-  /** The language the course's examples are written in (T-091). Null when the
-   *  learner didn't name one — the topic profile fills it in (T-092). */
-  language: string | null;
-  status: 'generating' | 'active' | 'testing' | 'holdout' | 'done' | 'failed';
-  error: string | null;
-  startsAt: string | null;
-  endsAt: string | null;
-  counts: { concepts: number; items: number };
-  progress: GenerationProgress | null;
-}
+/**
+ * Response shapes come from `@learnos/shared`, never from this file (T-075).
+ * `TopicSummary` used to be declared here by hand, claiming nine fields while
+ * the list sent four, and the dashboard told every learner it was their final
+ * day (T-072). The server now checks what it sends against the same schema.
+ */
+export type { GenerationProgress, TopicSummary };
 
 export const topicsApi = api.injectEndpoints({
   endpoints: (build) => ({
-    topics: build.query<{ topics: TopicSummary[] }, void>({
+    topics: build.query<TopicListResponse, void>({
       query: () => '/topics',
       providesTags: ['Topic'],
     }),
@@ -36,7 +25,7 @@ export const topicsApi = api.injectEndpoints({
       query: (id) => `/topics/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Topic', id }],
     }),
-    createTopic: build.mutation<{ topicId: string; status: string }, TopicCreate>({
+    createTopic: build.mutation<TopicCreateResponse, TopicCreate>({
       query: (body) => ({ url: '/topics', method: 'POST', body }),
       invalidatesTags: ['Topic'],
     }),

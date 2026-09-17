@@ -1,5 +1,11 @@
 import { api } from '../../store/api';
-import type { DevLogin, MagicLink, MagicLinkResponse } from '@learnos/shared';
+import type {
+  DevLogin,
+  ExtensionTokenResponse,
+  MagicLink,
+  MagicLinkResponse,
+  OkResponse,
+} from '@learnos/shared';
 
 /**
  * Magic-link sign-in. The OAuth routes are deliberately absent: the provider
@@ -14,7 +20,7 @@ export const authApi = api.injectEndpoints({
     }),
     /** Dev only (T-070). The backend does not register this route under
      *  NODE_ENV=production, so calling it there is a 404. */
-    devLogin: build.mutation<{ ok: true }, DevLogin>({
+    devLogin: build.mutation<OkResponse, DevLogin>({
       query: (body) => ({ url: '/auth/dev-login', method: 'POST', body }),
       invalidatesTags: ['Me'],
     }),
@@ -25,7 +31,7 @@ export const authApi = api.injectEndpoints({
      * issues a new session row, so re-fetching on a re-render would quietly
      * create sessions. `Me` is invalidated because `hasExtensionToken` changes.
      */
-    extensionToken: build.mutation<{ token: string; expiresAt: string }, void>({
+    extensionToken: build.mutation<ExtensionTokenResponse, void>({
       query: () => ({ url: '/auth/extension-token', method: 'POST' }),
       invalidatesTags: ['Me'],
     }),
@@ -34,7 +40,7 @@ export const authApi = api.injectEndpoints({
      * so the learner's extension — which holds its own token by design — stays
      * connected.
      */
-    logout: build.mutation<{ ok: true }, void>({
+    logout: build.mutation<OkResponse, void>({
       query: () => ({ url: '/auth/logout', method: 'POST' }),
       invalidatesTags: ['Me', 'Topic', 'Map', 'Session', 'Due', 'Diagnostic'],
     }),

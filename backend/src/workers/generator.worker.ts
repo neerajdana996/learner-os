@@ -18,7 +18,7 @@ import { collectWarnings, recordWarning } from '../generator/severity.js';
 import { enrichConceptItems } from '../generator/itemBlocks.js';
 import { log } from '../lib/log.js';
 import { LlmError } from '../llm/errors.js';
-import { answerKindOf } from '@learnos/shared';
+import { answerKindOf, type GenerationProgress } from '@learnos/shared';
 
 export const GENERATION_QUEUE = 'generation';
 
@@ -37,15 +37,10 @@ export interface GenerationJobData {
  * real invariant for a progress bar.
  *
  * `total` is known once the map returns: one call per non-held-out concept for
- * items, and one for teaching.
+ * items, and one for teaching. The shape is `GenerationProgressSchema` in
+ * `@learnos/shared`, because the wait screen reads it (T-075).
  */
-export interface GenerationProgress {
-  stage: 'map' | 'content' | 'saving';
-  completed: number;
-  total: number;
-  /** What is being worked on right now, for the wait screen's subtitle. */
-  concept?: string;
-}
+export type { GenerationProgress };
 
 export type ProgressReporter = (progress: GenerationProgress) => void | Promise<void>;
 

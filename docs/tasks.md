@@ -248,19 +248,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - A generation event for user A never arrives on user B's socket.
   - The client falls back to polling when the socket is closed or unavailable.
 
-### T-075 · Response shapes are hand-written on the client
-- **status:** todo
-- **sprint:** 3
-- **depends_on:** T-072
-- **files:** `backend/src/shared/schemas.ts`, `frontend/src/features/*/[feature]Api.ts`, `backend/src/modules/*/[module].controller.ts`
-- **description:** T-072 shipped a client type that claimed nine fields where the server sent four, and nothing caught it — because `TopicSummary` (and the same pattern elsewhere) is declared by hand in the feature's API file rather than inferred from a schema in `backend/src/shared`. plan.md §5 makes `backend/src/shared` the source of truth for shared types; response shapes quietly opted out of it.
-  - Define the response schemas in shared (`TopicSummarySchema`, `SessionResponseSchema` already exists, `MapResponseSchema` already exists) and have each feature's API type be `z.infer` of it.
-  - Have controllers parse their own response against the schema when `NODE_ENV !== 'production'`, so drift fails loudly in dev instead of arriving as `undefined` in a UI three screens away.
-- **acceptance:** No response type is written by hand on the client, and a controller that drops a field fails in dev.
-- **tests:**
-  - Each controller's response parses against its shared schema.
-  - Removing a field from a controller's select makes its test fail.
-
 ### T-077 · The knowledge score has no trend
 - **status:** todo
 - **sprint:** 4

@@ -3,13 +3,15 @@ import { env, isProd } from '../../lib/env.js';
 import { userId } from '../../middleware/auth.js';
 import { readCookie, SESSION_COOKIE } from './cookie.js';
 import { createSession, devLogin, endSession, requestMagicLink, verifyMagicLink } from './auth.service.js';
+import { ExtensionTokenResponseSchema, MagicLinkResponseSchema, OkResponseSchema } from '@learnos/shared';
+import { sendJson } from '../../lib/respond.js';
 
 export async function postMagic(req: Request, res: Response) {
   const { email } = req.body as { email: string };
   await requestMagicLink(email);
   // Identical for a known and an unknown address, on purpose: any difference
   // here — status, body, or timing-visible work — would leak who has an account.
-  res.status(200).json({ ok: true });
+  sendJson(res, MagicLinkResponseSchema, { ok: true });
 }
 
 export async function getVerify(req: Request, res: Response) {
@@ -52,7 +54,7 @@ export async function postDevLogin(req: Request, res: Response) {
     path: '/',
     expires: session.expiresAt,
   });
-  res.status(200).json({ ok: true });
+  sendJson(res, OkResponseSchema, { ok: true });
 }
 
 /**
@@ -65,10 +67,10 @@ export async function postLogout(req: Request, res: Response) {
   if (raw) await endSession(raw);
 
   res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', secure: isProd, path: '/' });
-  res.status(200).json({ ok: true });
+  sendJson(res, OkResponseSchema, { ok: true });
 }
 
 export async function postExtensionToken(req: Request, res: Response) {
   const session = await createSession(userId(req), 'extension');
-  res.status(201).json({ token: session.token, expiresAt: session.expiresAt.toISOString() });
+  sendJson(res, ExtensionTokenResponseSchema, { token: session.token, expiresAt: session.expiresAt.toISOString() }, 201);
 }

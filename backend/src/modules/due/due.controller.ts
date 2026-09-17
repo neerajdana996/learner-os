@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import { userId } from '../../middleware/auth.js';
 import { getDueItems } from './due.service.js';
+import { DueItemsResponseSchema } from '@learnos/shared';
+import { sendJson } from '../../lib/respond.js';
 
 /**
  * `/due` is the extension's queue and only the extension's — the web session
@@ -9,5 +11,5 @@ import { getDueItems } from './due.service.js';
  */
 export async function getDue(req: Request, res: Response) {
   const { limit } = req.query as unknown as { limit: number };
-  res.json(await getDueItems(userId(req), limit, new Date(), 'extension'));
+  sendJson(res, DueItemsResponseSchema, await getDueItems(userId(req), limit, new Date(), 'extension'));
 }

@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import { userId } from '../../middleware/auth.js';
 import { answerQuestion, DiagnosticError, nextQuestion, startDiagnostic } from './diagnostic.service.js';
+import { DiagnosticNextResponseSchema } from '@learnos/shared';
+import { sendJson } from '../../lib/respond.js';
 
 function handle(res: Response, error: unknown): void {
   if (error instanceof DiagnosticError) {
@@ -13,7 +15,7 @@ function handle(res: Response, error: unknown): void {
 export async function postStart(req: Request, res: Response) {
   const { topicId } = req.params as { topicId: string };
   try {
-    res.json(await startDiagnostic(userId(req), topicId));
+    sendJson(res, DiagnosticNextResponseSchema, await startDiagnostic(userId(req), topicId));
   } catch (error) {
     handle(res, error);
   }
@@ -22,7 +24,7 @@ export async function postStart(req: Request, res: Response) {
 export async function getNext(req: Request, res: Response) {
   const { topicId } = req.params as { topicId: string };
   try {
-    res.json(await nextQuestion(userId(req), topicId));
+    sendJson(res, DiagnosticNextResponseSchema, await nextQuestion(userId(req), topicId));
   } catch (error) {
     handle(res, error);
   }
@@ -31,7 +33,7 @@ export async function getNext(req: Request, res: Response) {
 export async function postAnswer(req: Request, res: Response) {
   const { topicId } = req.params as { topicId: string };
   try {
-    res.json(await answerQuestion(userId(req), topicId, req.body));
+    sendJson(res, DiagnosticNextResponseSchema, await answerQuestion(userId(req), topicId, req.body));
   } catch (error) {
     handle(res, error);
   }

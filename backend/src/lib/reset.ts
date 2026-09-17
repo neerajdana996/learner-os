@@ -24,12 +24,10 @@ import {
   tests,
   topics,
 } from '../db/schema.js';
+import type { DevResetResponse } from '@learnos/shared';
 
-export interface ResetSummary {
-  topics: { title: string; concepts: number }[];
-  reviewEvents: number;
-  cards: number;
-}
+/** What a reset threw away — `DevResetResponseSchema` in `@learnos/shared` (T-075). */
+export type ResetSummary = DevResetResponse;
 
 /**
  * `progress` keeps the topic and its generated content — concepts, items,

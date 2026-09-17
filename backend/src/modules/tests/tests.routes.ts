@@ -1,20 +1,30 @@
 import { Router, type Response } from 'express';
-import { IdParamSchema, TestStartSchema, TestSubmitSchema } from '@learnos/shared';
+import type { ZodTypeAny } from 'zod';
+import {
+  IdParamSchema,
+  TestAvailabilitySchema,
+  TestNextSchema,
+  TestScoresSchema,
+  TestStartSchema,
+  TestSubmitSchema,
+} from '@learnos/shared';
 import { validate } from '../../lib/validate.js';
 import { requireUser, userId } from '../../middleware/auth.js';
 import { enqueueTest, getTestQueue } from '../../workers/tests.queue.js';
 import { existingTest, ownedTopic } from './tests.repository.js';
 import { answerTestItem, completeTest, nextTestItem, readyTopic, TestError } from './tests.service.js';
+import { sendJson } from '../../lib/respond.js';
 
 export const testsRouter = Router();
-async function respond(res: Response, run: () => Promise<unknown>) {
-  try { res.json(await run()); } catch (error) {
+// `res.statusCode`, not 200: a route may set 202 inside `run` before returning.
+async function respond(res: Response, schema: ZodTypeAny, run: () => Promise<unknown>) {
+  try { sendJson(res, schema, await run(), res.statusCode); } catch (error) {
     if (error instanceof TestError) { res.status(error.status).json({ error: error.reason }); return; }
     throw error;
   }
 }
 testsRouter.post('/topics/:id/tests', requireUser, validate(IdParamSchema, 'params'), validate(TestStartSchema), async (req, res) => {
-  await respond(res, async () => {
+  await respond(res, TestAvailabilitySchema, async () => {
     const topicId = String(req.params.id);
     const { existing } = await readyTopic(userId(req), topicId, new Date());
     if (existing) return { testId: existing.id, state: 'ready' };
@@ -24,7 +34,7 @@ testsRouter.post('/topics/:id/tests', requireUser, validate(IdParamSchema, 'para
   });
 });
 testsRouter.get('/topics/:id/tests', requireUser, validate(IdParamSchema, 'params'), async (req, res) => {
-  await respond(res, async () => {
+  await respond(res, TestAvailabilitySchema, async () => {
     const topicId = String(req.params.id);
     if (!await ownedTopic(userId(req), topicId)) throw new TestError('not_found', 404);
     const test = await existingTest(topicId);
@@ -34,11 +44,11 @@ testsRouter.get('/topics/:id/tests', requireUser, validate(IdParamSchema, 'param
   });
 });
 testsRouter.get('/tests/:id/next', requireUser, validate(IdParamSchema, 'params'), async (req, res) => {
-  await respond(res, () => nextTestItem(userId(req), String(req.params.id)));
+  await respond(res, TestNextSchema, () => nextTestItem(userId(req), String(req.params.id)));
 });
 testsRouter.post('/tests/:id/answer', requireUser, validate(IdParamSchema, 'params'), validate(TestSubmitSchema), async (req, res) => {
-  await respond(res, () => answerTestItem(userId(req), String(req.params.id), req.body));
+  await respond(res, TestNextSchema, () => answerTestItem(userId(req), String(req.params.id), req.body));
 });
 testsRouter.post('/tests/:id/complete', requireUser, validate(IdParamSchema, 'params'), async (req, res) => {
-  await respond(res, () => completeTest(userId(req), String(req.params.id)));
+  await respond(res, TestScoresSchema, () => completeTest(userId(req), String(req.params.id)));
 });

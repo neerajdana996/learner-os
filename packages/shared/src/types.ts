@@ -9,6 +9,18 @@ import type {
   IdParamSchema,
   UserCreateSchema,
   TopicCreateSchema,
+  TopicStatusSchema,
+  GenerationProgressSchema,
+  TopicSummarySchema,
+  TopicListResponseSchema,
+  TopicCreateResponseSchema,
+  ReviewResultSchema,
+  ItemFlagResponseSchema,
+  SkeletonResponseSchema,
+  SessionCompleteResponseSchema,
+  DeleteMeResponseSchema,
+  DevResetResponseSchema,
+  OkResponseSchema,
   ItemPayloadSchema,
   ItemGenerationSchema,
   PublicItemSchema,
@@ -71,6 +83,18 @@ export type ItemType = z.infer<typeof ItemTypeSchema>;
 export type IdParam = z.infer<typeof IdParamSchema>;
 export type UserCreate = z.infer<typeof UserCreateSchema>;
 export type TopicCreate = z.infer<typeof TopicCreateSchema>;
+export type TopicStatus = z.infer<typeof TopicStatusSchema>;
+export type GenerationProgress = z.infer<typeof GenerationProgressSchema>;
+export type TopicSummary = z.infer<typeof TopicSummarySchema>;
+export type TopicListResponse = z.infer<typeof TopicListResponseSchema>;
+export type TopicCreateResponse = z.infer<typeof TopicCreateResponseSchema>;
+export type ReviewResult = z.infer<typeof ReviewResultSchema>;
+export type ItemFlagResponse = z.infer<typeof ItemFlagResponseSchema>;
+export type SkeletonResponse = z.infer<typeof SkeletonResponseSchema>;
+export type SessionCompleteResponse = z.infer<typeof SessionCompleteResponseSchema>;
+export type DeleteMeResponse = z.infer<typeof DeleteMeResponseSchema>;
+export type DevResetResponse = z.infer<typeof DevResetResponseSchema>;
+export type OkResponse = z.infer<typeof OkResponseSchema>;
 
 export type ItemPayload = z.infer<typeof ItemPayloadSchema>;
 export type ConceptDomain = z.infer<typeof ConceptDomainSchema>;

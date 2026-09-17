@@ -61,6 +61,58 @@ export const TopicCreateSchema = z
     path: ['endsAt'],
   });
 
+export const TopicStatusSchema = z.enum(['generating', 'active', 'testing', 'holdout', 'done', 'failed']);
+
+/**
+ * How far generation has got (T-064). Reported through BullMQ job progress
+ * rather than the topic row — see `GenerationProgress` in the worker for why.
+ * `total` is known once the concept map returns.
+ */
+export const GenerationProgressSchema = z.object({
+  stage: z.enum(['map', 'content', 'saving']),
+  completed: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  /** What is being worked on right now, for the wait screen's subtitle. */
+  concept: z.string().optional(),
+});
+
+/**
+ * One topic, as both `GET /topics` and `GET /topics/:id` send it (T-072, T-075).
+ *
+ * T-072 shipped a client type claiming nine fields where the list sent four,
+ * and nothing noticed, because the type was written by hand in the frontend.
+ * The dashboard read `endsAt`, got `undefined`, and told every learner it was
+ * their final day. Declared here, and checked by the controller outside
+ * production, that drift fails the controller's own test instead.
+ */
+export const TopicSummarySchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  why: z.string().nullable(),
+  /** The language the course's examples are written in (T-091). Null when the
+   *  learner didn't name one — the topic profile fills it in (T-092). */
+  language: z.string().nullable(),
+  status: TopicStatusSchema,
+  error: z.string().nullable(),
+  startsAt: z.string().datetime({ offset: true }).nullable(),
+  endsAt: z.string().datetime({ offset: true }).nullable(),
+  dailyBudgetMin: z.number().int().nullable(),
+  createdAt: z.string().datetime({ offset: true }),
+  counts: z.object({ concepts: z.number().int().nonnegative(), items: z.number().int().nonnegative() }),
+  /** Null unless the topic is generating — and null even then until the map
+   *  returns, or once the job has been evicted from Redis. The list never
+   *  asks the queue, so it always sends null. */
+  progress: GenerationProgressSchema.nullable(),
+});
+
+export const TopicListResponseSchema = z.object({ topics: z.array(TopicSummarySchema) });
+
+/** `POST /topics` — 202 with the new topic, or the one already building (T-065). */
+export const TopicCreateResponseSchema = z.object({
+  topicId: z.string().uuid(),
+  status: TopicStatusSchema,
+});
+
 // ---------- Items ----------
 // Full payload as generated/stored server-side (includes the answer key).
 // Never send this shape to a client directly — see PublicItemSchema.
@@ -242,6 +294,36 @@ export const AnswerSchema = z.object({
   answeredAt: z.string().datetime().optional(),
 });
 
+/**
+ * What `POST /reviews` answers with (T-029, T-075). One schema for both
+ * surfaces: the web card and the extension card each read part of it, and a
+ * part declared twice is how the two drift apart.
+ */
+export const ReviewResultSchema = z.object({
+  eventId: z.string().uuid(),
+  conceptId: z.string().uuid(),
+  correct: z.boolean().nullable(),
+  /** What FSRS believed *before* this answer was shown (plan.md §6). */
+  predictedRecall: z.number().min(0).max(1),
+  /** "9 days since you last saw this" — the product in one line. */
+  gapDaysSinceLast: z.number().nullable(),
+  scheduled: z.boolean(),
+  /** When FSRS will next surface the concept; null when nothing was scheduled. */
+  due: z.string().datetime({ offset: true }).nullable(),
+  reps: z.number().int().nonnegative(),
+  /** The grader's one line. Null when nothing was answered. */
+  feedback: z.string().nullable(),
+  /** Set aside as a leech (T-059) — this is the last time it will be asked. */
+  leeched: z.boolean(),
+});
+
+/** `POST /items/:id/flag`. Three reports retire an item (T-062). */
+export const ItemFlagResponseSchema = z.object({ retired: z.boolean() });
+
+/** `GET /items/:id/skeleton` — fetched only when taken, because it is most of
+ *  the answer (T-088). */
+export const SkeletonResponseSchema = z.object({ skeleton: z.string() });
+
 // ---------- Diagnostic ----------
 export const DiagnosticStartSchema = z.object({}).strict();
 
@@ -278,6 +360,11 @@ export const MAX_NEW_CONCEPTS_PER_SESSION = 3;
  *  plan server-side, so this only has to be well-formed (T-016). */
 export const SessionCompleteSchema = z.object({
   conceptIds: z.array(z.string().uuid()).max(MAX_NEW_CONCEPTS_PER_SESSION),
+});
+
+export const SessionCompleteResponseSchema = z.object({
+  completedToday: z.literal(true),
+  taught: z.number().int().nonnegative(),
 });
 
 export const CorrectionSchema = z.object({ wrong: z.string(), why: z.string() });
@@ -499,6 +586,8 @@ export const DeleteMeSchema = z.object({
   confirmEmail: z.string().trim().toLowerCase().email().max(320),
 });
 
+export const DeleteMeResponseSchema = z.object({ deleted: z.literal(true) });
+
 const Iso = z.string();
 
 /**
@@ -600,6 +689,13 @@ export const DevResetSchema = z.object({
   scope: z.enum(['progress', 'topics']),
 });
 
+/** What a dev reset threw away, so the button can say so (T-079). */
+export const DevResetResponseSchema = z.object({
+  topics: z.array(z.object({ title: z.string(), concepts: z.number().int().nonnegative() })),
+  reviewEvents: z.number().int().nonnegative(),
+  cards: z.number().int().nonnegative(),
+});
+
 /**
  * `POST /dev/due-now` (T-128) — pull the caller's review queue forward so the
  * extension has something to pop.
@@ -636,6 +732,10 @@ export const ExtensionTokenResponseSchema = z.object({
   token: z.string(),
   expiresAt: z.string(),
 });
+
+/** The body of every route whose only news is that it worked: dev login and
+ *  logout. */
+export const OkResponseSchema = z.object({ ok: z.literal(true) });
 
 // ---------- Health ----------
 export const HealthResponseSchema = z.object({ ok: z.literal(true) });

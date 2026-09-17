@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
 import { buildReport, reviewsCsv } from './admin.service.js';
+import { AdminReportSchema } from '@learnos/shared';
+import { sendJson } from '../../lib/respond.js';
 
 export async function getMetrics(_req: Request, res: Response) {
-  res.json(await buildReport());
+  sendJson(res, AdminReportSchema, await buildReport());
 }
 
 export async function getReviewsCsv(req: Request, res: Response) {

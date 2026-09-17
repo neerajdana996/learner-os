@@ -1,11 +1,5 @@
 import { api } from '../../store/api';
-import type { DevReset } from '@learnos/shared';
-
-export interface ResetSummary {
-  topics: { title: string; concepts: number }[];
-  reviewEvents: number;
-  cards: number;
-}
+import type { DevReset, DevResetResponse } from '@learnos/shared';
 
 /**
  * Dev-only (T-079). The backend does not register `/dev/*` under
@@ -18,7 +12,7 @@ export interface ResetSummary {
  */
 export const devApi = api.injectEndpoints({
   endpoints: (build) => ({
-    devReset: build.mutation<ResetSummary, DevReset>({
+    devReset: build.mutation<DevResetResponse, DevReset>({
       query: (body) => ({ url: '/dev/reset', method: 'POST', body }),
       invalidatesTags: ['Me', 'Topic', 'Map', 'Session', 'Due', 'Diagnostic'],
     }),

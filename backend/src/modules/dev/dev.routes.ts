@@ -4,7 +4,8 @@ import { validate } from '../../lib/validate.js';
 import { requireUser, userId } from '../../middleware/auth.js';
 import { resetUser } from '../../lib/reset.js';
 import { makeDue } from '../../lib/makeDue.js';
-import { DevDueNowSchema, DevResetSchema } from '@learnos/shared';
+import { DevDueNowResponseSchema, DevDueNowSchema, DevResetResponseSchema, DevResetSchema } from '@learnos/shared';
+import { sendJson } from '../../lib/respond.js';
 
 export const devRouter = Router();
 
@@ -26,11 +27,11 @@ export const devRouter = Router();
 if (!isProd) {
   devRouter.post('/dev/reset', requireUser, validate(DevResetSchema), async (req, res) => {
     const { scope } = req.body as { scope: 'progress' | 'topics' };
-    res.json(await resetUser(userId(req), scope));
+    sendJson(res, DevResetResponseSchema, await resetUser(userId(req), scope));
   });
 
   devRouter.post('/dev/due-now', requireUser, validate(DevDueNowSchema), async (req, res) => {
     const { count } = req.body as { count: number };
-    res.json({ due: await makeDue(userId(req), count) });
+    sendJson(res, DevDueNowResponseSchema, { due: await makeDue(userId(req), count) });
   });
 }

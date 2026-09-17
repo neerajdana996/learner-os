@@ -1,5 +1,5 @@
 import { api } from '../../store/api';
-import type { DeleteMe, MeExport, MeResponse, UserUpdate } from '@learnos/shared';
+import type { DeleteMe, DeleteMeResponse, MeExport, MeResponse, UserUpdate } from '@learnos/shared';
 
 export const usersApi = api.injectEndpoints({
   endpoints: (build) => ({
@@ -27,7 +27,7 @@ export const usersApi = api.injectEndpoints({
     }),
     /** Deletes the account (T-046). The caller resets the whole API state after,
      *  since every cached query now describes a person who does not exist. */
-    deleteMe: build.mutation<{ deleted: true }, DeleteMe>({
+    deleteMe: build.mutation<DeleteMeResponse, DeleteMe>({
       query: (body) => ({ url: '/me', method: 'DELETE', body }),
     }),
   }),
