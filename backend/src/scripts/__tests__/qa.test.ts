@@ -524,3 +524,160 @@ describe('a QA fix brings back what it fixed', () => {
   });
 });
 
+/**
+ * T-063. Corrections were exported read-only, so a founder who spotted a
+ * *wrong* misconception — one that teaches a falsehood on the way to
+ * correcting it — had no way to fix a sentence short of regenerating the whole
+ * concept. They round-trip now, one marker pair per field, so no separator has
+ * to survive the prose inside it.
+ */
+describe('qa apply — misconceptions', () => {
+  const TWO = [
+    { wrong: 'state updates immediately', why: 'React batches and re-renders' },
+    { wrong: 'useState can go in a loop', why: 'hooks must run in the same order every render' },
+  ];
+
+  async function seedWithTwo() {
+    const seeded = await seedTopic();
+    await db.update(concepts).set({ corrections: TWO }).where(eq(concepts.id, seeded.taught.id));
+    return seeded;
+  }
+
+  /** Removes a whole field block — the way a founder deletes a misconception. */
+  function dropField(markdown: string, conceptId: string, name: string): string {
+    const start = markdown.indexOf(`<!-- learnos:field concept=${conceptId} name=${name} -->`);
+    expect(start, `field ${name} is in the export`).toBeGreaterThan(-1);
+    const end = markdown.indexOf('<!-- /learnos:field -->', start) + '<!-- /learnos:field -->'.length;
+    return markdown.slice(0, start) + markdown.slice(end);
+  }
+
+  /** Adds one — the way a founder copies a pair and gives it the next number. */
+  function addCorrection(markdown: string, conceptId: string, index: number, wrong: string, why: string): string {
+    const block = (name: string, value: string) =>
+      `<!-- learnos:field concept=${conceptId} name=corrections.${index}.${name} -->\n${value}\n<!-- /learnos:field -->\n`;
+    return `${markdown}\n${block('wrong', wrong)}${block('why', why)}`;
+  }
+
+  async function storedCorrections(conceptId: string) {
+    const [row] = await db.select().from(concepts).where(eq(concepts.id, conceptId));
+    return row?.corrections as { wrong: string; why: string }[];
+  }
+
+  it('edits one misconception without touching the other', async () => {
+    const { topic, taught } = await seedWithTwo();
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    writeFileSync(
+      path,
+      edit(readFileSync(path, 'utf8'), 'concept', taught.id, 'corrections.0.why', 'React batches updates until the handler returns.'),
+      'utf8',
+    );
+
+    expect(await applyEdits(path)).toEqual({ conceptsUpdated: 1, itemsUpdated: 0, leechesCleared: 0 });
+
+    const stored = await storedCorrections(taught.id);
+    expect(stored).toEqual([
+      { wrong: TWO[0]!.wrong, why: 'React batches updates until the handler returns.' },
+      TWO[1],
+    ]);
+  });
+
+  it('adds a misconception', async () => {
+    const { topic, taught } = await seedWithTwo();
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    writeFileSync(
+      path,
+      addCorrection(readFileSync(path, 'utf8'), taught.id, 2, 'the setter returns the new value', 'it returns nothing'),
+      'utf8',
+    );
+
+    await applyEdits(path);
+
+    const stored = await storedCorrections(taught.id);
+    expect(stored).toHaveLength(3);
+    expect(stored[2]).toEqual({ wrong: 'the setter returns the new value', why: 'it returns nothing' });
+  });
+
+  it('removes a misconception, down to the floor but no further', async () => {
+    const { topic, taught } = await seedWithTwo();
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    // Three, then back to two: a removal that stays inside the range lands.
+    writeFileSync(path, addCorrection(readFileSync(path, 'utf8'), taught.id, 2, 'a third belief', 'and why it is wrong'), 'utf8');
+    await applyEdits(path);
+
+    const { path: second } = await exportTopic(topic.id, dir);
+    let markdown = readFileSync(second, 'utf8');
+    markdown = dropField(markdown, taught.id, 'corrections.1.wrong');
+    markdown = dropField(markdown, taught.id, 'corrections.1.why');
+    writeFileSync(second, markdown, 'utf8');
+
+    await applyEdits(second);
+
+    const stored = await storedCorrections(taught.id);
+    expect(stored.map((c) => c.wrong)).toEqual([TWO[0]!.wrong, 'a third belief']);
+  });
+
+  it('aborts, writing nothing, when an edit would drop below the floor', async () => {
+    const { topic, taught } = await seedWithTwo();
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    let markdown = readFileSync(path, 'utf8');
+    markdown = dropField(markdown, taught.id, 'corrections.1.wrong');
+    markdown = dropField(markdown, taught.id, 'corrections.1.why');
+    // An unrelated edit in the same file, to prove nothing lands.
+    markdown = edit(markdown, 'concept', taught.id, 'explanationShort', 'This edit must not land.');
+    writeFileSync(path, markdown, 'utf8');
+
+    await expect(applyEdits(path)).rejects.toBeInstanceOf(QaError);
+
+    expect(await storedCorrections(taught.id)).toEqual(TWO);
+    const [row] = await db.select().from(concepts).where(eq(concepts.id, taught.id));
+    expect(row?.explanationShort).not.toBe('This edit must not land.');
+  });
+
+  it('aborts when an edit would go past the ceiling', async () => {
+    const { topic, taught } = await seedWithTwo();
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    let markdown = readFileSync(path, 'utf8');
+    for (const index of [2, 3, 4]) {
+      markdown = addCorrection(markdown, taught.id, index, `belief ${index}`, `why ${index}`);
+    }
+    writeFileSync(path, markdown, 'utf8');
+
+    await expect(applyEdits(path)).rejects.toThrowError(/2-4|misconceptions/i);
+    expect(await storedCorrections(taught.id)).toEqual(TWO);
+  });
+
+  it('aborts when a misconception is left with only half of itself', async () => {
+    const { topic, taught } = await seedWithTwo();
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    writeFileSync(path, dropField(readFileSync(path, 'utf8'), taught.id, 'corrections.1.why'), 'utf8');
+
+    await expect(applyEdits(path)).rejects.toThrowError(/misconception 2/i);
+    expect(await storedCorrections(taught.id)).toEqual(TWO);
+  });
+
+  /** The concept the fixture ships with holds a single misconception, which the
+   *  generator's own rule tolerates (T-164). An unrelated edit must still apply. */
+  it('leaves a concept that already holds one misconception alone', async () => {
+    const { topic, taught } = await seedTopic();
+    const dir = outDir();
+    const { path } = await exportTopic(topic.id, dir);
+    writeFileSync(
+      path,
+      edit(readFileSync(path, 'utf8'), 'concept', taught.id, 'explanationShort', 'An unrelated edit.'),
+      'utf8',
+    );
+
+    await applyEdits(path);
+
+    const [row] = await db.select().from(concepts).where(eq(concepts.id, taught.id));
+    expect(row?.explanationShort).toBe('An unrelated edit.');
+    expect((row?.corrections as unknown[]).length).toBe(1);
+  });
+});
+

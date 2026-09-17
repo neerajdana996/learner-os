@@ -23,6 +23,7 @@ import { db, pg } from '../db/client.js';
 import { cards, concepts, items, topics } from '../db/schema.js';
 import { isRetired, RETIRED_FLAG_THRESHOLD } from '../lib/retire.js';
 import { ItemPayloadSchema, type ItemPayload } from '@learnos/shared';
+import { MAX_CORRECTIONS, MIN_CORRECTIONS } from '../generator/teaching.js';
 
 /** Anything the founder did wrong in the file, or that would corrupt a row. */
 export class QaError extends Error {}
@@ -32,7 +33,9 @@ export const QA_DIR = join(BACKEND_ROOT, 'qa');
 
 const MARKER = '<!-- learnos:';
 const FIELD_END = '<!-- /learnos:field -->';
-const FIELD_START = /^<!-- learnos:field (concept|item)=([0-9a-fA-F-]{36}) name=([a-zA-Z]+) -->$/;
+const FIELD_START = /^<!-- learnos:field (concept|item)=([0-9a-fA-F-]{36}) name=([a-zA-Z][a-zA-Z0-9.]*) -->$/;
+/** `corrections.<index>.wrong` / `.why` — the one field that is a list (T-063). */
+const CORRECTION_FIELD = /^corrections\.(\d+)\.(wrong|why)$/;
 const TOPIC_MARKER = /^<!-- learnos:topic ([0-9a-fA-F-]{36}) -->$/;
 
 const CONCEPT_FIELDS = ['title', 'summary', 'tryFirstPrompt', 'explanationShort', 'explanationLong'] as const;
@@ -131,12 +134,22 @@ function renderConcept(concept: ConceptRow, conceptItems: ItemRow[], leeches = 0
     out += `### Explanation — long\n\n${field('concept', concept.id, 'explanationLong', concept.explanationLong)}\n`;
   }
 
-  // Read-only: a wrong correction is a regeneration, not a text edit (T-063).
+  /**
+   * Editable since T-063. They used to be read-only, on the reasoning that a
+   * two-field list needs a separator that cannot collide with the prose inside
+   * it — so a founder who spotted a *wrong* misconception, one that teaches a
+   * falsehood on the way to correcting it, had to regenerate the whole concept
+   * to fix a sentence. One marker pair per field removes the need for any
+   * separator at all.
+   */
   const corrections = Array.isArray(concept.corrections) ? concept.corrections : [];
   if (corrections.length > 0) {
-    out += `### Common misconceptions (read-only)\n\n`;
-    for (const correction of corrections as { wrong?: string; why?: string }[]) {
-      out += `- **${correction.wrong ?? ''}** — ${correction.why ?? ''}\n`;
+    out += `### Common misconceptions\n\n`;
+    out += `Edit the text like any other field. To **drop** one, delete both of its markers and the text between them; to **add** one, copy a pair and give it the next number. ${MIN_CORRECTIONS}–${MAX_CORRECTIONS} in total, or applying aborts.\n\n`;
+    for (const [index, correction] of (corrections as { wrong?: string; why?: string }[]).entries()) {
+      out += `#### Misconception ${index + 1}\n\n`;
+      out += `**They think**\n\n${field('concept', concept.id, `corrections.${index}.wrong`, correction.wrong ?? '')}\n`;
+      out += `**Why that is wrong**\n\n${field('concept', concept.id, `corrections.${index}.why`, correction.why ?? '')}\n`;
     }
     out += `\n`;
   }
@@ -252,7 +265,9 @@ export async function exportTopic(
 
 export interface ParsedEdits {
   topicId: string | null;
-  conceptFields: Map<string, Map<ConceptField, string>>;
+  /** Keyed by field name: the plain concept fields, plus `corrections.<n>.wrong`
+   *  and `.why` (T-063), which `applyEdits` rebuilds into the list. */
+  conceptFields: Map<string, Map<string, string>>;
   itemFields: Map<string, Map<ItemField, string>>;
 }
 
@@ -294,7 +309,10 @@ export function parseExport(markdown: string): ParsedEdits {
     if (!closed) throw new QaError(`field ${kind}=${id} name=${name} was never closed with ${FIELD_END}`);
 
     const allowed: readonly string[] = kind === 'concept' ? CONCEPT_FIELDS : ITEM_FIELDS;
-    if (!allowed.includes(name)) throw new QaError(`unknown ${kind} field "${name}" for ${id}`);
+    const isCorrection = kind === 'concept' && CORRECTION_FIELD.test(name);
+    if (!allowed.includes(name) && !isCorrection) {
+      throw new QaError(`unknown ${kind} field "${name}" for ${id}`);
+    }
 
     const bucket = kind === 'concept' ? result.conceptFields : result.itemFields;
     const fields = bucket.get(id) ?? new Map();
@@ -422,6 +440,68 @@ export async function applyEdits(filePath: string): Promise<ApplyResult> {
     if (Object.keys(values).length > 0) conceptUpdates.push({ id: row.id, values });
   }
 
+  /**
+   * Corrections are a list, so they are rebuilt from their fields rather than
+   * diffed one by one (T-063). Deleting a pair removes that misconception,
+   * copying one with the next number adds it, and the indices need not be
+   * contiguous — what matters is the order they appear in. Deleting *every*
+   * pair leaves the list alone rather than emptying it: a field that is absent
+   * from the file means "untouched" everywhere else in this tool, and a concept
+   * with no misconceptions is not a state the range would allow anyway.
+   *
+   * Everything is checked before the first write, like every other rule here:
+   * a file that would leave a concept outside T-053's range aborts whole, so
+   * the founder never has to work out which half of their edits landed.
+   */
+  const correctionUpdates: { id: string; corrections: { wrong: string; why: string }[] }[] = [];
+  for (const row of conceptRows) {
+    const fields = edits.conceptFields.get(row.id);
+    if (!fields) continue;
+
+    const byIndex = new Map<number, { wrong?: string; why?: string }>();
+    for (const [name, value] of fields) {
+      const match = CORRECTION_FIELD.exec(name);
+      if (!match) continue;
+      const index = Number(match[1]);
+      const entry = byIndex.get(index) ?? {};
+      entry[match[2] as 'wrong' | 'why'] = value.trim();
+      byIndex.set(index, entry);
+    }
+    if (byIndex.size === 0) continue;
+
+    const rebuilt = [...byIndex.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([index, entry]) => {
+        if (!entry.wrong || !entry.why) {
+          throw new QaError(
+            `concept ${row.id}: misconception ${index + 1} needs both the belief and why it is wrong`,
+          );
+        }
+        return { wrong: entry.wrong, why: entry.why };
+      });
+
+    const current = (Array.isArray(row.corrections) ? row.corrections : []).map(
+      (correction: { wrong?: string; why?: string }) => ({ wrong: correction.wrong, why: correction.why }),
+    );
+    if (JSON.stringify(rebuilt) === JSON.stringify(current)) continue;
+
+    /**
+     * Checked on a *change*, not on what is already stored.
+     *
+     * `corrections_count` is a tolerated rule at generation (T-164), so a
+     * concept can legitimately hold one misconception — and refusing to apply
+     * an unrelated explanation edit because of data the founder did not touch
+     * would make the QA tool unusable on exactly the topics that need it.
+     */
+    if (rebuilt.length < MIN_CORRECTIONS || rebuilt.length > MAX_CORRECTIONS) {
+      throw new QaError(
+        `concept ${row.id}: ${rebuilt.length} misconceptions, need ${MIN_CORRECTIONS}-${MAX_CORRECTIONS}`,
+      );
+    }
+
+    correctionUpdates.push({ id: row.id, corrections: rebuilt });
+  }
+
   const itemUpdates: { id: string; payload: ItemPayload }[] = [];
   for (const row of itemRows) {
     const fields = edits.itemFields.get(row.id);
@@ -432,7 +512,7 @@ export async function applyEdits(filePath: string): Promise<ApplyResult> {
     }
   }
 
-  if (conceptUpdates.length === 0 && itemUpdates.length === 0) {
+  if (conceptUpdates.length === 0 && itemUpdates.length === 0 && correctionUpdates.length === 0) {
     return { conceptsUpdated: 0, itemsUpdated: 0, leechesCleared: 0 };
   }
 
@@ -452,6 +532,7 @@ export async function applyEdits(filePath: string): Promise<ApplyResult> {
   const touchedConcepts = [
     ...new Set([
       ...conceptUpdates.map((update) => update.id),
+      ...correctionUpdates.map((update) => update.id),
       ...itemUpdates.map((update) => itemRows.find((row) => row.id === update.id)?.conceptId).filter((id): id is string => Boolean(id)),
     ]),
   ];
@@ -460,6 +541,9 @@ export async function applyEdits(filePath: string): Promise<ApplyResult> {
   await db.transaction(async (tx) => {
     for (const update of conceptUpdates) {
       await tx.update(concepts).set(update.values).where(eq(concepts.id, update.id));
+    }
+    for (const update of correctionUpdates) {
+      await tx.update(concepts).set({ corrections: update.corrections }).where(eq(concepts.id, update.id));
     }
     for (const update of itemUpdates) {
       await tx.update(items).set({ payload: update.payload }).where(eq(items.id, update.id));
@@ -474,7 +558,13 @@ export async function applyEdits(filePath: string): Promise<ApplyResult> {
     }
   });
 
-  return { conceptsUpdated: conceptUpdates.length, itemsUpdated: itemUpdates.length, leechesCleared };
+  // A concept whose text *and* misconceptions changed is one concept updated.
+  const conceptsUpdated = new Set([
+    ...conceptUpdates.map((update) => update.id),
+    ...correctionUpdates.map((update) => update.id),
+  ]).size;
+
+  return { conceptsUpdated, itemsUpdated: itemUpdates.length, leechesCleared };
 }
 
 // ---------- retire ----------

@@ -2652,3 +2652,30 @@
   - **`lib/retire.ts` gained a guard test** that walks every non-test source file and fails if `RETIRED_FLAG_THRESHOLD` is compared anywhere outside it. `scripts/qa.ts` is the one allowed mention, because `qa:retire` is what *writes* the threshold. A query added later that writes the rule out again fails by name.
   - **Tests:** the four acceptance lines — a retired question is never taught with, never a due review, never picked by the diagnostic, and a concept with none left is skipped rather than served broken — plus "offers nothing for a concept whose questions are all retired" and the threshold boundary. Backend 741/741, frontend 89, extension 128, `@learnos/ui` 50, `@learnos/shared` 57, lint 7/7.
   - **Not done:** nothing re-serves a concept once a replacement question is written — the same shape as T-176's fix for leeches, and worth the same treatment if it ever happens in practice.
+
+### T-063 · QA cannot fix a wrong misconception
+- **status:** done
+- **sprint:** 4
+- **depends_on:** T-024
+- **files:** `backend/src/scripts/qa.ts`, `backend/src/scripts/__tests__/qa.test.ts`
+- **description:** `concepts.corrections` (T-053's `[{ wrong, why }]`) is exported read-only, because a two-field list needs a separator that will not collide with the prose inside it. So a founder who spots a *wrong* misconception — one that teaches the learner a falsehood on the way to correcting it — has no way to fix it short of regenerating the concept. Round-trip it: one marker pair per correction field (`name=correction0.wrong`), or a small fenced block per correction with its own index. Deleting a correction must stay possible without breaking T-053's 2–4 range check.
+- **acceptance:** A corrections edit round-trips like every other field, and a file that would leave a concept outside the 2–4 correction range aborts.
+- **tests:**
+  - Editing one correction's `why` updates only that entry.
+  - Adding and removing a correction both work.
+  - Dropping below 2 or above 4 corrections aborts with nothing written.
+- **notes:** Done 2026-09-17. Corrections export as one marker pair per field —
+  `corrections.<index>.wrong` and `.why`, under a `#### Misconception N` heading —
+  so no separator has to survive the prose inside them. `FIELD_START` now accepts
+  dotted names; `applyEdits` rebuilds the list from the indices it finds (sorted,
+  gaps allowed, so deleting a pair removes that misconception and copying one with
+  the next number adds it) and writes it in the same transaction as every other
+  edit, which also feeds T-176's leech clearing.
+  - **The range is checked on a change, not on what is stored.** `corrections_count`
+    is a *tolerated* rule at generation (T-164), so a concept can legitimately hold
+    one misconception. Enforcing 2–4 against untouched data would have aborted an
+    unrelated explanation edit on exactly the topics a founder opens QA to fix.
+  - Half a pair — a `wrong` with no `why` — aborts naming the misconception by its
+    displayed number, before anything is written. Deleting *every* pair leaves the
+    list alone: an absent field means "untouched" for every other field in this tool.
+

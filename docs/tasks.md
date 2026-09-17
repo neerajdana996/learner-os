@@ -232,18 +232,6 @@ _(add here in the same format as `T-FIX-001`, with sprint and severity)_
   - Rendered user message for `generateConceptMap` contains the topic title.
   - A concept-map response below the enforced floor → `GenerationError`, with the floor and the prompt's asked range agreeing.
 
-### T-063 · QA cannot fix a wrong misconception
-- **status:** todo
-- **sprint:** 4
-- **depends_on:** T-024
-- **files:** `backend/src/scripts/qa.ts`, `backend/src/scripts/__tests__/qa.test.ts`
-- **description:** `concepts.corrections` (T-053's `[{ wrong, why }]`) is exported read-only, because a two-field list needs a separator that will not collide with the prose inside it. So a founder who spots a *wrong* misconception — one that teaches the learner a falsehood on the way to correcting it — has no way to fix it short of regenerating the concept. Round-trip it: one marker pair per correction field (`name=correction0.wrong`), or a small fenced block per correction with its own index. Deleting a correction must stay possible without breaking T-053's 2–4 range check.
-- **acceptance:** A corrections edit round-trips like every other field, and a file that would leave a concept outside the 2–4 correction range aborts.
-- **tests:**
-  - Editing one correction's `why` updates only that entry.
-  - Adding and removing a correction both work.
-  - Dropping below 2 or above 4 corrections aborts with nothing written.
-
 ### T-067 · Push generation status over the WebSocket instead of polling
 - **status:** todo
 - **sprint:** 3
